@@ -34,6 +34,11 @@ const nodeTypes = {
     editableTransform: EditableTransformNode,
 };
 
+// Helper function to check if node data has schema properties
+const isSchemaNodeData = (data: any): data is { schemaType: 'source' | 'target'; fields: any[]; data: any[] } => {
+    return data && typeof data === 'object' && 'schemaType' in data && 'fields' in data;
+};
+
 export default function Canvas() {
     const { theme } = useTheme();
     const { updateTargetField, conversionMode, conversionMappings, conversionTransforms } = useFieldStore();
@@ -48,7 +53,7 @@ export default function Canvas() {
         
         // Process each target node
         const updatedNodes = nodes.map(node => {
-            if (node.type === 'editableSchema' && node.data?.schemaType === 'target') {
+            if (node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target') {
                 const newTargetData: any = {};
                 
                 // Find all edges that connect to this target node
@@ -61,7 +66,7 @@ export default function Canvas() {
                     console.log('Source node:', sourceNode?.type, sourceNode?.data);
                     console.log('Target node:', node.type, node.data);
                     
-                    if (sourceNode?.type === 'editableSchema') {
+                    if (sourceNode?.type === 'editableSchema' && isSchemaNodeData(sourceNode.data)) {
                         const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
                         const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
                         const sourceData = Array.isArray(sourceNode.data?.data) ? sourceNode.data.data : [];
@@ -106,16 +111,20 @@ export default function Canvas() {
         });
         
         // Update nodes if there were changes
-        const hasChanges = updatedNodes.some((node, index) => 
-            node !== nodes[index] && node.type === 'editableSchema' && node.data?.schemaType === 'target'
-        );
+        const hasChanges = updatedNodes.some((node, index) => {
+            const originalNode = nodes[index];
+            return node !== originalNode && 
+                   node.type === 'editableSchema' && 
+                   isSchemaNodeData(node.data) && 
+                   node.data.schemaType === 'target';
+        });
         
         if (hasChanges) {
             setNodes(updatedNodes);
             
             // Update target data for sidebar
             const allTargetData = updatedNodes
-                .filter(node => node.type === 'editableSchema' && node.data?.schemaType === 'target')
+                .filter(node => node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target')
                 .flatMap(node => node.data?.data || []);
             
             setTargetData(allTargetData);
