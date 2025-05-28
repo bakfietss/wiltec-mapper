@@ -45,11 +45,16 @@ export default function Canvas() {
     const [targetData, setTargetData] = useState([]);
 
     const processDataMapping = useCallback((edges: Edge[], nodes: Node[]) => {
+        console.log('Processing data mapping with edges:', edges.length, 'and nodes:', nodes.length);
         const newTargetData: any = {};
         
         edges.forEach(edge => {
             const sourceNode = nodes.find(n => n.id === edge.source);
             const targetNode = nodes.find(n => n.id === edge.target);
+            
+            console.log('Processing edge:', edge);
+            console.log('Source node:', sourceNode?.type, sourceNode?.data);
+            console.log('Target node:', targetNode?.type, targetNode?.data);
             
             if (sourceNode?.type === 'editableSchema' && targetNode?.type === 'editableSchema') {
                 const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
@@ -59,6 +64,10 @@ export default function Canvas() {
                 const sourceField = sourceFields.find((f: any) => f.id === edge.sourceHandle);
                 const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
                 
+                console.log('Found source field:', sourceField);
+                console.log('Found target field:', targetField);
+                console.log('Source data:', sourceData);
+                
                 if (sourceField && targetField && sourceData.length > 0) {
                     const sourceValue = sourceData[0][sourceField.name] || sourceField.exampleValue;
                     newTargetData[targetField.name] = sourceValue;
@@ -67,17 +76,21 @@ export default function Canvas() {
             }
         });
         
+        console.log('Final target data:', newTargetData);
+        
         // Update target nodes with mapped data
         setNodes(currentNodes => 
             currentNodes.map(node => {
                 if (node.type === 'editableSchema' && node.data?.schemaType === 'target') {
-                    return {
+                    const updatedNode = {
                         ...node,
                         data: {
                             ...node.data,
                             data: Object.keys(newTargetData).length > 0 ? [newTargetData] : []
                         }
                     };
+                    console.log('Updated target node:', updatedNode);
+                    return updatedNode;
                 }
                 return node;
             })
@@ -108,6 +121,7 @@ export default function Canvas() {
     // Re-process data mapping when nodes change (including when data is updated)
     const handleNodesChange = useCallback((changes: any) => {
         onNodesChange(changes);
+        // Re-process mapping after node changes
         setTimeout(() => {
             processDataMapping(edges, nodes);
         }, 100);

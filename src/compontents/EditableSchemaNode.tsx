@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, FileText, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -206,7 +207,6 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
     }
   };
 
-  // ... keep existing code (getExampleValueInput function)
   const getExampleValueInput = (field: SchemaField) => {
     switch (field.type) {
       case 'number':
@@ -299,18 +299,20 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
                 </button>
               </div>
 
-              {/* Current Data Preview */}
-              {nodeData.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                  <div className="max-h-40 overflow-auto border rounded p-2 bg-gray-50">
+              {/* Current Data Preview - ALWAYS SHOW */}
+              <div>
+                <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
+                <div className="max-h-40 overflow-auto border rounded p-2 bg-gray-50">
+                  {nodeData.length > 0 ? (
                     <pre className="text-xs">
                       {JSON.stringify(nodeData.slice(0, 3), null, 2)}
                       {nodeData.length > 3 && '\n... and more'}
                     </pre>
-                  </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No data available</p>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Schema Fields */}
               <div>
