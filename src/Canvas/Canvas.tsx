@@ -1,4 +1,5 @@
-import { useMemo, useCallback, useState } from 'react';
+
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import {
     ReactFlow,
     ReactFlowProvider,
@@ -47,6 +48,27 @@ export default function Canvas() {
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [sourceData, setSourceData] = useState([]);
     const [targetData, setTargetData] = useState([]);
+
+    // Update sidebar data whenever nodes change
+    useEffect(() => {
+        console.log('Nodes changed, updating sidebar data');
+        
+        // Update source data from all source nodes
+        const allSourceData = nodes
+            .filter(node => node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'source')
+            .flatMap(node => node.data?.data || []);
+        
+        // Update target data from all target nodes
+        const allTargetData = nodes
+            .filter(node => node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target')
+            .flatMap(node => node.data?.data || []);
+        
+        console.log('Updated source data:', allSourceData);
+        console.log('Updated target data:', allTargetData);
+        
+        setSourceData(allSourceData);
+        setTargetData(allTargetData);
+    }, [nodes]);
 
     const processDataMapping = useCallback((edges: Edge[], nodes: Node[]) => {
         console.log('Processing data mapping with edges:', edges.length, 'and nodes:', nodes.length);
@@ -110,26 +132,8 @@ export default function Canvas() {
             return node;
         });
         
-        // Update nodes if there were changes
-        const hasChanges = updatedNodes.some((node, index) => {
-            const originalNode = nodes[index];
-            return node !== originalNode && 
-                   node.type === 'editableSchema' && 
-                   isSchemaNodeData(node.data) && 
-                   node.data.schemaType === 'target';
-        });
-        
-        if (hasChanges) {
-            setNodes(updatedNodes);
-            
-            // Update target data for sidebar
-            const allTargetData = updatedNodes
-                .filter(node => node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target')
-                .flatMap(node => node.data?.data || []);
-            
-            setTargetData(allTargetData);
-        }
-    }, [setNodes]);
+        return updatedNodes;
+    }, []);
 
     const onConnect = useCallback((connection: Connection) => {
         console.log('Connection attempt:', connection);
@@ -145,13 +149,34 @@ export default function Canvas() {
 
         // Process data mapping immediately after connection
         setTimeout(() => {
-            processDataMapping(newEdges, nodes);
+            const updatedNodes = processDataMapping(newEdges, nodes);
+            const hasChanges = updatedNodes.some((node, index) => node !== nodes[index]);
+            if (hasChanges) {
+                setNodes(updatedNodes);
+            }
         }, 50);
         
     }, [nodes, edges, processDataMapping]);
 
-    // Re-process data mapping when nodes change (including when data is updated)
+    // Handle node changes and deletions
     const handleNodesChange = useCallback((changes: any) => {
+        console.log('Node changes:', changes);
+        
+        // Check if any nodes are being removed
+        const removedNodes = changes.filter((change: any) => change.type === 'remove');
+        if (removedNodes.length > 0) {
+            console.log('Nodes being removed:', removedNodes);
+            
+            // Remove edges connected to deleted nodes
+            setEdges((currentEdges) => {
+                const removedNodeIds = removedNodes.map((change: any) => change.id);
+                return currentEdges.filter(edge => 
+                    !removedNodeIds.includes(edge.source) && 
+                    !removedNodeIds.includes(edge.target)
+                );
+            });
+        }
+        
         onNodesChange(changes);
         
         // Re-process mapping after node changes if it's a data update
@@ -162,10 +187,14 @@ export default function Canvas() {
         
         if (hasDataChanges) {
             setTimeout(() => {
-                processDataMapping(edges, nodes);
+                setNodes(currentNodes => {
+                    const updatedNodes = processDataMapping(edges, currentNodes);
+                    const hasChanges = updatedNodes.some((node, index) => node !== currentNodes[index]);
+                    return hasChanges ? updatedNodes : currentNodes;
+                });
             }, 50);
         }
-    }, [onNodesChange, edges, nodes, processDataMapping]);
+    }, [onNodesChange, edges, processDataMapping]);
 
     const addSchemaNode = useCallback((type: 'source' | 'target') => {
         const newNode: Node = {
@@ -176,12 +205,12 @@ export default function Canvas() {
                 label: type === 'source' ? 'Source Schema' : 'Target Schema',
                 schemaType: type,
                 fields: [],
-                data: type === 'source' ? sourceData : targetData,
+                data: [],
             },
         };
 
         setNodes((nds) => [...nds, newNode]);
-    }, [nodes.length, sourceData, targetData]);
+    }, [nodes.length]);
 
     const addTransformNode = useCallback((transformType: string) => {
         const newNode: Node = {
@@ -255,6 +284,7 @@ export default function Canvas() {
                     fitView
                     style={style}
                     nodeTypes={nodeTypes}
+                    deleteKeyCode={['Backspace', 'Delete']}
                 >
                     <Background />
                     <Controls />
