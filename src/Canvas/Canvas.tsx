@@ -1,5 +1,4 @@
-
-import { useMemo } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import {
     ReactFlow,
     ReactFlowProvider,
@@ -9,6 +8,8 @@ import {
     type Connection,
     type Node,
     type Edge,
+    Background,
+    Controls,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -19,75 +20,30 @@ import SourceNode from '../compontents/SourceNode';
 import TargetNode from '../compontents/TargetNode';
 import ConversionMappingNode from '../compontents/ConversionMappingNode';
 import TransformNode from '../compontents/TransformNode';
+import EditableSchemaNode from '../compontents/EditableSchemaNode';
+import EditableTransformNode from '../compontents/EditableTransformNode';
+import MappingToolbar from '../compontents/MappingToolbar';
+import DataSidebar from '../compontents/DataSidebar';
 
 const nodeTypes = {
     source: SourceNode,
     target: TargetNode,
     conversionMapping: ConversionMappingNode,
     transform: TransformNode,
+    editableSchema: EditableSchemaNode,
+    editableTransform: EditableTransformNode,
 };
-
-// Sample schema data for testing
-const sampleSourceFields = [
-    { id: 'name', name: 'name', type: 'string' as const },
-    { id: 'email', name: 'email', type: 'string' as const },
-    { id: 'age', name: 'age', type: 'number' as const },
-    { id: 'isActive', name: 'isActive', type: 'boolean' as const },
-];
-
-const sampleTargetFields = [
-    { id: 'fullName', name: 'fullName', type: 'string' as const },
-    { id: 'emailAddress', name: 'emailAddress', type: 'string' as const },
-    { id: 'userAge', name: 'userAge', type: 'number' as const },
-    { id: 'status', name: 'status', type: 'string' as const },
-];
-
-// Sample data for testing
-const sampleData = [
-    { name: 'John Doe', email: 'john@example.com', age: 30, isActive: true },
-    { name: 'Jane Smith', email: 'jane@example.com', age: 25, isActive: false },
-];
 
 export default function Canvas() {
     const { theme } = useTheme();
     const { updateTargetField, conversionMode, conversionMappings, conversionTransforms } = useFieldStore();
 
-    const [nodes, , onNodesChange] = useNodesState([
-        {
-            id: 'source-1',
-            type: 'source',
-            position: { x: 100, y: 100 },
-            data: {
-                label: 'Source Data',
-                fields: sampleSourceFields,
-                data: sampleData,
-            },
-        },
-        {
-            id: 'target-1',
-            type: 'target',
-            position: { x: 800, y: 100 },
-            data: {
-                label: 'Target Schema',
-                fields: sampleTargetFields,
-                data: [],
-            },
-        },
-        {
-            id: 'conversion-1',
-            type: 'conversionMapping',
-            position: { x: 400, y: 250 },
-            data: {
-                label: 'Field Mapping',
-                mappings: [],
-                isExpanded: false,
-            },
-        },
-    ]);
-
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [sourceData, setSourceData] = useState([]);
+    const [targetData, setTargetData] = useState([]);
 
-    const onConnect = (connection: Connection) => {
+    const onConnect = useCallback((connection: Connection) => {
         console.log('Connection attempt:', connection);
         setEdges((eds) => addEdge(connection, eds));
 
@@ -98,88 +54,60 @@ export default function Canvas() {
             return;
         }
 
-        // Direct Source → Target mapping
-        if (source === 'source-1' && target === 'target-1') {
-            console.log('Direct source to target mapping:', { sourceHandle, targetHandle });
-            
-            // Get the source data
-            const sourceData = sampleData[0] || {}; // Using first record for testing
-            const sourceValue = sourceData[sourceHandle] || '';
-            
-            console.log('Mapping value:', sourceValue, 'from', sourceHandle, 'to', targetHandle);
-            
-            // Update the target field in the store
-            const targetIndex = sampleTargetFields.findIndex(field => field.id === targetHandle);
-            if (targetIndex >= 0) {
-                updateTargetField(targetIndex, 'value', String(sourceValue));
-            }
-            
-            return;
-        }
+        // Handle different connection types based on node types
+        const sourceNode = nodes.find(n => n.id === source);
+        const targetNode = nodes.find(n => n.id === target);
 
-        // Source → Conversion → Target flow
-        if (source === 'source-1' && target === 'conversion-1') {
-            console.log('Source to conversion mapping');
-            return;
-        }
+        console.log('Connection between:', sourceNode?.type, '->', targetNode?.type);
+        
+    }, [nodes]);
 
-        if (source === 'conversion-1' && target === 'target-1') {
-            console.log('Conversion to target mapping');
-            
-            // Find the input edge to get the source value
-            const inputEdge = edges.find(
-                (e) => e.target === 'conversion-1' && e.source === 'source-1'
-            );
+    const addSchemaNode = useCallback((type: 'source' | 'target') => {
+        const newNode: Node = {
+            id: `${type}-${Date.now()}`,
+            type: 'editableSchema',
+            position: { x: type === 'source' ? 100 : 800, y: 100 + nodes.length * 50 },
+            data: {
+                label: type === 'source' ? 'Source Schema' : 'Target Schema',
+                schemaType: type,
+                fields: [],
+                data: type === 'source' ? sourceData : targetData,
+            },
+        };
 
-            let value = '';
-            if (inputEdge && inputEdge.sourceHandle) {
-                const sourceData = sampleData[0] || {};
-                value = String(sourceData[inputEdge.sourceHandle] || '');
-            }
+        setNodes((nds) => [...nds, newNode]);
+    }, [nodes.length, sourceData, targetData]);
 
-            // Apply conversion logic
-            if (conversionMode === 'mapping') {
-                const match = conversionMappings.find((row) => row.from === value);
-                if (match?.to) value = match.to;
-            }
+    const addTransformNode = useCallback((transformType: string) => {
+        const newNode: Node = {
+            id: `transform-${Date.now()}`,
+            type: 'editableTransform',
+            position: { x: 400, y: 100 + nodes.length * 50 },
+            data: {
+                label: transformType,
+                transformType: transformType,
+                description: `Apply ${transformType} transformation`,
+                config: {},
+            },
+        };
 
-            if (conversionMode === 'transform') {
-                for (const tf of conversionTransforms) {
-                    switch (tf) {
-                        case 'trim':
-                            value = value.trim();
-                            break;
-                        case 'uppercase':
-                            value = value.toUpperCase();
-                            break;
-                        case 'lowercase':
-                            value = value.toLowerCase();
-                            break;
-                        case 'capitalize':
-                            value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-                            break;
-                        case 'removeSpaces':
-                            value = value.replace(/\s+/g, '');
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }
+        setNodes((nds) => [...nds, newNode]);
+    }, [nodes.length]);
 
-            // Update target field
-            if (targetHandle) {
-                const targetIndex = sampleTargetFields.findIndex(field => field.id === targetHandle);
-                if (targetIndex >= 0) {
-                    updateTargetField(targetIndex, 'value', value);
-                }
-            }
-            
-            return;
-        }
+    const addMappingNode = useCallback(() => {
+        const newNode: Node = {
+            id: `mapping-${Date.now()}`,
+            type: 'conversionMapping',
+            position: { x: 400, y: 250 + nodes.length * 50 },
+            data: {
+                label: 'Field Mapping',
+                mappings: [],
+                isExpanded: false,
+            },
+        };
 
-        console.log("Unhandled connection type:", { source, target });
-    };
+        setNodes((nds) => [...nds, newNode]);
+    }, [nodes.length]);
 
     const style = useMemo(
         () => ({
@@ -191,17 +119,42 @@ export default function Canvas() {
     );
 
     return (
-        <ReactFlowProvider>
-            <ReactFlow
-                nodes={nodes}
-                onNodesChange={onNodesChange}
-                edges={edges}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                fitView
-                style={style}
-                nodeTypes={nodeTypes}
+        <div className="w-full h-screen relative">
+            <DataSidebar
+                side="left"
+                title="Source Data"
+                data={sourceData}
+                onDataChange={setSourceData}
             />
-        </ReactFlowProvider>
+            
+            <DataSidebar
+                side="right"
+                title="Target Data"
+                data={targetData}
+                onDataChange={setTargetData}
+            />
+
+            <ReactFlowProvider>
+                <MappingToolbar
+                    onAddTransform={addTransformNode}
+                    onAddMappingNode={addMappingNode}
+                    onAddSchemaNode={addSchemaNode}
+                />
+                
+                <ReactFlow
+                    nodes={nodes}
+                    onNodesChange={onNodesChange}
+                    edges={edges}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    fitView
+                    style={style}
+                    nodeTypes={nodeTypes}
+                >
+                    <Background />
+                    <Controls />
+                </ReactFlow>
+            </ReactFlowProvider>
+        </div>
     );
 }
