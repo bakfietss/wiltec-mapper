@@ -52,11 +52,15 @@ export default function Canvas() {
             const targetNode = nodes.find(n => n.id === edge.target);
             
             if (sourceNode?.type === 'editableSchema' && targetNode?.type === 'editableSchema') {
-                const sourceField = sourceNode.data.fields?.find((f: any) => f.id === edge.sourceHandle);
-                const targetField = targetNode.data.fields?.find((f: any) => f.id === edge.targetHandle);
+                const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
+                const targetFields = Array.isArray(targetNode.data?.fields) ? targetNode.data.fields : [];
+                const sourceData = Array.isArray(sourceNode.data?.data) ? sourceNode.data.data : [];
                 
-                if (sourceField && targetField && sourceNode.data.data?.[0]) {
-                    const sourceValue = sourceNode.data.data[0][sourceField.name] || sourceField.exampleValue;
+                const sourceField = sourceFields.find((f: any) => f.id === edge.sourceHandle);
+                const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                
+                if (sourceField && targetField && sourceData.length > 0) {
+                    const sourceValue = sourceData[0][sourceField.name] || sourceField.exampleValue;
                     newTargetData[targetField.name] = sourceValue;
                     console.log(`Mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
                 }
@@ -66,7 +70,7 @@ export default function Canvas() {
         // Update target nodes with mapped data
         setNodes(currentNodes => 
             currentNodes.map(node => {
-                if (node.type === 'editableSchema' && node.data.schemaType === 'target') {
+                if (node.type === 'editableSchema' && node.data?.schemaType === 'target') {
                     return {
                         ...node,
                         data: {
@@ -94,14 +98,14 @@ export default function Canvas() {
             return;
         }
 
-        // Process data mapping after connection
+        // Process data mapping immediately after connection
         setTimeout(() => {
             processDataMapping(newEdges, nodes);
         }, 100);
         
     }, [nodes, edges, processDataMapping]);
 
-    // Re-process data mapping when nodes change
+    // Re-process data mapping when nodes change (including when data is updated)
     const handleNodesChange = useCallback((changes: any) => {
         onNodesChange(changes);
         setTimeout(() => {

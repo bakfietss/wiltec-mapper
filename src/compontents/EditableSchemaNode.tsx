@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { ChevronDown, ChevronRight, Database, FileText, Edit3, Plus, Trash2, Play } from 'lucide-react';
+import { ChevronDown, ChevronRight, Database, FileText, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 
 interface SchemaField {
@@ -206,39 +206,6 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
     }
   };
 
-  const generateExampleData = () => {
-    const exampleRecord: any = {};
-    
-    fields.forEach(field => {
-      if (field.exampleValue !== undefined && field.exampleValue !== '') {
-        exampleRecord[field.name] = field.exampleValue;
-      } else {
-        // Generate default example based on type
-        switch (field.type) {
-          case 'string':
-            exampleRecord[field.name] = 'Example Text';
-            break;
-          case 'number':
-            exampleRecord[field.name] = 123;
-            break;
-          case 'boolean':
-            exampleRecord[field.name] = true;
-            break;
-          case 'date':
-            exampleRecord[field.name] = new Date().toISOString();
-            break;
-          default:
-            exampleRecord[field.name] = null;
-        }
-      }
-    });
-
-    const newData = [exampleRecord];
-    setNodeData(newData);
-    updateNodeInCanvas(fields, newData);
-    console.log(`Generated example data for ${schemaType} node:`, exampleRecord);
-  };
-
   // ... keep existing code (getExampleValueInput function)
   const getExampleValueInput = (field: SchemaField) => {
     switch (field.type) {
@@ -302,14 +269,6 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
         }`}>
           {schemaType}
         </span>
-        
-        <button
-          onClick={generateExampleData}
-          className="p-1 hover:bg-gray-200 rounded"
-          title="Generate example data"
-        >
-          <Play className="w-3 h-3 text-gray-600" />
-        </button>
         
         <Sheet>
           <SheetTrigger asChild>
