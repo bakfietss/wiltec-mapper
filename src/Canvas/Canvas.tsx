@@ -1,6 +1,7 @@
-// src/Canvas/Canvas.tsx
+
 import { useMemo } from 'react';
-import ReactFlow, {
+import {
+    ReactFlow,
     ReactFlowProvider,
     useNodesState,
     useEdgesState,
@@ -8,41 +9,86 @@ import ReactFlow, {
     type Connection,
     type Node,
     type Edge,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 import { useTheme } from '../Theme/ThemeContext';
 import { useFieldStore } from '../store/fieldStore';
 
-import InputNode from '../Layout/Nodes/InputNode';
-import OutputNode from '../Layout/Nodes/OutputNode';
-import ConversionNode from '../Layout/Nodes/ConversionNode';
+import SourceNode from '../compontents/SourceNode';
+import TargetNode from '../compontents/TargetNode';
+import ConversionMappingNode from '../compontents/ConversionMappingNode';
+import TransformNode from '../compontents/TransformNode';
 
 const nodeTypes = {
-    input: InputNode,
-    output: OutputNode,
-    conversion: ConversionNode,
+    source: SourceNode,
+    target: TargetNode,
+    conversionMapping: ConversionMappingNode,
+    transform: TransformNode,
 };
+
+// Sample schema data for testing
+const sampleSourceFields = [
+    { id: 'name', name: 'name', type: 'string' as const },
+    { id: 'email', name: 'email', type: 'string' as const },
+    { id: 'age', name: 'age', type: 'number' as const },
+    { id: 'isActive', name: 'isActive', type: 'boolean' as const },
+];
+
+const sampleTargetFields = [
+    { id: 'fullName', name: 'fullName', type: 'string' as const },
+    { id: 'emailAddress', name: 'emailAddress', type: 'string' as const },
+    { id: 'userAge', name: 'userAge', type: 'number' as const },
+    { id: 'status', name: 'status', type: 'string' as const },
+];
+
+// Sample data for testing
+const sampleData = [
+    { name: 'John Doe', email: 'john@example.com', age: 30, isActive: true },
+    { name: 'Jane Smith', email: 'jane@example.com', age: 25, isActive: false },
+];
 
 export default function Canvas() {
     const { theme } = useTheme();
-    const {
-        sourceFields,
-        updateTargetField,
-        conversionMode,
-        conversionMappings,
-        conversionTransforms,
-    } = useFieldStore();
+    const { updateTargetField, conversionMode, conversionMappings, conversionTransforms } = useFieldStore();
 
     const [nodes, , onNodesChange] = useNodesState<Node[]>([
-        { id: '1', type: 'input', position: { x: 100, y: 100 }, data: {} },
-        { id: '2', type: 'output', position: { x: 600, y: 100 }, data: {} },
-        { id: '3', type: 'conversion', position: { x: 350, y: 250 }, data: {} },
+        {
+            id: 'source-1',
+            type: 'source',
+            position: { x: 100, y: 100 },
+            data: {
+                label: 'Source Data',
+                fields: sampleSourceFields,
+                data: sampleData,
+            },
+        },
+        {
+            id: 'target-1',
+            type: 'target',
+            position: { x: 800, y: 100 },
+            data: {
+                label: 'Target Schema',
+                fields: sampleTargetFields,
+                data: [],
+            },
+        },
+        {
+            id: 'conversion-1',
+            type: 'conversionMapping',
+            position: { x: 400, y: 250 },
+            data: {
+                label: 'Field Mapping',
+                mappings: [],
+                isExpanded: false,
+            },
+        },
     ]);
 
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
 
     const onConnect = (connection: Connection) => {
+        console.log('Connection attempt:', connection);
         setEdges((eds) => addEdge(connection, eds));
 
         const { source, sourceHandle, target, targetHandle } = connection;
@@ -52,32 +98,46 @@ export default function Canvas() {
             return;
         }
 
-        // Input → Conversion
-        if (source === '1' && target === '3') {
-            const sourceIndex = parseInt(sourceHandle.split('-')[1], 10);
-            const rawValue = sourceFields[sourceIndex]?.value;
-
-            // Store the incoming value in the conversion node's data (optional if needed)
-            // You can skip this if you're not using node.data anymore
+        // Direct Source → Target mapping
+        if (source === 'source-1' && target === 'target-1') {
+            console.log('Direct source to target mapping:', { sourceHandle, targetHandle });
+            
+            // Get the source data
+            const sourceData = sampleData[0] || {}; // Using first record for testing
+            const sourceValue = sourceData[sourceHandle] || '';
+            
+            console.log('Mapping value:', sourceValue, 'from', sourceHandle, 'to', targetHandle);
+            
+            // Update the target field in the store
+            const targetIndex = sampleTargetFields.findIndex(field => field.id === targetHandle);
+            if (targetIndex >= 0) {
+                updateTargetField(targetIndex, 'value', String(sourceValue));
+            }
+            
             return;
         }
 
-        // Conversion → Output
-        if (source === '3' && target === '2') {
-            const targetIndex = parseInt(targetHandle.split('-')[2], 10);
+        // Source → Conversion → Target flow
+        if (source === 'source-1' && target === 'conversion-1') {
+            console.log('Source to conversion mapping');
+            return;
+        }
 
-            let value = ''; // We’ll try to get from previous Input → Conversion edge
-
-            // Find the last edge into the ConversionNode
+        if (source === 'conversion-1' && target === 'target-1') {
+            console.log('Conversion to target mapping');
+            
+            // Find the input edge to get the source value
             const inputEdge = edges.find(
-                (e) => e.target === '3' && e.source === '1' && e.sourceHandle
+                (e) => e.target === 'conversion-1' && e.source === 'source-1'
             );
 
-            if (inputEdge) {
-                const sourceIndex = parseInt(inputEdge.sourceHandle!.split('-')[1], 10);
-                value = sourceFields[sourceIndex]?.value ?? '';
+            let value = '';
+            if (inputEdge && inputEdge.sourceHandle) {
+                const sourceData = sampleData[0] || {};
+                value = String(sourceData[inputEdge.sourceHandle] || '');
             }
 
+            // Apply conversion logic
             if (conversionMode === 'mapping') {
                 const match = conversionMappings.find((row) => row.from === value);
                 if (match?.to) value = match.to;
@@ -107,28 +167,27 @@ export default function Canvas() {
                 }
             }
 
-            updateTargetField(targetIndex, 'value', value);
+            // Update target field
+            if (targetHandle) {
+                const targetIndex = sampleTargetFields.findIndex(field => field.id === targetHandle);
+                if (targetIndex >= 0) {
+                    updateTargetField(targetIndex, 'value', value);
+                }
+            }
+            
             return;
         }
 
-        // Fallback: Input → Output
-        if (sourceHandle.startsWith('field-') && targetHandle.startsWith('target-field-')) {
-            const sourceIndex = parseInt(sourceHandle.split('-')[1], 10);
-            const targetIndex = parseInt(targetHandle.split('-')[2], 10);
-            const value = sourceFields[sourceIndex]?.value || '';
-            updateTargetField(targetIndex, 'value', value);
-        } else {
-            console.log("Connection involved non-standard nodes, skipping auto-transfer.");
-        }
+        console.log("Unhandled connection type:", { source, target });
     };
 
     const style = useMemo(
         () => ({
             width: '100%',
             height: '100%',
-            background: theme.canvas.background,
+            background: theme?.canvas?.background || '#f8f9fa',
         }),
-        [theme.canvas.background]
+        [theme?.canvas?.background]
     );
 
     return (

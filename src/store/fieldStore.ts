@@ -1,10 +1,17 @@
-// src/store/fieldStore.ts
+
 import { create } from 'zustand';
 
 // TYPES
 interface Field {
     name: string;
     value: string;
+}
+
+interface SchemaField {
+    id: string;
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
+    children?: SchemaField[];
 }
 
 interface ConversionRule {
@@ -15,22 +22,33 @@ interface ConversionRule {
 
 // STORE
 interface FieldState {
-    // Input/Output Fields
+    // Input/Output Fields (legacy support)
     sourceFields: Field[];
     targetFields: Field[];
+
+    // Schema-based fields (new approach)
+    sourceSchema: SchemaField[];
+    targetSchema: SchemaField[];
+    sourceData: any[];
+    targetData: any[];
 
     // Conversion Logic
     conversionMode: 'mapping' | 'transform';
     conversionMappings: ConversionRule[];
     conversionTransforms: string[];
 
-    // Input/Output field actions
+    // Legacy field actions
     addSourceField: () => void;
     updateField: (index: number, key: keyof Field, value: string) => void;
-
     addTargetField: () => void;
     updateTargetField: (index: number, key: keyof Field, value: string) => void;
     setTargetFieldsFromArray: (fields: string[]) => void;
+
+    // Schema-based actions
+    setSourceSchema: (schema: SchemaField[]) => void;
+    setTargetSchema: (schema: SchemaField[]) => void;
+    setSourceData: (data: any[]) => void;
+    updateTargetData: (fieldId: string, value: any) => void;
 
     // Conversion logic actions
     setConversionMode: (mode: 'mapping' | 'transform') => void;
@@ -43,14 +61,22 @@ interface FieldState {
 }
 
 // STORE IMPLEMENTATION
-export const useFieldStore = create<FieldState>((set) => ({
+export const useFieldStore = create<FieldState>((set, get) => ({
+    // Legacy fields
     sourceFields: [],
     targetFields: [],
+
+    // Schema-based fields
+    sourceSchema: [],
+    targetSchema: [],
+    sourceData: [],
+    targetData: [],
 
     conversionMode: 'mapping',
     conversionMappings: [{ from: '', to: '' }],
     conversionTransforms: [],
 
+    // Legacy actions
     addSourceField: () =>
         set((state) => ({
             sourceFields: [...state.sourceFields, { name: '', value: '' }],
@@ -71,7 +97,14 @@ export const useFieldStore = create<FieldState>((set) => ({
     updateTargetField: (index, key, value) =>
         set((state) => {
             const updated = [...state.targetFields];
-            updated[index] = { ...updated[index], [key]: value };
+            if (updated[index]) {
+                updated[index] = { ...updated[index], [key]: value };
+            } else {
+                // Create the field if it doesn't exist
+                updated[index] = { name: '', value: '' };
+                updated[index][key] = value;
+            }
+            console.log('Updated target field:', { index, key, value, updated });
             return { targetFields: updated };
         }),
 
@@ -80,6 +113,23 @@ export const useFieldStore = create<FieldState>((set) => ({
             targetFields: fields.map((name) => ({ name, value: '' })),
         })),
 
+    // Schema-based actions
+    setSourceSchema: (schema) => set({ sourceSchema: schema }),
+    setTargetSchema: (schema) => set({ targetSchema: schema }),
+    setSourceData: (data) => set({ sourceData: data }),
+    
+    updateTargetData: (fieldId, value) =>
+        set((state) => {
+            const newTargetData = [...state.targetData];
+            if (newTargetData.length === 0) {
+                newTargetData.push({});
+            }
+            newTargetData[0] = { ...newTargetData[0], [fieldId]: value };
+            console.log('Updated target data:', { fieldId, value, newTargetData });
+            return { targetData: newTargetData };
+        }),
+
+    // Conversion actions
     setConversionMode: (mode) => set({ conversionMode: mode }),
 
     addConversionMapping: () =>
@@ -108,6 +158,10 @@ export const useFieldStore = create<FieldState>((set) => ({
         set({
             sourceFields: [],
             targetFields: [],
+            sourceSchema: [],
+            targetSchema: [],
+            sourceData: [],
+            targetData: [],
             conversionMode: 'mapping',
             conversionMappings: [{ from: '', to: '' }],
             conversionTransforms: [],
