@@ -241,7 +241,7 @@ const ConversionMappingNode: React.FC<{ data: ConversionMappingNodeData; id: str
         </div>
         
         {headers && !isExpanded && (
-          <div className="mt-2 text-xs text-purple-700">
+          <div className="mt-2 text-xs text-purple-700 text-center">
             <span className="font-medium">{headers.from}</span> → <span className="font-medium">{headers.to}</span>
           </div>
         )}
@@ -250,9 +250,9 @@ const ConversionMappingNode: React.FC<{ data: ConversionMappingNodeData; id: str
       {isExpanded && (
         <div className="p-3 max-h-48 overflow-y-auto">
           {headers && (
-            <div className="mb-3 p-2 bg-blue-50 rounded text-xs">
+            <div className="mb-3 p-2 bg-blue-50 rounded text-xs text-center">
               <div className="font-medium text-blue-900 mb-1">Headers:</div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <span className="bg-blue-100 px-2 py-1 rounded">{headers.from}</span>
                 <span className="text-blue-600">→</span>
                 <span className="bg-blue-100 px-2 py-1 rounded">{headers.to}</span>
@@ -263,13 +263,13 @@ const ConversionMappingNode: React.FC<{ data: ConversionMappingNodeData; id: str
           {mappings.length > 0 ? (
             <div className="space-y-1">
               {mappings.slice(0, 8).map((mapping, index) => (
-                <div key={mapping.id} className="text-xs bg-gray-50 p-2 rounded">
-                  <div className="grid grid-cols-5 gap-2 items-center">
-                    <span className="font-medium text-gray-700 truncate" title={mapping.from}>
+                <div key={mapping.id} className="text-xs bg-gray-50 p-2 rounded text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="font-medium text-gray-700 truncate max-w-16" title={mapping.from}>
                       {mapping.from}
                     </span>
-                    <span className="text-gray-500 text-center">→</span>
-                    <span className="font-medium text-gray-900 truncate" title={mapping.to}>
+                    <span className="text-gray-500">→</span>
+                    <span className="font-medium text-gray-900 truncate max-w-16" title={mapping.to}>
                       {mapping.to}
                     </span>
                   </div>

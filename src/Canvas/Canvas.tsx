@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState } from 'react';
 import {
     ReactFlow,
@@ -46,58 +45,82 @@ export default function Canvas() {
 
     const processDataMapping = useCallback((edges: Edge[], nodes: Node[]) => {
         console.log('Processing data mapping with edges:', edges.length, 'and nodes:', nodes.length);
-        const newTargetData: any = {};
         
-        edges.forEach(edge => {
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            const targetNode = nodes.find(n => n.id === edge.target);
-            
-            console.log('Processing edge:', edge);
-            console.log('Source node:', sourceNode?.type, sourceNode?.data);
-            console.log('Target node:', targetNode?.type, targetNode?.data);
-            
-            if (sourceNode?.type === 'editableSchema' && targetNode?.type === 'editableSchema') {
-                const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
-                const targetFields = Array.isArray(targetNode.data?.fields) ? targetNode.data.fields : [];
-                const sourceData = Array.isArray(sourceNode.data?.data) ? sourceNode.data.data : [];
+        // Process each target node
+        const updatedNodes = nodes.map(node => {
+            if (node.type === 'editableSchema' && node.data?.schemaType === 'target') {
+                const newTargetData: any = {};
                 
-                const sourceField = sourceFields.find((f: any) => f.id === edge.sourceHandle);
-                const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                // Find all edges that connect to this target node
+                const incomingEdges = edges.filter(edge => edge.target === node.id);
                 
-                console.log('Found source field:', sourceField);
-                console.log('Found target field:', targetField);
-                console.log('Source data:', sourceData);
+                incomingEdges.forEach(edge => {
+                    const sourceNode = nodes.find(n => n.id === edge.source);
+                    
+                    console.log('Processing edge:', edge);
+                    console.log('Source node:', sourceNode?.type, sourceNode?.data);
+                    console.log('Target node:', node.type, node.data);
+                    
+                    if (sourceNode?.type === 'editableSchema') {
+                        const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
+                        const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
+                        const sourceData = Array.isArray(sourceNode.data?.data) ? sourceNode.data.data : [];
+                        
+                        const sourceField = sourceFields.find((f: any) => f.id === edge.sourceHandle);
+                        const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                        
+                        console.log('Found source field:', sourceField);
+                        console.log('Found target field:', targetField);
+                        console.log('Source data:', sourceData);
+                        
+                        if (sourceField && targetField) {
+                            // Get value from source data or example value
+                            const sourceValue = sourceData.length > 0 
+                                ? sourceData[0][sourceField.name] 
+                                : sourceField.exampleValue;
+                            
+                            if (sourceValue !== undefined && sourceValue !== '') {
+                                newTargetData[targetField.name] = sourceValue;
+                                console.log(`Mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
+                            }
+                        }
+                    }
+                });
                 
-                if (sourceField && targetField && sourceData.length > 0) {
-                    const sourceValue = sourceData[0][sourceField.name] || sourceField.exampleValue;
-                    newTargetData[targetField.name] = sourceValue;
-                    console.log(`Mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
-                }
-            }
-        });
-        
-        console.log('Final target data:', newTargetData);
-        
-        // Update target nodes with mapped data
-        setNodes(currentNodes => 
-            currentNodes.map(node => {
-                if (node.type === 'editableSchema' && node.data?.schemaType === 'target') {
+                console.log('Final target data for node:', node.id, newTargetData);
+                
+                // Update the node with new data
+                if (Object.keys(newTargetData).length > 0) {
                     const updatedNode = {
                         ...node,
                         data: {
                             ...node.data,
-                            data: Object.keys(newTargetData).length > 0 ? [newTargetData] : []
+                            data: [newTargetData]
                         }
                     };
                     console.log('Updated target node:', updatedNode);
                     return updatedNode;
                 }
-                return node;
-            })
+            }
+            return node;
+        });
+        
+        // Update nodes if there were changes
+        const hasChanges = updatedNodes.some((node, index) => 
+            node !== nodes[index] && node.type === 'editableSchema' && node.data?.schemaType === 'target'
         );
         
-        setTargetData(Object.keys(newTargetData).length > 0 ? [newTargetData] : []);
-    }, []);
+        if (hasChanges) {
+            setNodes(updatedNodes);
+            
+            // Update target data for sidebar
+            const allTargetData = updatedNodes
+                .filter(node => node.type === 'editableSchema' && node.data?.schemaType === 'target')
+                .flatMap(node => node.data?.data || []);
+            
+            setTargetData(allTargetData);
+        }
+    }, [setNodes]);
 
     const onConnect = useCallback((connection: Connection) => {
         console.log('Connection attempt:', connection);
@@ -114,17 +137,25 @@ export default function Canvas() {
         // Process data mapping immediately after connection
         setTimeout(() => {
             processDataMapping(newEdges, nodes);
-        }, 100);
+        }, 50);
         
     }, [nodes, edges, processDataMapping]);
 
     // Re-process data mapping when nodes change (including when data is updated)
     const handleNodesChange = useCallback((changes: any) => {
         onNodesChange(changes);
-        // Re-process mapping after node changes
-        setTimeout(() => {
-            processDataMapping(edges, nodes);
-        }, 100);
+        
+        // Re-process mapping after node changes if it's a data update
+        const hasDataChanges = changes.some((change: any) => 
+            change.type === 'replace' || 
+            (change.type === 'add' && change.item?.data)
+        );
+        
+        if (hasDataChanges) {
+            setTimeout(() => {
+                processDataMapping(edges, nodes);
+            }, 50);
+        }
     }, [onNodesChange, edges, nodes, processDataMapping]);
 
     const addSchemaNode = useCallback((type: 'source' | 'target') => {
