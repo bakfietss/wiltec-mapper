@@ -89,6 +89,7 @@ export default function Canvas() {
                     console.log('Target node:', node.type, node.data);
                     
                     if (sourceNode?.type === 'editableSchema' && isSchemaNodeData(sourceNode.data)) {
+                        // Direct schema-to-schema mapping
                         const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
                         const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
                         const sourceData = Array.isArray(sourceNode.data?.data) ? sourceNode.data.data : [];
@@ -108,9 +109,50 @@ export default function Canvas() {
                             
                             if (sourceValue !== undefined && sourceValue !== '') {
                                 newTargetData[targetField.name] = sourceValue;
-                                console.log(`Mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
+                                console.log(`Direct mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
                             }
                         }
+                    } else if (sourceNode?.type === 'conversionMapping') {
+                        // Mapping through conversion node - trace back to find the original source
+                        const conversionIncomingEdges = edges.filter(e => e.target === sourceNode.id);
+                        
+                        conversionIncomingEdges.forEach(conversionEdge => {
+                            const originalSourceNode = nodes.find(n => n.id === conversionEdge.source);
+                            
+                            if (originalSourceNode?.type === 'editableSchema' && isSchemaNodeData(originalSourceNode.data)) {
+                                const sourceFields = Array.isArray(originalSourceNode.data?.fields) ? originalSourceNode.data.fields : [];
+                                const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
+                                const sourceData = Array.isArray(originalSourceNode.data?.data) ? originalSourceNode.data.data : [];
+                                const mappings = sourceNode.data?.mappings || [];
+                                
+                                const sourceField = sourceFields.find((f: any) => f.id === conversionEdge.sourceHandle);
+                                const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                                
+                                if (sourceField && targetField) {
+                                    // Get original value
+                                    let sourceValue = sourceData.length > 0 
+                                        ? sourceData[0][sourceField.name] 
+                                        : sourceField.exampleValue;
+                                    
+                                    console.log('Original value before conversion:', sourceValue);
+                                    
+                                    // Apply conversion mapping if there's a match
+                                    const mappingRule = mappings.find((mapping: any) => 
+                                        mapping.from === sourceValue
+                                    );
+                                    
+                                    if (mappingRule) {
+                                        sourceValue = mappingRule.to;
+                                        console.log(`Applied conversion rule: ${mappingRule.from} -> ${mappingRule.to}`);
+                                    }
+                                    
+                                    if (sourceValue !== undefined && sourceValue !== '') {
+                                        newTargetData[targetField.name] = sourceValue;
+                                        console.log(`Conversion mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
+                                    }
+                                }
+                            }
+                        });
                     }
                 });
                 
