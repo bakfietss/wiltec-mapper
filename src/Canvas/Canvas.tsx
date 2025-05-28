@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useState } from 'react';
 import {
     ReactFlow,
@@ -43,9 +44,48 @@ export default function Canvas() {
     const [sourceData, setSourceData] = useState([]);
     const [targetData, setTargetData] = useState([]);
 
+    const processDataMapping = useCallback((edges: Edge[], nodes: Node[]) => {
+        const newTargetData: any = {};
+        
+        edges.forEach(edge => {
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            const targetNode = nodes.find(n => n.id === edge.target);
+            
+            if (sourceNode?.type === 'editableSchema' && targetNode?.type === 'editableSchema') {
+                const sourceField = sourceNode.data.fields?.find((f: any) => f.id === edge.sourceHandle);
+                const targetField = targetNode.data.fields?.find((f: any) => f.id === edge.targetHandle);
+                
+                if (sourceField && targetField && sourceNode.data.data?.[0]) {
+                    const sourceValue = sourceNode.data.data[0][sourceField.name] || sourceField.exampleValue;
+                    newTargetData[targetField.name] = sourceValue;
+                    console.log(`Mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
+                }
+            }
+        });
+        
+        // Update target nodes with mapped data
+        setNodes(currentNodes => 
+            currentNodes.map(node => {
+                if (node.type === 'editableSchema' && node.data.schemaType === 'target') {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            data: Object.keys(newTargetData).length > 0 ? [newTargetData] : []
+                        }
+                    };
+                }
+                return node;
+            })
+        );
+        
+        setTargetData(Object.keys(newTargetData).length > 0 ? [newTargetData] : []);
+    }, []);
+
     const onConnect = useCallback((connection: Connection) => {
         console.log('Connection attempt:', connection);
-        setEdges((eds) => addEdge(connection, eds));
+        const newEdges = addEdge(connection, edges);
+        setEdges(newEdges);
 
         const { source, sourceHandle, target, targetHandle } = connection;
 
@@ -54,13 +94,20 @@ export default function Canvas() {
             return;
         }
 
-        // Handle different connection types based on node types
-        const sourceNode = nodes.find(n => n.id === source);
-        const targetNode = nodes.find(n => n.id === target);
-
-        console.log('Connection between:', sourceNode?.type, '->', targetNode?.type);
+        // Process data mapping after connection
+        setTimeout(() => {
+            processDataMapping(newEdges, nodes);
+        }, 100);
         
-    }, [nodes]);
+    }, [nodes, edges, processDataMapping]);
+
+    // Re-process data mapping when nodes change
+    const handleNodesChange = useCallback((changes: any) => {
+        onNodesChange(changes);
+        setTimeout(() => {
+            processDataMapping(edges, nodes);
+        }, 100);
+    }, [onNodesChange, edges, nodes, processDataMapping]);
 
     const addSchemaNode = useCallback((type: 'source' | 'target') => {
         const newNode: Node = {
@@ -143,7 +190,7 @@ export default function Canvas() {
                 
                 <ReactFlow
                     nodes={nodes}
-                    onNodesChange={onNodesChange}
+                    onNodesChange={handleNodesChange}
                     edges={edges}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}

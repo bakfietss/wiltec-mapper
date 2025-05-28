@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, FileText, Edit3, Plus, Trash2, Play } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 
@@ -36,9 +36,22 @@ const SchemaField: React.FC<{
   schemaType: 'source' | 'target'; 
   level: number;
   onEdit?: (field: SchemaField) => void;
-}> = ({ field, schemaType, level, onEdit }) => {
+  nodeData?: any[];
+}> = ({ field, schemaType, level, onEdit, nodeData }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = field.children && field.children.length > 0;
+  
+  // Get the actual value for this field from node data
+  const getFieldValue = () => {
+    if (schemaType === 'source') {
+      return nodeData?.[0]?.[field.name] || field.exampleValue;
+    } else {
+      // For target nodes, show the mapped value from data
+      return nodeData?.[0]?.[field.name] || '';
+    }
+  };
+
+  const fieldValue = getFieldValue();
 
   return (
     <div className="relative">
@@ -65,10 +78,9 @@ const SchemaField: React.FC<{
         {!hasChildren && <div className="w-4" />}
         
         <span className="font-medium text-gray-900 flex-1">{field.name}</span>
-        {field.exampleValue && (
-          <span className="text-xs text-gray-500 bg-gray-100 px-1 rounded">
-            {String(field.exampleValue).slice(0, 10)}
-            {String(field.exampleValue).length > 10 ? '...' : ''}
+        {fieldValue && (
+          <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate">
+            {String(fieldValue)}
           </span>
         )}
         <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
@@ -100,6 +112,7 @@ const SchemaField: React.FC<{
               schemaType={schemaType}
               level={level + 1}
               onEdit={onEdit}
+              nodeData={nodeData}
             />
           ))}
         </div>
@@ -113,8 +126,16 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
   const [nodeData, setNodeData] = useState<any[]>(data.data || []);
   const [editingField, setEditingField] = useState<SchemaField | null>(null);
   const [jsonInput, setJsonInput] = useState('');
+  const { setNodes } = useReactFlow();
   
   const { label, schemaType } = data;
+
+  // Update local state when data prop changes (for target nodes receiving mapped data)
+  React.useEffect(() => {
+    if (data.data !== nodeData) {
+      setNodeData(data.data || []);
+    }
+  }, [data.data]);
 
   const handleFieldEdit = (field: SchemaField) => {
     setEditingField(field);
@@ -128,17 +149,33 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
       value: '',
       exampleValue: ''
     };
-    setFields([...fields, newField]);
+    const updatedFields = [...fields, newField];
+    setFields(updatedFields);
+    updateNodeInCanvas(updatedFields, nodeData);
   };
 
   const updateField = (fieldId: string, updates: Partial<SchemaField>) => {
-    setFields(fields.map(field => 
+    const updatedFields = fields.map(field => 
       field.id === fieldId ? { ...field, ...updates } : field
-    ));
+    );
+    setFields(updatedFields);
+    updateNodeInCanvas(updatedFields, nodeData);
   };
 
   const deleteField = (fieldId: string) => {
-    setFields(fields.filter(field => field.id !== fieldId));
+    const updatedFields = fields.filter(field => field.id !== fieldId);
+    setFields(updatedFields);
+    updateNodeInCanvas(updatedFields, nodeData);
+  };
+
+  const updateNodeInCanvas = (newFields: SchemaField[], newData: any[]) => {
+    setNodes(nodes => 
+      nodes.map(node => 
+        node.id === id 
+          ? { ...node, data: { ...node.data, fields: newFields, data: newData } }
+          : node
+      )
+    );
   };
 
   const handleJsonImport = () => {
@@ -159,6 +196,9 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
           exampleValue: dataArray[0][key]
         }));
         setFields(generatedFields);
+        updateNodeInCanvas(generatedFields, dataArray);
+      } else {
+        updateNodeInCanvas(fields, dataArray);
       }
     } catch (error) {
       console.error('Invalid JSON:', error);
@@ -193,10 +233,13 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
       }
     });
 
-    setNodeData([exampleRecord]);
+    const newData = [exampleRecord];
+    setNodeData(newData);
+    updateNodeInCanvas(fields, newData);
     console.log(`Generated example data for ${schemaType} node:`, exampleRecord);
   };
 
+  // ... keep existing code (getExampleValueInput function)
   const getExampleValueInput = (field: SchemaField) => {
     switch (field.type) {
       case 'number':
@@ -375,6 +418,7 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
             schemaType={schemaType}
             level={0}
             onEdit={handleFieldEdit}
+            nodeData={nodeData}
           />
         ))}
         {fields.length === 0 && (
