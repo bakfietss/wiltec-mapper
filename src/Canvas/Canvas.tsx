@@ -52,7 +52,7 @@ export default function Canvas() {
     const { theme } = useTheme();
     const { updateTargetField, conversionMode, conversionMappings, conversionTransforms } = useFieldStore();
 
-    const [nodes, , onNodesChange] = useNodesState<Node[]>([
+    const [nodes, , onNodesChange] = useNodesState([
         {
             id: 'source-1',
             type: 'source',
@@ -85,7 +85,7 @@ export default function Canvas() {
         },
     ]);
 
-    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
     const onConnect = (connection: Connection) => {
         console.log('Connection attempt:', connection);
