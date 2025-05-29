@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import {
     ReactFlow,
@@ -123,7 +122,7 @@ export default function Canvas() {
                                 const sourceFields = Array.isArray(originalSourceNode.data?.fields) ? originalSourceNode.data.fields : [];
                                 const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
                                 const sourceData = Array.isArray(originalSourceNode.data?.data) ? originalSourceNode.data.data : [];
-                                const mappings = sourceNode.data?.mappings || [];
+                                const mappings = sourceNode.data?.mappings;
                                 
                                 const sourceField = sourceFields.find((f: any) => f.id === conversionEdge.sourceHandle);
                                 const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
@@ -136,14 +135,16 @@ export default function Canvas() {
                                     
                                     console.log('Original value before conversion:', sourceValue);
                                     
-                                    // Apply conversion mapping if there's a match
-                                    const mappingRule = mappings.find((mapping: any) => 
-                                        mapping.from === sourceValue
-                                    );
-                                    
-                                    if (mappingRule) {
-                                        sourceValue = mappingRule.to;
-                                        console.log(`Applied conversion rule: ${mappingRule.from} -> ${mappingRule.to}`);
+                                    // Apply conversion mapping if there's a match and mappings is an array
+                                    if (Array.isArray(mappings)) {
+                                        const mappingRule = mappings.find((mapping: any) => 
+                                            mapping.from === sourceValue
+                                        );
+                                        
+                                        if (mappingRule) {
+                                            sourceValue = mappingRule.to;
+                                            console.log(`Applied conversion rule: ${mappingRule.from} -> ${mappingRule.to}`);
+                                        }
                                     }
                                     
                                     if (sourceValue !== undefined && sourceValue !== '') {
