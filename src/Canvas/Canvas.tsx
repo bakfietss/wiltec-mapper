@@ -176,7 +176,7 @@ export default function Canvas() {
                             }
                         });
                     } else if (sourceNode?.type === 'editableTransform') {
-                        // Process through transform node
+                        // Process through transform node - similar to conversion mapping
                         const transformIncomingEdges = edges.filter(e => e.target === sourceNode.id);
                         
                         transformIncomingEdges.forEach(transformEdge => {
@@ -195,15 +195,19 @@ export default function Canvas() {
                                         ? sourceData[0][sourceField.name] 
                                         : sourceField.exampleValue;
                                     
-                                    console.log('Transform node data:', sourceNode.data);
-                                    console.log('Source value before transform:', sourceValue);
+                                    console.log('Transform processing for target:', { 
+                                        sourceField: sourceField.name, 
+                                        targetField: targetField.name, 
+                                        sourceValue,
+                                        transformType: sourceNode.data?.transformType 
+                                    });
                                     
                                     // Apply transformation
                                     if (sourceNode.data?.transformType === 'Date Format' && hasTransformParameters(sourceNode.data)) {
                                         const inputFormat = sourceNode.data.config.parameters.inputFormat || 'YYYY-MM-DD';
                                         const outputFormat = sourceNode.data.config.parameters.outputFormat || 'DD/MM/YYYY';
                                         
-                                        console.log('Date transform config:', { inputFormat, outputFormat });
+                                        console.log('Date transform config:', { inputFormat, outputFormat, sourceValue });
                                         
                                         try {
                                             // Simple date format conversion for common formats
@@ -249,7 +253,7 @@ export default function Canvas() {
                 };
                 return updatedNode;
             } else if (node.type === 'editableTransform') {
-                // Update transform nodes to show their output values
+                // Update transform nodes to show their input/output values
                 const incomingEdges = edges.filter(edge => edge.target === node.id);
                 
                 if (incomingEdges.length > 0) {
@@ -274,7 +278,7 @@ export default function Canvas() {
                                 const inputFormat = node.data.config.parameters.inputFormat || 'YYYY-MM-DD';
                                 const outputFormat = node.data.config.parameters.outputFormat || 'DD/MM/YYYY';
                                 
-                                console.log('Transform node processing:', { inputFormat, outputFormat, sourceValue });
+                                console.log('Transform node self-update processing:', { inputFormat, outputFormat, sourceValue });
                                 
                                 try {
                                     if (inputFormat === 'YYYY-MM-DD' && outputFormat === 'DD/MM/YYYY') {
@@ -282,7 +286,7 @@ export default function Canvas() {
                                         const parts = dateStr.split('-');
                                         if (parts.length === 3 && parts[0].length === 4) {
                                             sourceValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                                            console.log(`Transform node: ${dateStr} -> ${sourceValue}`);
+                                            console.log(`Transform node self-update: ${dateStr} -> ${sourceValue}`);
                                         } else {
                                             sourceValue = 'Invalid Date Format';
                                         }
