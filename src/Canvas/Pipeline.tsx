@@ -235,7 +235,7 @@ export default function Pipeline() {
                             type: 'smoothstep',
                             animated: true,
                             style: { 
-                                strokeWidth: 3,
+                                strokeWidth: 1,
                                 stroke: '#3b82f6'
                             }
                         }}
