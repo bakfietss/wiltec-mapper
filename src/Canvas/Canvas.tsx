@@ -22,6 +22,7 @@ import ConversionMappingNode from '../compontents/ConversionMappingNode';
 import TransformNode from '../compontents/TransformNode';
 import EditableSchemaNode from '../compontents/EditableSchemaNode';
 import EditableTransformNode from '../compontents/EditableTransformNode';
+import SplitterTransformNode from '../compontents/SplitterTransformNode';
 import MappingToolbar from '../compontents/MappingToolbar';
 import DataSidebar from '../compontents/DataSidebar';
 
@@ -32,6 +33,7 @@ const nodeTypes = {
     transform: TransformNode,
     editableSchema: EditableSchemaNode,
     editableTransform: EditableTransformNode,
+    splitterTransform: SplitterTransformNode,
 };
 
 // Helper function to check if node data has schema properties
@@ -40,7 +42,7 @@ const isSchemaNodeData = (data: any): data is { schemaType: 'source' | 'target';
 };
 
 // Helper function to check if data has transform config
-const hasTransformConfig = (data: any): data is { config: { parameters?: Record<string, any>; operation?: string } } => {
+const hasTransformConfig = (data: any): data is { config: Record<string, any> } => {
     return data && typeof data === 'object' && 'config' in data && data.config && typeof data.config === 'object';
 };
 
@@ -168,8 +170,8 @@ export default function Canvas() {
                                 }
                             }
                         });
-                    } else if (sourceNode?.type === 'editableTransform') {
-                        // Process through transform node (date format, string transform, etc.)
+                    } else if (sourceNode?.type === 'editableTransform' || sourceNode?.type === 'splitterTransform') {
+                        // Process through transform node (date format, string transform, text splitter, etc.)
                         const transformIncomingEdges = edges.filter(e => e.target === sourceNode.id);
                         
                         transformIncomingEdges.forEach(transformEdge => {
@@ -193,8 +195,9 @@ export default function Canvas() {
                                     
                                     // Apply transformation based on transform type
                                     if (sourceNode.data?.transformType === 'Date Format' && hasTransformConfig(sourceNode.data)) {
-                                        const inputFormat = sourceNode.data.config.parameters?.inputFormat || 'YYYY-MM-DD';
-                                        const outputFormat = sourceNode.data.config.parameters?.outputFormat || 'DD/MM/YYYY';
+                                        const config = sourceNode.data.config;
+                                        const inputFormat = config.parameters?.inputFormat || config.inputFormat || 'YYYY-MM-DD';
+                                        const outputFormat = config.parameters?.outputFormat || config.outputFormat || 'DD/MM/YYYY';
                                         
                                         console.log('Date transform config:', { inputFormat, outputFormat });
                                         
@@ -219,7 +222,8 @@ export default function Canvas() {
                                             sourceValue = 'Transform Error';
                                         }
                                     } else if (sourceNode.data?.transformType === 'String Transform' && hasTransformConfig(sourceNode.data)) {
-                                        const operation = sourceNode.data.config.parameters?.operation || sourceNode.data.config.operation || 'uppercase';
+                                        const config = sourceNode.data.config;
+                                        const operation = config.parameters?.operation || config.operation || 'uppercase';
                                         
                                         console.log('String transform operation:', operation);
                                         
@@ -237,17 +241,17 @@ export default function Canvas() {
                                                     sourceValue = inputValue.trim();
                                                     break;
                                                 case 'substring':
-                                                    const start = sourceNode.data.config.parameters?.start || 0;
-                                                    const length = sourceNode.data.config.parameters?.length || 10;
+                                                    const start = config.parameters?.start || 0;
+                                                    const length = config.parameters?.length || 10;
                                                     sourceValue = inputValue.substring(start, start + length);
                                                     break;
                                                 case 'replace':
-                                                    const find = sourceNode.data.config.parameters?.find || '';
-                                                    const replace = sourceNode.data.config.parameters?.replace || '';
+                                                    const find = config.parameters?.find || '';
+                                                    const replace = config.parameters?.replace || '';
                                                     sourceValue = inputValue.replace(new RegExp(find, 'g'), replace);
                                                     break;
                                                 case 'concatenate':
-                                                    const suffix = sourceNode.data.config.parameters?.suffix || '';
+                                                    const suffix = config.parameters?.suffix || '';
                                                     sourceValue = inputValue + suffix;
                                                     break;
                                                 default:
@@ -260,9 +264,10 @@ export default function Canvas() {
                                             sourceValue = 'Transform Error';
                                         }
                                     } else if (sourceNode.data?.transformType === 'Text Splitter' && hasTransformConfig(sourceNode.data)) {
-                                        const delimiter = sourceNode.data.config.parameters?.delimiter || sourceNode.data.config.delimiter || ',';
-                                        const index = sourceNode.data.config.parameters?.index || sourceNode.data.config.index || 0;
-                                        const maxSplit = sourceNode.data.config.parameters?.maxSplit || sourceNode.data.config.maxSplit;
+                                        const config = sourceNode.data.config;
+                                        const delimiter = config.parameters?.delimiter || config.delimiter || ',';
+                                        const index = config.parameters?.index || config.index || 0;
+                                        const maxSplit = config.parameters?.maxSplit || config.maxSplit;
                                         
                                         console.log('Splitter transform config:', { delimiter, index, maxSplit });
                                         
@@ -418,9 +423,11 @@ export default function Canvas() {
     }, [nodes.length]);
 
     const addTransformNode = useCallback((transformType: string) => {
+        const nodeType = transformType === 'Text Splitter' ? 'splitterTransform' : 'editableTransform';
+        
         const newNode: Node = {
             id: `transform-${Date.now()}`,
-            type: 'editableTransform',
+            type: nodeType,
             position: { x: 400, y: 100 + nodes.length * 50 },
             data: {
                 label: transformType,
