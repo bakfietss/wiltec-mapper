@@ -137,18 +137,24 @@ export default function Canvas() {
                                     console.log('Source field name:', sourceField.name);
                                     console.log('Available mappings:', mappings);
                                     
-                                    // Apply conversion mapping - compare field NAME to mapping rule
+                                    // Apply conversion mapping - compare field VALUE to mapping rule
                                     if (Array.isArray(mappings)) {
                                         const mappingRule = mappings.find((mapping: any) => 
-                                            mapping.from === sourceField.name
+                                            mapping.from === sourceValue
                                         );
                                         
                                         if (mappingRule) {
                                             sourceValue = mappingRule.to;
-                                            console.log(`Applied conversion rule: ${sourceField.name}(${mappingRule.from}) -> ${mappingRule.to}`);
+                                            console.log(`Applied conversion rule: ${mappingRule.from} -> ${mappingRule.to}`);
                                         } else {
-                                            console.log('No mapping rule found for field:', sourceField.name);
+                                            // Fallback for unmapped values
+                                            sourceValue = 'NotMapped';
+                                            console.log(`No mapping rule found for value: ${sourceValue}, using fallback: NotMapped`);
                                         }
+                                    } else {
+                                        // No mappings array, use fallback
+                                        sourceValue = 'NotMapped';
+                                        console.log('No mappings available, using fallback: NotMapped');
                                     }
                                     
                                     if (sourceValue !== undefined && sourceValue !== '') {
