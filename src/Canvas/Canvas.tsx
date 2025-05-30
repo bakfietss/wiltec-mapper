@@ -40,7 +40,7 @@ const isSchemaNodeData = (data: any): data is { schemaType: 'source' | 'target';
 };
 
 // Helper function to check if data has transform config
-const hasTransformConfig = (data: any): data is { config: { parameters?: Record<string, any> } } => {
+const hasTransformConfig = (data: any): data is { config: { parameters?: Record<string, any>; operation?: string } } => {
     return data && typeof data === 'object' && 'config' in data && data.config && typeof data.config === 'object';
 };
 
@@ -258,6 +258,28 @@ export default function Canvas() {
                                         } catch (error) {
                                             console.error('String transformation error:', error);
                                             sourceValue = 'Transform Error';
+                                        }
+                                    } else if (sourceNode.data?.transformType === 'Text Splitter' && hasTransformConfig(sourceNode.data)) {
+                                        const delimiter = sourceNode.data.config.parameters?.delimiter || sourceNode.data.config.delimiter || ',';
+                                        const index = sourceNode.data.config.parameters?.index || sourceNode.data.config.index || 0;
+                                        const maxSplit = sourceNode.data.config.parameters?.maxSplit || sourceNode.data.config.maxSplit;
+                                        
+                                        console.log('Splitter transform config:', { delimiter, index, maxSplit });
+                                        
+                                        try {
+                                            const inputValue = String(sourceValue);
+                                            const parts = maxSplit ? inputValue.split(delimiter, maxSplit + 1) : inputValue.split(delimiter);
+                                            
+                                            if (index >= 0 && index < parts.length) {
+                                                sourceValue = parts[index];
+                                                console.log(`Text split: "${inputValue}" -> parts[${index}] = "${sourceValue}"`);
+                                            } else {
+                                                sourceValue = 'Index out of range';
+                                                console.log(`Index ${index} out of range for ${parts.length} parts`);
+                                            }
+                                        } catch (error) {
+                                            console.error('Splitter transformation error:', error);
+                                            sourceValue = 'Split Error';
                                         }
                                     }
                                     
