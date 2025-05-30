@@ -169,7 +169,7 @@ export default function Canvas() {
                             }
                         });
                     } else if (sourceNode?.type === 'editableTransform') {
-                        // Process through transform node
+                        // Process through transform node (date format, etc.)
                         const transformIncomingEdges = edges.filter(e => e.target === sourceNode.id);
                         
                         transformIncomingEdges.forEach(transformEdge => {
@@ -191,7 +191,7 @@ export default function Canvas() {
                                     console.log('Transform node data:', sourceNode.data);
                                     console.log('Source value before transform:', sourceValue);
                                     
-                                    // Apply transformation
+                                    // Apply transformation based on transform type
                                     if (sourceNode.data?.transformType === 'Date Format' && hasTransformConfig(sourceNode.data)) {
                                         const inputFormat = sourceNode.data.config.parameters?.inputFormat || 'YYYY-MM-DD';
                                         const outputFormat = sourceNode.data.config.parameters?.outputFormat || 'DD/MM/YYYY';
