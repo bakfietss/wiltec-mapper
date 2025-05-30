@@ -114,12 +114,12 @@ export const exportMappingConfiguration = (
       config.nodes.sources.push({
         id: node.id,
         type: 'source',
-        label: node.data.label,
+        label: (node.data.label as string) || 'Source Node',
         position: node.position,
         schema: {
-          fields: node.data.fields || []
+          fields: Array.isArray(node.data.fields) ? node.data.fields : []
         },
-        sampleData: node.data.data || []
+        sampleData: Array.isArray(node.data.data) ? node.data.data : []
       });
     });
 
@@ -129,12 +129,12 @@ export const exportMappingConfiguration = (
       config.nodes.targets.push({
         id: node.id,
         type: 'target',
-        label: node.data.label,
+        label: (node.data.label as string) || 'Target Node',
         position: node.position,
         schema: {
-          fields: node.data.fields || []
+          fields: Array.isArray(node.data.fields) ? node.data.fields : []
         },
-        outputData: node.data.data || []
+        outputData: Array.isArray(node.data.data) ? node.data.data : []
       });
     });
 
@@ -144,9 +144,9 @@ export const exportMappingConfiguration = (
       config.nodes.transforms.push({
         id: node.id,
         type: node.type as 'transform' | 'splitterTransform',
-        label: node.data.label,
+        label: (node.data.label as string) || 'Transform Node',
         position: node.position,
-        transformType: node.data.transformType,
+        transformType: (node.data.transformType as string) || 'unknown',
         config: node.data.config || {}
       });
     });
@@ -157,9 +157,9 @@ export const exportMappingConfiguration = (
       config.nodes.mappings.push({
         id: node.id,
         type: 'mapping',
-        label: node.data.label,
+        label: (node.data.label as string) || 'Mapping Node',
         position: node.position,
-        mappings: node.data.mappings || []
+        mappings: Array.isArray(node.data.mappings) ? node.data.mappings : []
       });
     });
 
