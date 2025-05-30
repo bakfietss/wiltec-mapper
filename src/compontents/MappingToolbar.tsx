@@ -33,7 +33,10 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
   };
 
   return (
-    <div className="absolute top-4 left-4 z-10 bg-white border border-gray-200 rounded-lg shadow-lg">
+    <div 
+      className="absolute top-4 left-4 z-10 bg-white border border-gray-200 rounded-lg shadow-lg"
+      data-toolbar="mapping-toolbar"
+    >
       {/* Header - Always Visible */}
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between">

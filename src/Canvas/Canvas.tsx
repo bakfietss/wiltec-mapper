@@ -467,8 +467,16 @@ export default function Canvas() {
 
     // Handle canvas clicks to close toolbar
     const handleCanvasClick = useCallback((event: React.MouseEvent) => {
-        // Close toolbar if it's expanded and click is on canvas (not on nodes)
-        if (isToolbarExpanded && event.target === canvasRef.current) {
+        const target = event.target as HTMLElement;
+        
+        // Check if click is on the toolbar or its children
+        const toolbar = document.querySelector('[data-toolbar="mapping-toolbar"]');
+        if (toolbar && toolbar.contains(target)) {
+            return; // Don't close if clicking on toolbar
+        }
+        
+        // Close toolbar if it's expanded and click is outside toolbar
+        if (isToolbarExpanded) {
             setIsToolbarExpanded(false);
         }
     }, [isToolbarExpanded]);
