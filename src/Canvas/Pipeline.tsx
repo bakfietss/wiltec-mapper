@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -26,6 +25,7 @@ import DataSidebar from '../compontents/DataSidebar';
 import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
 import { processDataMapping } from './DataMappingProcessor';
+import { SmartPipeline } from './SmartPipeline';
 
 const nodeTypes = {
     source: SourceNode,
@@ -173,24 +173,28 @@ export default function Pipeline() {
                     onToggleExpanded={setIsToolbarExpanded}
                 />
                 
-                <ReactFlow
-                    nodes={nodes}
-                    onNodesChange={handleNodesChange}
-                    edges={edges}
-                    onEdgesChange={handleEdgesChangeWrapper}
-                    onConnect={onConnect}
-                    fitView
-                    style={style}
-                    nodeTypes={nodeTypes}
-                    deleteKeyCode={['Backspace', 'Delete']}
-                    defaultEdgeOptions={{
-                        type: 'smoothstep',
-                        animated: true,
-                    }}
-                >
-                    <Background />
-                    <Controls />
-                </ReactFlow>
+                <div className="relative w-full h-full">
+                    <SmartPipeline nodes={nodes} edges={edges} />
+                    
+                    <ReactFlow
+                        nodes={nodes}
+                        onNodesChange={handleNodesChange}
+                        edges={edges}
+                        onEdgesChange={handleEdgesChangeWrapper}
+                        onConnect={onConnect}
+                        fitView
+                        style={style}
+                        nodeTypes={nodeTypes}
+                        deleteKeyCode={['Backspace', 'Delete']}
+                        defaultEdgeOptions={{
+                            type: 'smoothstep',
+                            animated: true,
+                        }}
+                    >
+                        <Background />
+                        <Controls />
+                    </ReactFlow>
+                </div>
             </ReactFlowProvider>
         </div>
     );

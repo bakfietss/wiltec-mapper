@@ -106,130 +106,68 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
                         }
                     });
                 } else if (sourceNode?.type === 'editableTransform' || sourceNode?.type === 'splitterTransform') {
-                    // Process through transform node (date format, string transform, text splitter, etc.)
-                    const transformIncomingEdges = edges.filter(e => e.target === sourceNode.id);
-                    
-                    transformIncomingEdges.forEach(transformEdge => {
-                        const originalSourceNode = nodes.find(n => n.id === transformEdge.source);
+                    // Process through transform node - Find the original source
+                    const findOriginalSource = (transformNodeId: string, visitedNodes: Set<string> = new Set()): { originalNode: Node | undefined, originalField: any, transformedValue: any } => {
+                        if (visitedNodes.has(transformNodeId)) {
+                            return { originalNode: undefined, originalField: undefined, transformedValue: undefined };
+                        }
                         
-                        if (originalSourceNode?.type === 'editableSchema' && isSchemaNodeData(originalSourceNode.data)) {
-                            const sourceFields = Array.isArray(originalSourceNode.data?.fields) ? originalSourceNode.data.fields : [];
-                            const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
-                            const sourceData = Array.isArray(originalSourceNode.data?.data) ? originalSourceNode.data.data : [];
+                        visitedNodes.add(transformNodeId);
+                        const transformNode = nodes.find(n => n.id === transformNodeId);
+                        const transformIncomingEdges = edges.filter(e => e.target === transformNodeId);
+                        
+                        for (const transformEdge of transformIncomingEdges) {
+                            const sourceNode = nodes.find(n => n.id === transformEdge.source);
                             
-                            const sourceField = sourceFields.find((f: any) => f.id === transformEdge.sourceHandle);
-                            const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
-                            
-                            if (sourceField && targetField) {
-                                let sourceValue = sourceData.length > 0 
-                                    ? sourceData[0][sourceField.name] 
-                                    : sourceField.exampleValue;
+                            if (sourceNode?.type === 'editableSchema' && isSchemaNodeData(sourceNode.data)) {
+                                // Found the original source schema
+                                const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
+                                const sourceData = Array.isArray(sourceNode.data?.data) ? sourceNode.data.data : [];
+                                const sourceField = sourceFields.find((f: any) => f.id === transformEdge.sourceHandle);
                                 
-                                console.log('Transform node data:', sourceNode.data);
-                                console.log('Source value before transform:', sourceValue);
-                                
-                                // Apply transformation based on transform type
-                                if (sourceNode.data?.transformType === 'Date Format' && hasTransformConfig(sourceNode.data)) {
-                                    const config = sourceNode.data.config;
-                                    const inputFormat = config.parameters?.inputFormat || config.inputFormat || 'YYYY-MM-DD';
-                                    const outputFormat = config.parameters?.outputFormat || config.outputFormat || 'DD/MM/YYYY';
+                                if (sourceField) {
+                                    let sourceValue = sourceData.length > 0 
+                                        ? sourceData[0][sourceField.name] 
+                                        : sourceField.exampleValue;
                                     
-                                    console.log('Date transform config:', { inputFormat, outputFormat });
+                                    // Apply transformation
+                                    const transformedValue = applyTransformation(sourceValue, transformNode);
                                     
-                                    try {
-                                        // Simple date format conversion for common formats
-                                        if (inputFormat === 'YYYY-MM-DD' && outputFormat === 'DD/MM/YYYY') {
-                                            const dateStr = String(sourceValue);
-                                            const parts = dateStr.split('-');
-                                            if (parts.length === 3 && parts[0].length === 4) {
-                                                sourceValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                                                console.log(`Date transformed: ${dateStr} -> ${sourceValue}`);
-                                            } else {
-                                                console.log('Invalid date format for transformation:', dateStr);
-                                                sourceValue = 'Invalid Date Format';
-                                            }
-                                        } else {
-                                            console.log('Unsupported date format transformation');
-                                            sourceValue = 'Unsupported Format';
-                                        }
-                                    } catch (error) {
-                                        console.error('Date transformation error:', error);
-                                        sourceValue = 'Transform Error';
-                                    }
-                                } else if (sourceNode.data?.transformType === 'String Transform' && hasTransformConfig(sourceNode.data)) {
-                                    const config = sourceNode.data.config;
-                                    const operation = config.parameters?.operation || config.operation || 'uppercase';
-                                    
-                                    console.log('String transform operation:', operation);
-                                    
-                                    try {
-                                        const inputValue = String(sourceValue);
-                                        
-                                        switch (operation) {
-                                            case 'uppercase':
-                                                sourceValue = inputValue.toUpperCase();
-                                                break;
-                                            case 'lowercase':
-                                                sourceValue = inputValue.toLowerCase();
-                                                break;
-                                            case 'trim':
-                                                sourceValue = inputValue.trim();
-                                                break;
-                                            case 'substring':
-                                                const start = config.parameters?.start || 0;
-                                                const length = config.parameters?.length || 10;
-                                                sourceValue = inputValue.substring(start, start + length);
-                                                break;
-                                            case 'replace':
-                                                const find = config.parameters?.find || '';
-                                                const replace = config.parameters?.replace || '';
-                                                sourceValue = inputValue.replace(new RegExp(find, 'g'), replace);
-                                                break;
-                                            case 'concatenate':
-                                                const suffix = config.parameters?.suffix || '';
-                                                sourceValue = inputValue + suffix;
-                                                break;
-                                            default:
-                                                console.log('Unknown string operation:', operation);
-                                        }
-                                        
-                                        console.log(`String transformed: ${inputValue} -> ${sourceValue} (${operation})`);
-                                    } catch (error) {
-                                        console.error('String transformation error:', error);
-                                        sourceValue = 'Transform Error';
-                                    }
-                                } else if (sourceNode.data?.transformType === 'Text Splitter' && hasTransformConfig(sourceNode.data)) {
-                                    const config = sourceNode.data.config;
-                                    const delimiter = config.parameters?.delimiter || config.delimiter || ',';
-                                    const index = config.parameters?.index || config.index || 0;
-                                    const maxSplit = config.parameters?.maxSplit || config.maxSplit;
-                                    
-                                    console.log('Splitter transform config:', { delimiter, index, maxSplit });
-                                    
-                                    try {
-                                        const inputValue = String(sourceValue);
-                                        const parts = maxSplit ? inputValue.split(delimiter, maxSplit + 1) : inputValue.split(delimiter);
-                                        
-                                        if (index >= 0 && index < parts.length) {
-                                            sourceValue = parts[index];
-                                            console.log(`Text split: "${inputValue}" -> parts[${index}] = "${sourceValue}"`);
-                                        } else {
-                                            sourceValue = 'Index out of range';
-                                            console.log(`Index ${index} out of range for ${parts.length} parts`);
-                                        }
-                                    } catch (error) {
-                                        console.error('Splitter transformation error:', error);
-                                        sourceValue = 'Split Error';
-                                    }
+                                    return { 
+                                        originalNode: sourceNode, 
+                                        originalField: sourceField, 
+                                        transformedValue 
+                                    };
                                 }
-                                
-                                if (sourceValue !== undefined && sourceValue !== '') {
-                                    newTargetData[targetField.name] = sourceValue;
-                                    console.log(`Transform result: ${targetField.name} = ${sourceValue}`);
+                            } else if (sourceNode?.type === 'editableTransform' || sourceNode?.type === 'splitterTransform') {
+                                // Chain of transforms - recursively find the original source
+                                const result = findOriginalSource(sourceNode.id, visitedNodes);
+                                if (result.originalNode && result.originalField) {
+                                    // Apply current transformation to the already transformed value
+                                    const transformedValue = applyTransformation(result.transformedValue, transformNode);
+                                    return {
+                                        originalNode: result.originalNode,
+                                        originalField: result.originalField,
+                                        transformedValue
+                                    };
                                 }
                             }
                         }
-                    });
+                        
+                        return { originalNode: undefined, originalField: undefined, transformedValue: undefined };
+                    };
+                    
+                    const { originalNode, originalField, transformedValue } = findOriginalSource(sourceNode.id);
+                    
+                    if (originalNode && originalField && transformedValue !== undefined) {
+                        const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
+                        const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                        
+                        if (targetField) {
+                            newTargetData[targetField.name] = transformedValue;
+                            console.log(`Transform result: ${targetField.name} = ${transformedValue}`);
+                        }
+                    }
                 }
             });
             
@@ -249,4 +187,105 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
     });
     
     return updatedNodes;
+};
+
+// Helper function to apply transformations
+const applyTransformation = (sourceValue: any, transformNode: Node | undefined): any => {
+    if (!transformNode || !hasTransformConfig(transformNode.data)) {
+        return sourceValue;
+    }
+    
+    console.log('Applying transformation:', transformNode.data?.transformType, 'to value:', sourceValue);
+    
+    // Apply transformation based on transform type
+    if (transformNode.data?.transformType === 'Date Format') {
+        const config = transformNode.data.config;
+        const inputFormat = config.parameters?.inputFormat || config.inputFormat || 'YYYY-MM-DD';
+        const outputFormat = config.parameters?.outputFormat || config.outputFormat || 'DD/MM/YYYY';
+        
+        console.log('Date transform config:', { inputFormat, outputFormat });
+        
+        try {
+            // Simple date format conversion for common formats
+            if (inputFormat === 'YYYY-MM-DD' && outputFormat === 'DD/MM/YYYY') {
+                const dateStr = String(sourceValue);
+                const parts = dateStr.split('-');
+                if (parts.length === 3 && parts[0].length === 4) {
+                    const result = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                    console.log(`Date transformed: ${dateStr} -> ${result}`);
+                    return result;
+                } else {
+                    console.log('Invalid date format for transformation:', dateStr);
+                    return 'Invalid Date Format';
+                }
+            } else {
+                console.log('Unsupported date format transformation');
+                return 'Unsupported Format';
+            }
+        } catch (error) {
+            console.error('Date transformation error:', error);
+            return 'Transform Error';
+        }
+    } else if (transformNode.data?.transformType === 'String Transform') {
+        const config = transformNode.data.config;
+        const operation = config.parameters?.operation || config.operation || 'uppercase';
+        
+        console.log('String transform operation:', operation);
+        
+        try {
+            const inputValue = String(sourceValue);
+            
+            switch (operation) {
+                case 'uppercase':
+                    return inputValue.toUpperCase();
+                case 'lowercase':
+                    return inputValue.toLowerCase();
+                case 'trim':
+                    return inputValue.trim();
+                case 'substring':
+                    const start = config.parameters?.start || 0;
+                    const length = config.parameters?.length || 10;
+                    return inputValue.substring(start, start + length);
+                case 'replace':
+                    const find = config.parameters?.find || '';
+                    const replace = config.parameters?.replace || '';
+                    return inputValue.replace(new RegExp(find, 'g'), replace);
+                case 'concatenate':
+                    const suffix = config.parameters?.suffix || '';
+                    return inputValue + suffix;
+                default:
+                    console.log('Unknown string operation:', operation);
+                    return sourceValue;
+            }
+        } catch (error) {
+            console.error('String transformation error:', error);
+            return 'Transform Error';
+        }
+    } else if (transformNode.data?.transformType === 'Text Splitter') {
+        const config = transformNode.data.config;
+        const delimiter = config.parameters?.delimiter || config.delimiter || ',';
+        const index = config.parameters?.index || config.index || 0;
+        const maxSplit = config.parameters?.maxSplit || config.maxSplit;
+        
+        console.log('Splitter transform config:', { delimiter, index, maxSplit });
+        
+        try {
+            const inputValue = String(sourceValue);
+            const parts = maxSplit ? inputValue.split(delimiter, maxSplit + 1) : inputValue.split(delimiter);
+            
+            if (index >= 0 && index < parts.length) {
+                const result = parts[index];
+                console.log(`Text split: "${inputValue}" -> parts[${index}] = "${result}"`);
+                return result;
+            } else {
+                console.log(`Index ${index} out of range for ${parts.length} parts`);
+                return 'Index out of range';
+            }
+        } catch (error) {
+            console.error('Splitter transformation error:', error);
+            return 'Split Error';
+        }
+    }
+    
+    return sourceValue;
 };
