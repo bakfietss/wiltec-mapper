@@ -1,4 +1,3 @@
-
 import { Edge, Node } from '@xyflow/react';
 
 // Helper function to check if node data has schema properties
@@ -6,9 +5,9 @@ const isSchemaNodeData = (data: any): data is { schemaType: 'source' | 'target';
     return data && typeof data === 'object' && 'schemaType' in data && 'fields' in data;
 };
 
-// Helper function to check if data has transform config
-const hasTransformConfig = (data: any): data is { config: Record<string, any> } => {
-    return data && typeof data === 'object' && 'config' in data && data.config && typeof data.config === 'object';
+// Helper function to check if data has transform config and transformType
+const hasTransformConfig = (data: any): data is { config: Record<string, any>; transformType: string } => {
+    return data && typeof data === 'object' && 'config' in data && data.config && typeof data.config === 'object' && 'transformType' in data;
 };
 
 export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
