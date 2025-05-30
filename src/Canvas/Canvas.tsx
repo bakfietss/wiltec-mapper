@@ -260,15 +260,21 @@ export default function Canvas() {
             return;
         }
 
-        // Process data mapping immediately after connection - no delay needed
-        const updatedNodes = processDataMapping(newEdges, nodes);
-        const hasChanges = updatedNodes.some((node, index) => node !== nodes[index]);
-        if (hasChanges) {
-            console.log('Updating nodes immediately after connection');
-            setNodes(updatedNodes);
-        }
+        // Use setTimeout to ensure edges state is updated before processing
+        setTimeout(() => {
+            console.log('Processing data mapping after edge update');
+            setNodes(currentNodes => {
+                const updatedNodes = processDataMapping(newEdges, currentNodes);
+                const hasChanges = updatedNodes.some((node, index) => node !== currentNodes[index]);
+                if (hasChanges) {
+                    console.log('Updating nodes after connection');
+                    return updatedNodes;
+                }
+                return currentNodes;
+            });
+        }, 10);
         
-    }, [nodes, edges, processDataMapping, setNodes]);
+    }, [edges, setEdges, processDataMapping]);
 
     // Handle node changes and deletions
     const handleNodesChange = useCallback((changes: any) => {
