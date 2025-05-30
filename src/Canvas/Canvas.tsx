@@ -134,16 +134,20 @@ export default function Canvas() {
                                         : sourceField.exampleValue;
                                     
                                     console.log('Original value before conversion:', sourceValue);
+                                    console.log('Source field name:', sourceField.name);
+                                    console.log('Available mappings:', mappings);
                                     
-                                    // Apply conversion mapping if there's a match and mappings is an array
+                                    // Apply conversion mapping - compare field NAME to mapping rule
                                     if (Array.isArray(mappings)) {
                                         const mappingRule = mappings.find((mapping: any) => 
-                                            mapping.from === sourceValue
+                                            mapping.from === sourceField.name
                                         );
                                         
                                         if (mappingRule) {
                                             sourceValue = mappingRule.to;
-                                            console.log(`Applied conversion rule: ${mappingRule.from} -> ${mappingRule.to}`);
+                                            console.log(`Applied conversion rule: ${sourceField.name}(${mappingRule.from}) -> ${mappingRule.to}`);
+                                        } else {
+                                            console.log('No mapping rule found for field:', sourceField.name);
                                         }
                                     }
                                     
