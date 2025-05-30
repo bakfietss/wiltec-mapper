@@ -173,9 +173,7 @@ export default function Pipeline() {
                     onToggleExpanded={setIsToolbarExpanded}
                 />
                 
-                <div className="relative w-full h-full">
-                    <SmartPipeline nodes={nodes} edges={edges} />
-                    
+                <div className="relative w-full h-full overflow-hidden">
                     <ReactFlow
                         nodes={nodes}
                         onNodesChange={handleNodesChange}
@@ -194,6 +192,9 @@ export default function Pipeline() {
                         <Background />
                         <Controls />
                     </ReactFlow>
+                    
+                    {/* Smart Pipeline overlay - positioned above ReactFlow */}
+                    <SmartPipeline nodes={nodes} edges={edges} />
                 </div>
             </ReactFlowProvider>
         </div>
