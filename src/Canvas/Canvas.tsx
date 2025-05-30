@@ -44,13 +44,6 @@ const hasTransformConfig = (data: any): data is { config: { parameters?: Record<
     return data && typeof data === 'object' && 'config' in data && data.config && typeof data.config === 'object';
 };
 
-// Helper function to check if transform data has parameters
-const hasTransformParameters = (data: any): data is { config: { parameters: Record<string, any> } } => {
-    return hasTransformConfig(data) && 
-           data.config.parameters && 
-           typeof data.config.parameters === 'object';
-};
-
 export default function Canvas() {
     const { theme } = useTheme();
     const { updateTargetField, conversionMode, conversionMappings, conversionTransforms } = useFieldStore();
@@ -84,7 +77,7 @@ export default function Canvas() {
     const processDataMapping = useCallback((edges: Edge[], nodes: Node[]) => {
         console.log('Processing data mapping with edges:', edges.length, 'and nodes:', nodes.length);
         
-        // Process each target node and transform node
+        // Process each target node
         const updatedNodes = nodes.map(node => {
             if (node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target') {
                 const newTargetData: any = {};
@@ -176,7 +169,7 @@ export default function Canvas() {
                             }
                         });
                     } else if (sourceNode?.type === 'editableTransform') {
-                        // Process through transform node - similar to conversion mapping
+                        // Process through transform node
                         const transformIncomingEdges = edges.filter(e => e.target === sourceNode.id);
                         
                         transformIncomingEdges.forEach(transformEdge => {
@@ -195,19 +188,15 @@ export default function Canvas() {
                                         ? sourceData[0][sourceField.name] 
                                         : sourceField.exampleValue;
                                     
-                                    console.log('Transform processing for target:', { 
-                                        sourceField: sourceField.name, 
-                                        targetField: targetField.name, 
-                                        sourceValue,
-                                        transformType: sourceNode.data?.transformType 
-                                    });
+                                    console.log('Transform node data:', sourceNode.data);
+                                    console.log('Source value before transform:', sourceValue);
                                     
                                     // Apply transformation
-                                    if (sourceNode.data?.transformType === 'Date Format' && hasTransformParameters(sourceNode.data)) {
-                                        const inputFormat = sourceNode.data.config.parameters.inputFormat || 'YYYY-MM-DD';
-                                        const outputFormat = sourceNode.data.config.parameters.outputFormat || 'DD/MM/YYYY';
+                                    if (sourceNode.data?.transformType === 'Date Format' && hasTransformConfig(sourceNode.data)) {
+                                        const inputFormat = sourceNode.data.config.parameters?.inputFormat || 'YYYY-MM-DD';
+                                        const outputFormat = sourceNode.data.config.parameters?.outputFormat || 'DD/MM/YYYY';
                                         
-                                        console.log('Date transform config:', { inputFormat, outputFormat, sourceValue });
+                                        console.log('Date transform config:', { inputFormat, outputFormat });
                                         
                                         try {
                                             // Simple date format conversion for common formats
@@ -252,74 +241,6 @@ export default function Canvas() {
                     }
                 };
                 return updatedNode;
-            } else if (node.type === 'editableTransform') {
-                // Update transform nodes to show their input/output values
-                const incomingEdges = edges.filter(edge => edge.target === node.id);
-                
-                if (incomingEdges.length > 0) {
-                    const transformEdge = incomingEdges[0]; // Take first incoming edge
-                    const sourceNode = nodes.find(n => n.id === transformEdge.source);
-                    
-                    if (sourceNode?.type === 'editableSchema' && isSchemaNodeData(sourceNode.data)) {
-                        const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
-                        const sourceData = Array.isArray(sourceNode.data?.data) ? sourceNode.data.data : [];
-                        
-                        const sourceField = sourceFields.find((f: any) => f.id === transformEdge.sourceHandle);
-                        
-                        if (sourceField) {
-                            let sourceValue = sourceData.length > 0 
-                                ? sourceData[0][sourceField.name] 
-                                : sourceField.exampleValue;
-                            
-                            const originalValue = sourceValue;
-                            
-                            // Apply transformation to get output value
-                            if (node.data?.transformType === 'Date Format' && hasTransformParameters(node.data)) {
-                                const inputFormat = node.data.config.parameters.inputFormat || 'YYYY-MM-DD';
-                                const outputFormat = node.data.config.parameters.outputFormat || 'DD/MM/YYYY';
-                                
-                                console.log('Transform node self-update processing:', { inputFormat, outputFormat, sourceValue });
-                                
-                                try {
-                                    if (inputFormat === 'YYYY-MM-DD' && outputFormat === 'DD/MM/YYYY') {
-                                        const dateStr = String(sourceValue);
-                                        const parts = dateStr.split('-');
-                                        if (parts.length === 3 && parts[0].length === 4) {
-                                            sourceValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                                            console.log(`Transform node self-update: ${dateStr} -> ${sourceValue}`);
-                                        } else {
-                                            sourceValue = 'Invalid Date Format';
-                                        }
-                                    } else {
-                                        sourceValue = 'Unsupported Format';
-                                    }
-                                } catch (error) {
-                                    sourceValue = 'Transform Error';
-                                }
-                            }
-                            
-                            // Update the transform node with output value
-                            return {
-                                ...node,
-                                data: {
-                                    ...node.data,
-                                    outputValue: sourceValue,
-                                    inputValue: originalValue
-                                }
-                            };
-                        }
-                    }
-                } else {
-                    // Clear output if no connections
-                    return {
-                        ...node,
-                        data: {
-                            ...node.data,
-                            outputValue: undefined,
-                            inputValue: undefined
-                        }
-                    };
-                }
             }
             return node;
         });
