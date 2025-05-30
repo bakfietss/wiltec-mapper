@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import {
     ReactFlow,
@@ -268,10 +267,14 @@ export default function Canvas() {
                                 ? sourceData[0][sourceField.name] 
                                 : sourceField.exampleValue;
                             
+                            const originalValue = sourceValue;
+                            
                             // Apply transformation to get output value
                             if (node.data?.transformType === 'Date Format' && hasTransformParameters(node.data)) {
                                 const inputFormat = node.data.config.parameters.inputFormat || 'YYYY-MM-DD';
                                 const outputFormat = node.data.config.parameters.outputFormat || 'DD/MM/YYYY';
+                                
+                                console.log('Transform node processing:', { inputFormat, outputFormat, sourceValue });
                                 
                                 try {
                                     if (inputFormat === 'YYYY-MM-DD' && outputFormat === 'DD/MM/YYYY') {
@@ -279,6 +282,7 @@ export default function Canvas() {
                                         const parts = dateStr.split('-');
                                         if (parts.length === 3 && parts[0].length === 4) {
                                             sourceValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                                            console.log(`Transform node: ${dateStr} -> ${sourceValue}`);
                                         } else {
                                             sourceValue = 'Invalid Date Format';
                                         }
@@ -296,9 +300,7 @@ export default function Canvas() {
                                 data: {
                                     ...node.data,
                                     outputValue: sourceValue,
-                                    inputValue: sourceData.length > 0 
-                                        ? sourceData[0][sourceField.name] 
-                                        : sourceField.exampleValue
+                                    inputValue: originalValue
                                 }
                             };
                         }
