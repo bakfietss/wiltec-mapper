@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Plus, Database, FileText, Shuffle, GitMerge, ChevronDown, ChevronUp, Layers, Download, Upload } from 'lucide-react';
+import { Plus, Database, FileText, Shuffle, GitMerge, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 
 interface MappingToolbarProps {
   onAddTransform: (type: string) => void;
@@ -8,8 +8,6 @@ interface MappingToolbarProps {
   onAddSchemaNode?: (type: 'source' | 'target') => void;
   isExpanded?: boolean;
   onToggleExpanded?: (expanded: boolean) => void;
-  onExportMapping?: () => void;
-  onImportMapping?: (file: File) => void;
 }
 
 const MappingToolbar: React.FC<MappingToolbarProps> = ({ 
@@ -17,9 +15,7 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
   onAddMappingNode,
   onAddSchemaNode,
   isExpanded = false,
-  onToggleExpanded,
-  onExportMapping,
-  onImportMapping
+  onToggleExpanded
 }) => {
   const transformTypes = [
     { type: 'String Transform', label: 'String Transform', icon: GitMerge },
@@ -34,19 +30,6 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
     if (onToggleExpanded) {
       onToggleExpanded(!isExpanded);
     }
-  };
-
-  const handleImportClick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file && onImportMapping) {
-        onImportMapping(file);
-      }
-    };
-    input.click();
   };
 
   return (
@@ -77,35 +60,6 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
       {/* Expandable Content */}
       {isExpanded && (
         <div className="p-4 w-80">
-          {/* Export/Import Section */}
-          {(onExportMapping || onImportMapping) && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Export/Import Mapping:
-              </label>
-              <div className="space-y-2">
-                {onExportMapping && (
-                  <button
-                    onClick={onExportMapping}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 text-gray-700 hover:bg-gray-100 rounded border border-gray-200"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export Mapping
-                  </button>
-                )}
-                {onImportMapping && (
-                  <button
-                    onClick={handleImportClick}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 text-gray-700 hover:bg-gray-100 rounded border border-gray-200"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Import Mapping
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Schema Nodes */}
           {onAddSchemaNode && (
             <div className="mb-4">

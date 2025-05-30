@@ -21,6 +21,7 @@ import EditableTransformNode from '../compontents/EditableTransformNode';
 import SplitterTransformNode from '../compontents/SplitterTransformNode';
 import MappingToolbar from '../compontents/MappingToolbar';
 import DataSidebar from '../compontents/DataSidebar';
+import MappingManager from '../compontents/MappingManager';
 
 import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
@@ -123,17 +124,18 @@ export default function Pipeline() {
         handleEdgesChange(changes);
     }, [onEdgesChange, handleEdgesChange]);
 
-    // Handle canvas clicks to close toolbar
+    // Handle canvas clicks to close toolbars
     const handleCanvasClick = useCallback((event: React.MouseEvent) => {
         const target = event.target as HTMLElement;
         
-        // Check if click is on the toolbar or its children
+        // Check if click is on any toolbar or its children
         const toolbar = document.querySelector('[data-toolbar="mapping-toolbar"]');
-        if (toolbar && toolbar.contains(target)) {
-            return; // Don't close if clicking on toolbar
+        const manager = document.querySelector('[data-toolbar="mapping-manager"]');
+        if ((toolbar && toolbar.contains(target)) || (manager && manager.contains(target))) {
+            return; // Don't close if clicking on toolbars
         }
         
-        // Close toolbar if it's expanded and click is outside toolbar
+        // Close toolbar if it's expanded and click is outside toolbars
         if (isToolbarExpanded) {
             setIsToolbarExpanded(false);
         }
@@ -211,6 +213,9 @@ export default function Pipeline() {
                     onAddSchemaNode={addSchemaNode}
                     isExpanded={isToolbarExpanded}
                     onToggleExpanded={setIsToolbarExpanded}
+                />
+
+                <MappingManager
                     onExportMapping={exportCurrentMapping}
                     onImportMapping={importMapping}
                 />
@@ -230,7 +235,7 @@ export default function Pipeline() {
                             type: 'smoothstep',
                             animated: true,
                             style: { 
-                                strokeWidth: 1,
+                                strokeWidth: 3,
                                 stroke: '#3b82f6'
                             }
                         }}
