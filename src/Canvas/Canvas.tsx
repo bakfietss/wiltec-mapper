@@ -113,7 +113,7 @@ export default function Canvas() {
                         }
                     } else if (sourceNode?.type === 'conversionMapping') {
                         // Mapping through conversion node - trace back to find the original source
-                        const conversionIncomingEdges = edges.filter(e => e.target === sourceNode.id);
+                        const conversionIncomingEdges = edges.filter(e => e.target === sourceNode.id && e.targetHandle === 'input');
                         
                         conversionIncomingEdges.forEach(conversionEdge => {
                             const originalSourceNode = nodes.find(n => n.id === conversionEdge.source);

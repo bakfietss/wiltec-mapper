@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Plus, Upload, Edit3 } from 'lucide-react';
@@ -114,10 +115,12 @@ const ConversionMappingNode: React.FC<{ data: ConversionMappingNodeData; id: str
   };
 
   return (
-    <div className="bg-white border-2 border-purple-300 rounded-lg shadow-sm min-w-64 max-w-80">
+    <div className="bg-white border-2 border-purple-300 rounded-lg shadow-sm min-w-64 max-w-80 relative">
+      {/* Input handle for receiving data from source nodes */}
       <Handle
         type="target"
         position={Position.Left}
+        id="input"
         className="w-3 h-3 bg-purple-500 border-2 border-white hover:bg-purple-600"
         style={{ left: '-6px' }}
       />
@@ -289,9 +292,11 @@ const ConversionMappingNode: React.FC<{ data: ConversionMappingNodeData; id: str
         </div>
       )}
 
+      {/* Output handle for sending data to target nodes */}
       <Handle
         type="source"
         position={Position.Right}
+        id="output"
         className="w-3 h-3 bg-purple-500 border-2 border-white hover:bg-purple-600"
         style={{ right: '-6px' }}
       />
