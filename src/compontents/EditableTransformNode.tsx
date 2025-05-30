@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Handle, Position } from '@xyflow/react';
+
+import React, { useState, useCallback } from 'react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { 
   Calculator, 
   Type, 
@@ -50,11 +51,31 @@ const getTransformColor = (type: string) => {
 };
 
 const EditableTransformNode: React.FC<{ data: EditableTransformNodeData; id: string }> = ({ data, id }) => {
+  const { setNodes } = useReactFlow();
   const [config, setConfig] = useState<TransformConfig>(data.config || {});
   const { label, transformType, description } = data;
   
+  const updateNodeData = useCallback((newConfig: TransformConfig) => {
+    console.log('Updating transform node config:', newConfig);
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                config: newConfig,
+              },
+            }
+          : node
+      )
+    );
+  }, [id, setNodes]);
+  
   const updateConfig = (updates: Partial<TransformConfig>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
+    const newConfig = { ...config, ...updates };
+    setConfig(newConfig);
+    updateNodeData(newConfig);
   };
 
   const renderConfigEditor = () => {

@@ -169,7 +169,7 @@ export default function Canvas() {
                             }
                         });
                     } else if (sourceNode?.type === 'editableTransform') {
-                        // Process through transform node (date format, etc.)
+                        // Process through transform node (date format, string transform, etc.)
                         const transformIncomingEdges = edges.filter(e => e.target === sourceNode.id);
                         
                         transformIncomingEdges.forEach(transformEdge => {
@@ -216,6 +216,47 @@ export default function Canvas() {
                                             }
                                         } catch (error) {
                                             console.error('Date transformation error:', error);
+                                            sourceValue = 'Transform Error';
+                                        }
+                                    } else if (sourceNode.data?.transformType === 'String Transform' && hasTransformConfig(sourceNode.data)) {
+                                        const operation = sourceNode.data.config.parameters?.operation || sourceNode.data.config.operation || 'uppercase';
+                                        
+                                        console.log('String transform operation:', operation);
+                                        
+                                        try {
+                                            const inputValue = String(sourceValue);
+                                            
+                                            switch (operation) {
+                                                case 'uppercase':
+                                                    sourceValue = inputValue.toUpperCase();
+                                                    break;
+                                                case 'lowercase':
+                                                    sourceValue = inputValue.toLowerCase();
+                                                    break;
+                                                case 'trim':
+                                                    sourceValue = inputValue.trim();
+                                                    break;
+                                                case 'substring':
+                                                    const start = sourceNode.data.config.parameters?.start || 0;
+                                                    const length = sourceNode.data.config.parameters?.length || 10;
+                                                    sourceValue = inputValue.substring(start, start + length);
+                                                    break;
+                                                case 'replace':
+                                                    const find = sourceNode.data.config.parameters?.find || '';
+                                                    const replace = sourceNode.data.config.parameters?.replace || '';
+                                                    sourceValue = inputValue.replace(new RegExp(find, 'g'), replace);
+                                                    break;
+                                                case 'concatenate':
+                                                    const suffix = sourceNode.data.config.parameters?.suffix || '';
+                                                    sourceValue = inputValue + suffix;
+                                                    break;
+                                                default:
+                                                    console.log('Unknown string operation:', operation);
+                                            }
+                                            
+                                            console.log(`String transformed: ${inputValue} -> ${sourceValue} (${operation})`);
+                                        } catch (error) {
+                                            console.error('String transformation error:', error);
                                             sourceValue = 'Transform Error';
                                         }
                                     }
