@@ -188,7 +188,7 @@ export default function Pipeline() {
                             type: 'smoothstep',
                             animated: true,
                             style: { 
-                                strokeWidth: 2,
+                                strokeWidth: 1,
                                 stroke: '#3b82f6'
                             }
                         }}
