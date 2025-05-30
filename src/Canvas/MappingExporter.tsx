@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -13,10 +12,42 @@ export interface MappingConfiguration {
     mappings: MappingNodeConfig[];
   };
   connections: ConnectionConfig[];
+  execution: {
+    steps: ExecutionStep[];
+  };
   metadata?: {
     description?: string;
     tags?: string[];
     author?: string;
+  };
+}
+
+export interface ExecutionStep {
+  stepId: string;
+  type: 'direct_mapping' | 'transform' | 'conversion_mapping';
+  source: {
+    nodeId: string;
+    fieldId: string;
+    fieldName: string;
+    value?: any;
+  };
+  target: {
+    nodeId: string;
+    fieldId: string;
+    fieldName: string;
+  };
+  transform?: {
+    type: string;
+    operation?: string;
+    parameters?: Record<string, any>;
+    expression?: string;
+  };
+  conversion?: {
+    rules: Array<{
+      from: string;
+      to: string;
+      transformation?: string;
+    }>;
   };
 }
 
@@ -84,6 +115,146 @@ interface SchemaField {
   children?: SchemaField[];
 }
 
+const buildExecutionSteps = (
+  nodes: Node[],
+  edges: Edge[]
+): ExecutionStep[] => {
+  const steps: ExecutionStep[] = [];
+  let stepCounter = 1;
+
+  // Get source and target nodes for reference
+  const sourceNodes = nodes.filter(node => 
+    node.type === 'editableSchema' && node.data?.schemaType === 'source'
+  );
+  const targetNodes = nodes.filter(node => 
+    node.type === 'editableSchema' && node.data?.schemaType === 'target'
+  );
+  const transformNodes = nodes.filter(node => 
+    node.type === 'editableTransform' || node.type === 'splitterTransform'
+  );
+  const mappingNodes = nodes.filter(node => node.type === 'conversionMapping');
+
+  // Process each edge to create execution steps
+  edges.forEach(edge => {
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
+    
+    if (!sourceNode || !targetNode) return;
+
+    // Get field information
+    const getFieldInfo = (node: Node, handleId: string) => {
+      if (node.data?.fields) {
+        const field = node.data.fields.find((f: any) => f.id === handleId);
+        return field ? { id: field.id, name: field.name } : { id: handleId, name: handleId };
+      }
+      return { id: handleId, name: handleId };
+    };
+
+    const sourceField = getFieldInfo(sourceNode, edge.sourceHandle || '');
+    const targetField = getFieldInfo(targetNode, edge.targetHandle || '');
+
+    // Get sample data for source field
+    const getSampleValue = (node: Node, fieldName: string) => {
+      if (node.data?.data && Array.isArray(node.data.data) && node.data.data.length > 0) {
+        return node.data.data[0][fieldName];
+      }
+      if (node.data?.fields) {
+        const field = node.data.fields.find((f: any) => f.name === fieldName);
+        return field?.exampleValue;
+      }
+      return undefined;
+    };
+
+    // Direct mapping (source to target)
+    if (sourceNode.data?.schemaType === 'source' && targetNode.data?.schemaType === 'target') {
+      steps.push({
+        stepId: `step_${stepCounter++}`,
+        type: 'direct_mapping',
+        source: {
+          nodeId: sourceNode.id,
+          fieldId: sourceField.id,
+          fieldName: sourceField.name,
+          value: getSampleValue(sourceNode, sourceField.name)
+        },
+        target: {
+          nodeId: targetNode.id,
+          fieldId: targetField.id,
+          fieldName: targetField.name
+        }
+      });
+    }
+
+    // Transform step (source to transform, then transform to target)
+    if (sourceNode.data?.schemaType === 'source' && 
+        (targetNode.type === 'editableTransform' || targetNode.type === 'splitterTransform')) {
+      
+      // Find the edge from this transform to a target
+      const transformToTargetEdge = edges.find(e => e.source === targetNode.id);
+      const finalTargetNode = transformToTargetEdge ? 
+        nodes.find(n => n.id === transformToTargetEdge.target) : null;
+
+      if (finalTargetNode && finalTargetNode.data?.schemaType === 'target') {
+        const finalTargetField = getFieldInfo(finalTargetNode, transformToTargetEdge!.targetHandle || '');
+        
+        steps.push({
+          stepId: `step_${stepCounter++}`,
+          type: 'transform',
+          source: {
+            nodeId: sourceNode.id,
+            fieldId: sourceField.id,
+            fieldName: sourceField.name,
+            value: getSampleValue(sourceNode, sourceField.name)
+          },
+          target: {
+            nodeId: finalTargetNode.id,
+            fieldId: finalTargetField.id,
+            fieldName: finalTargetField.name
+          },
+          transform: {
+            type: targetNode.data?.transformType || 'unknown',
+            operation: targetNode.data?.config?.operation,
+            parameters: targetNode.data?.config?.parameters || {},
+            expression: targetNode.data?.config?.expression
+          }
+        });
+      }
+    }
+
+    // Conversion mapping step
+    if (sourceNode.data?.schemaType === 'source' && targetNode.type === 'conversionMapping') {
+      // Find the edge from this mapping to a target
+      const mappingToTargetEdge = edges.find(e => e.source === targetNode.id);
+      const finalTargetNode = mappingToTargetEdge ? 
+        nodes.find(n => n.id === mappingToTargetEdge.target) : null;
+
+      if (finalTargetNode && finalTargetNode.data?.schemaType === 'target') {
+        const finalTargetField = getFieldInfo(finalTargetNode, mappingToTargetEdge!.targetHandle || '');
+        
+        steps.push({
+          stepId: `step_${stepCounter++}`,
+          type: 'conversion_mapping',
+          source: {
+            nodeId: sourceNode.id,
+            fieldId: sourceField.id,
+            fieldName: sourceField.name,
+            value: getSampleValue(sourceNode, sourceField.name)
+          },
+          target: {
+            nodeId: finalTargetNode.id,
+            fieldId: finalTargetField.id,
+            fieldName: finalTargetField.name
+          },
+          conversion: {
+            rules: Array.isArray(targetNode.data?.mappings) ? targetNode.data.mappings : []
+          }
+        });
+      }
+    }
+  });
+
+  return steps;
+};
+
 export const exportMappingConfiguration = (
   nodes: Node[],
   edges: Edge[],
@@ -101,9 +272,12 @@ export const exportMappingConfiguration = (
       mappings: []
     },
     connections: [],
+    execution: {
+      steps: buildExecutionSteps(nodes, edges)
+    },
     metadata: {
-      description: 'Auto-generated mapping configuration',
-      tags: ['data-mapping', 'etl'],
+      description: 'Auto-generated mapping configuration with execution steps',
+      tags: ['data-mapping', 'etl', 'transformation'],
       author: 'Lovable Mapping Tool'
     }
   };
@@ -114,12 +288,12 @@ export const exportMappingConfiguration = (
       config.nodes.sources.push({
         id: node.id,
         type: 'source',
-        label: (node.data.label as string) || 'Source Node',
+        label: String(node.data?.label || 'Source Node'),
         position: node.position,
         schema: {
-          fields: Array.isArray(node.data.fields) ? node.data.fields : []
+          fields: Array.isArray(node.data?.fields) ? node.data.fields : []
         },
-        sampleData: Array.isArray(node.data.data) ? node.data.data : []
+        sampleData: Array.isArray(node.data?.data) ? node.data.data : []
       });
     });
 
@@ -129,12 +303,12 @@ export const exportMappingConfiguration = (
       config.nodes.targets.push({
         id: node.id,
         type: 'target',
-        label: (node.data.label as string) || 'Target Node',
+        label: String(node.data?.label || 'Target Node'),
         position: node.position,
         schema: {
-          fields: Array.isArray(node.data.fields) ? node.data.fields : []
+          fields: Array.isArray(node.data?.fields) ? node.data.fields : []
         },
-        outputData: Array.isArray(node.data.data) ? node.data.data : []
+        outputData: Array.isArray(node.data?.data) ? node.data.data : []
       });
     });
 
@@ -144,10 +318,10 @@ export const exportMappingConfiguration = (
       config.nodes.transforms.push({
         id: node.id,
         type: node.type as 'transform' | 'splitterTransform',
-        label: (node.data.label as string) || 'Transform Node',
+        label: String(node.data?.label || 'Transform Node'),
         position: node.position,
-        transformType: (node.data.transformType as string) || 'unknown',
-        config: node.data.config || {}
+        transformType: String(node.data?.transformType || 'unknown'),
+        config: node.data?.config || {}
       });
     });
 
@@ -157,9 +331,9 @@ export const exportMappingConfiguration = (
       config.nodes.mappings.push({
         id: node.id,
         type: 'mapping',
-        label: (node.data.label as string) || 'Mapping Node',
+        label: String(node.data?.label || 'Mapping Node'),
         position: node.position,
-        mappings: Array.isArray(node.data.mappings) ? node.data.mappings : []
+        mappings: Array.isArray(node.data?.mappings) ? node.data.mappings : []
       });
     });
 
@@ -387,6 +561,68 @@ export const exampleMappingConfiguration: MappingConfiguration = {
       type: "direct"
     }
   ],
+  execution: {
+    steps: [
+      {
+        stepId: "step_1",
+        type: "transform",
+        source: {
+          nodeId: "source-1",
+          fieldId: "field-1",
+          fieldName: "customer_name",
+          value: "John Doe"
+        },
+        target: {
+          nodeId: "target-1",
+          fieldId: "field-4",
+          fieldName: "full_name"
+        },
+        transform: {
+          type: "String Transform",
+          operation: "uppercase",
+          parameters: {}
+        }
+      },
+      {
+        stepId: "step_2",
+        type: "transform",
+        source: {
+          nodeId: "source-1",
+          fieldId: "field-2",
+          fieldName: "birth_date",
+          value: "1990-05-15"
+        },
+        target: {
+          nodeId: "target-1",
+          fieldId: "field-5",
+          fieldName: "formatted_date"
+        },
+        transform: {
+          type: "Date Format",
+          operation: "format",
+          parameters: {
+            inputFormat: "YYYY-MM-DD",
+            outputFormat: "DD/MM/YYYY"
+          }
+        }
+      },
+      {
+        stepId: "step_3",
+        type: "direct_mapping",
+        source: {
+          nodeId: "source-1",
+          fieldId: "field-3",
+          fieldName: "email",
+          value: "john@example.com"
+        },
+        target: {
+          nodeId: "target-1",
+          fieldId: "field-6",
+          fieldName: "contact_email"
+        }
+      }
+    ]
+  },
   metadata: {
     description: "Transform customer data from API format to CRM format",
     tags: ["customer", "data-transform", "api-integration"],
