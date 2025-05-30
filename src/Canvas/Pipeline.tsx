@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -25,7 +26,6 @@ import DataSidebar from '../compontents/DataSidebar';
 import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
 import { processDataMapping } from './DataMappingProcessor';
-import { SmartPipeline } from './SmartPipeline';
 
 const nodeTypes = {
     source: SourceNode,
@@ -187,14 +187,15 @@ export default function Pipeline() {
                         defaultEdgeOptions={{
                             type: 'smoothstep',
                             animated: true,
+                            style: { 
+                                strokeWidth: 4,
+                                stroke: '#3b82f6'
+                            }
                         }}
                     >
                         <Background />
                         <Controls />
                     </ReactFlow>
-                    
-                    {/* Smart Pipeline overlay - positioned above ReactFlow */}
-                    <SmartPipeline nodes={nodes} edges={edges} />
                 </div>
             </ReactFlowProvider>
         </div>
