@@ -80,12 +80,24 @@ export default function Canvas() {
                 // Find all edges that connect to this target node
                 const incomingEdges = edges.filter(edge => edge.target === node.id);
                 
+                // If no incoming edges, clear the target data
+                if (incomingEdges.length === 0) {
+                    console.log('No incoming edges for target node, clearing data');
+                    const updatedNode = {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            data: [{}] // Clear with empty object
+                        }
+                    };
+                    return updatedNode;
+                }
+                
                 incomingEdges.forEach(edge => {
                     const sourceNode = nodes.find(n => n.id === edge.source);
                     
                     console.log('Processing edge:', edge);
                     console.log('Source node:', sourceNode?.type, sourceNode?.data);
-                    console.log('Target node:', node.type, node.data);
                     
                     if (sourceNode?.type === 'editableSchema' && isSchemaNodeData(sourceNode.data)) {
                         // Direct schema-to-schema mapping
@@ -96,12 +108,7 @@ export default function Canvas() {
                         const sourceField = sourceFields.find((f: any) => f.id === edge.sourceHandle);
                         const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
                         
-                        console.log('Found source field:', sourceField);
-                        console.log('Found target field:', targetField);
-                        console.log('Source data:', sourceData);
-                        
                         if (sourceField && targetField) {
-                            // Get value from source data or example value
                             const sourceValue = sourceData.length > 0 
                                 ? sourceData[0][sourceField.name] 
                                 : sourceField.exampleValue;
@@ -112,7 +119,7 @@ export default function Canvas() {
                             }
                         }
                     } else if (sourceNode?.type === 'conversionMapping') {
-                        // Mapping through conversion node - trace back to find the original source
+                        // Mapping through conversion node
                         const conversionIncomingEdges = edges.filter(e => e.target === sourceNode.id && e.targetHandle === 'input');
                         
                         conversionIncomingEdges.forEach(conversionEdge => {
@@ -128,23 +135,15 @@ export default function Canvas() {
                                 const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
                                 
                                 if (sourceField && targetField) {
-                                    // Get original value from the source field
                                     let sourceValue = sourceData.length > 0 
                                         ? sourceData[0][sourceField.name] 
                                         : sourceField.exampleValue;
                                     
-                                    console.log('Original value before conversion:', sourceValue);
-                                    console.log('Source field:', sourceField);
-                                    console.log('Available mappings:', mappings);
-                                    
-                                    // Apply conversion mapping - compare field VALUE to mapping rule
                                     if (Array.isArray(mappings) && mappings.length > 0) {
-                                        // Convert sourceValue to string for comparison
                                         const sourceValueStr = String(sourceValue).trim();
                                         
                                         const mappingRule = mappings.find((mapping: any) => {
                                             const fromValueStr = String(mapping.from).trim();
-                                            console.log(`Comparing: "${sourceValueStr}" === "${fromValueStr}"`);
                                             return fromValueStr === sourceValueStr;
                                         });
                                         
@@ -152,19 +151,61 @@ export default function Canvas() {
                                             sourceValue = mappingRule.to;
                                             console.log(`Applied conversion rule: ${mappingRule.from} -> ${mappingRule.to}`);
                                         } else {
-                                            // Fallback for unmapped values
                                             sourceValue = 'NotMapped';
-                                            console.log(`No mapping rule found for value: "${sourceValueStr}", using fallback: NotMapped`);
                                         }
                                     } else {
-                                        // No mappings array, use fallback
                                         sourceValue = 'NotMapped';
-                                        console.log('No mappings available, using fallback: NotMapped');
                                     }
                                     
                                     if (sourceValue !== undefined && sourceValue !== '') {
                                         newTargetData[targetField.name] = sourceValue;
-                                        console.log(`Conversion mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
+                                    }
+                                }
+                            }
+                        });
+                    } else if (sourceNode?.type === 'editableTransform') {
+                        // Process through transform node
+                        const transformIncomingEdges = edges.filter(e => e.target === sourceNode.id);
+                        
+                        transformIncomingEdges.forEach(transformEdge => {
+                            const originalSourceNode = nodes.find(n => n.id === transformEdge.source);
+                            
+                            if (originalSourceNode?.type === 'editableSchema' && isSchemaNodeData(originalSourceNode.data)) {
+                                const sourceFields = Array.isArray(originalSourceNode.data?.fields) ? originalSourceNode.data.fields : [];
+                                const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
+                                const sourceData = Array.isArray(originalSourceNode.data?.data) ? originalSourceNode.data.data : [];
+                                const transformConfig = sourceNode.data?.config;
+                                
+                                const sourceField = sourceFields.find((f: any) => f.id === transformEdge.sourceHandle);
+                                const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                                
+                                if (sourceField && targetField) {
+                                    let sourceValue = sourceData.length > 0 
+                                        ? sourceData[0][sourceField.name] 
+                                        : sourceField.exampleValue;
+                                    
+                                    // Apply transformation
+                                    if (transformConfig && sourceNode.data?.transformType === 'Date Format') {
+                                        const inputFormat = transformConfig.parameters?.inputFormat || 'YYYY-MM-DD';
+                                        const outputFormat = transformConfig.parameters?.outputFormat || 'DD/MM/YYYY';
+                                        
+                                        try {
+                                            // Simple date format conversion for common formats
+                                            if (inputFormat === 'YYYY-MM-DD' && outputFormat === 'DD/MM/YYYY') {
+                                                const parts = String(sourceValue).split('-');
+                                                if (parts.length === 3) {
+                                                    sourceValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                                                    console.log(`Date transformed: ${sourceData[0][sourceField.name]} -> ${sourceValue}`);
+                                                }
+                                            }
+                                        } catch (error) {
+                                            console.error('Date transformation error:', error);
+                                            sourceValue = 'Transform Error';
+                                        }
+                                    }
+                                    
+                                    if (sourceValue !== undefined && sourceValue !== '') {
+                                        newTargetData[targetField.name] = sourceValue;
                                     }
                                 }
                             }
@@ -174,18 +215,15 @@ export default function Canvas() {
                 
                 console.log('Final target data for node:', node.id, newTargetData);
                 
-                // Update the node with new data
-                if (Object.keys(newTargetData).length > 0) {
-                    const updatedNode = {
-                        ...node,
-                        data: {
-                            ...node.data,
-                            data: [newTargetData]
-                        }
-                    };
-                    console.log('Updated target node:', updatedNode);
-                    return updatedNode;
-                }
+                // Update the node with new data (or empty if no connections)
+                const updatedNode = {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        data: [newTargetData]
+                    }
+                };
+                return updatedNode;
             }
             return node;
         });
@@ -253,6 +291,30 @@ export default function Canvas() {
             }, 50);
         }
     }, [onNodesChange, edges, processDataMapping]);
+
+    const handleEdgesChange = useCallback((changes: any) => {
+        console.log('Edge changes:', changes);
+        
+        onEdgesChange(changes);
+        
+        // Check if any edges are being removed
+        const removedEdges = changes.filter((change: any) => change.type === 'remove');
+        if (removedEdges.length > 0) {
+            console.log('Edges being removed:', removedEdges);
+            
+            // Re-process mapping after edge removal
+            setTimeout(() => {
+                setNodes(currentNodes => {
+                    const currentEdges = edges.filter(edge => 
+                        !removedEdges.some((removed: any) => removed.id === edge.id)
+                    );
+                    const updatedNodes = processDataMapping(currentEdges, currentNodes);
+                    const hasChanges = updatedNodes.some((node, index) => node !== currentNodes[index]);
+                    return hasChanges ? updatedNodes : currentNodes;
+                });
+            }, 50);
+        }
+    }, [onEdgesChange, edges, processDataMapping]);
 
     const addSchemaNode = useCallback((type: 'source' | 'target') => {
         const newNode: Node = {
@@ -337,7 +399,7 @@ export default function Canvas() {
                     nodes={nodes}
                     onNodesChange={handleNodesChange}
                     edges={edges}
-                    onEdgesChange={onEdgesChange}
+                    onEdgesChange={handleEdgesChange}
                     onConnect={onConnect}
                     fitView
                     style={style}
