@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
     ReactFlowProvider,
@@ -54,6 +54,8 @@ export default function Canvas() {
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [sourceData, setSourceData] = useState([]);
     const [targetData, setTargetData] = useState([]);
+    const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
+    const canvasRef = useRef(null);
 
     // Update sidebar data whenever nodes change
     useEffect(() => {
@@ -318,7 +320,15 @@ export default function Canvas() {
 
     const onConnect = useCallback((connection: Connection) => {
         console.log('Connection attempt:', connection);
-        const newEdges = addEdge(connection, edges);
+        
+        // Create edge with smoothstep type and animation
+        const newEdge = {
+            ...connection,
+            type: 'smoothstep',
+            animated: true,
+        };
+        
+        const newEdges = addEdge(newEdge, edges);
         setEdges(newEdges);
 
         const { source, sourceHandle, target, targetHandle } = connection;
@@ -455,6 +465,14 @@ export default function Canvas() {
         setNodes((nds) => [...nds, newNode]);
     }, [nodes.length]);
 
+    // Handle canvas clicks to close toolbar
+    const handleCanvasClick = useCallback((event: React.MouseEvent) => {
+        // Close toolbar if it's expanded and click is on canvas (not on nodes)
+        if (isToolbarExpanded && event.target === canvasRef.current) {
+            setIsToolbarExpanded(false);
+        }
+    }, [isToolbarExpanded]);
+
     const style = useMemo(
         () => ({
             width: '100%',
@@ -465,7 +483,7 @@ export default function Canvas() {
     );
 
     return (
-        <div className="w-full h-screen relative">
+        <div className="w-full h-screen relative" onClick={handleCanvasClick} ref={canvasRef}>
             <DataSidebar
                 side="left"
                 title="Source Data"
@@ -485,6 +503,8 @@ export default function Canvas() {
                     onAddTransform={addTransformNode}
                     onAddMappingNode={addMappingNode}
                     onAddSchemaNode={addSchemaNode}
+                    isExpanded={isToolbarExpanded}
+                    onToggleExpanded={setIsToolbarExpanded}
                 />
                 
                 <ReactFlow
@@ -497,6 +517,10 @@ export default function Canvas() {
                     style={style}
                     nodeTypes={nodeTypes}
                     deleteKeyCode={['Backspace', 'Delete']}
+                    defaultEdgeOptions={{
+                        type: 'smoothstep',
+                        animated: true,
+                    }}
                 >
                     <Background />
                     <Controls />
