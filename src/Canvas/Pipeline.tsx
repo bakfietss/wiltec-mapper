@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -26,6 +25,7 @@ import DataSidebar from '../compontents/DataSidebar';
 import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
 import { processDataMapping } from './DataMappingProcessor';
+import { exportMappingConfiguration, importMappingConfiguration, MappingConfiguration } from './MappingExporter';
 
 const nodeTypes = {
     source: SourceNode,
@@ -139,6 +139,46 @@ export default function Pipeline() {
         }
     }, [isToolbarExpanded]);
 
+    // Add export functionality
+    const exportCurrentMapping = useCallback(() => {
+        const config = exportMappingConfiguration(nodes, edges, 'Current Mapping');
+        
+        // Create download link
+        const dataStr = JSON.stringify(config, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `mapping-config-${Date.now()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log('Exported mapping configuration:', config);
+    }, [nodes, edges]);
+
+    // Add import functionality
+    const importMapping = useCallback((file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const config: MappingConfiguration = JSON.parse(e.target?.result as string);
+                const { nodes: importedNodes, edges: importedEdges } = importMappingConfiguration(config);
+                
+                setNodes(importedNodes);
+                setEdges(importedEdges);
+                
+                console.log('Imported mapping configuration:', config);
+            } catch (error) {
+                console.error('Failed to import mapping configuration:', error);
+                alert('Invalid mapping configuration file');
+            }
+        };
+        reader.readAsText(file);
+    }, [setNodes, setEdges]);
+
     const style = useMemo(
         () => ({
             width: '100%',
@@ -171,6 +211,8 @@ export default function Pipeline() {
                     onAddSchemaNode={addSchemaNode}
                     isExpanded={isToolbarExpanded}
                     onToggleExpanded={setIsToolbarExpanded}
+                    onExportMapping={exportCurrentMapping}
+                    onImportMapping={importMapping}
                 />
                 
                 <div className="relative w-full h-full overflow-hidden">
