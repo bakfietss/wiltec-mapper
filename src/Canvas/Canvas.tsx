@@ -39,6 +39,11 @@ const isSchemaNodeData = (data: any): data is { schemaType: 'source' | 'target';
     return data && typeof data === 'object' && 'schemaType' in data && 'fields' in data;
 };
 
+// Helper function to check if data has transform config
+const hasTransformConfig = (data: any): data is { config: { parameters?: Record<string, any> } } => {
+    return data && typeof data === 'object' && 'config' in data && data.config && typeof data.config === 'object';
+};
+
 export default function Canvas() {
     const { theme } = useTheme();
     const { updateTargetField, conversionMode, conversionMappings, conversionTransforms } = useFieldStore();
@@ -174,7 +179,6 @@ export default function Canvas() {
                                 const sourceFields = Array.isArray(originalSourceNode.data?.fields) ? originalSourceNode.data.fields : [];
                                 const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
                                 const sourceData = Array.isArray(originalSourceNode.data?.data) ? originalSourceNode.data.data : [];
-                                const transformConfig = sourceNode.data?.config;
                                 
                                 const sourceField = sourceFields.find((f: any) => f.id === transformEdge.sourceHandle);
                                 const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
@@ -184,19 +188,31 @@ export default function Canvas() {
                                         ? sourceData[0][sourceField.name] 
                                         : sourceField.exampleValue;
                                     
+                                    console.log('Transform node data:', sourceNode.data);
+                                    console.log('Source value before transform:', sourceValue);
+                                    
                                     // Apply transformation
-                                    if (transformConfig && sourceNode.data?.transformType === 'Date Format') {
-                                        const inputFormat = transformConfig.parameters?.inputFormat || 'YYYY-MM-DD';
-                                        const outputFormat = transformConfig.parameters?.outputFormat || 'DD/MM/YYYY';
+                                    if (sourceNode.data?.transformType === 'Date Format' && hasTransformConfig(sourceNode.data)) {
+                                        const inputFormat = sourceNode.data.config.parameters?.inputFormat || 'YYYY-MM-DD';
+                                        const outputFormat = sourceNode.data.config.parameters?.outputFormat || 'DD/MM/YYYY';
+                                        
+                                        console.log('Date transform config:', { inputFormat, outputFormat });
                                         
                                         try {
                                             // Simple date format conversion for common formats
                                             if (inputFormat === 'YYYY-MM-DD' && outputFormat === 'DD/MM/YYYY') {
-                                                const parts = String(sourceValue).split('-');
-                                                if (parts.length === 3) {
+                                                const dateStr = String(sourceValue);
+                                                const parts = dateStr.split('-');
+                                                if (parts.length === 3 && parts[0].length === 4) {
                                                     sourceValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                                                    console.log(`Date transformed: ${sourceData[0][sourceField.name]} -> ${sourceValue}`);
+                                                    console.log(`Date transformed: ${dateStr} -> ${sourceValue}`);
+                                                } else {
+                                                    console.log('Invalid date format for transformation:', dateStr);
+                                                    sourceValue = 'Invalid Date Format';
                                                 }
+                                            } else {
+                                                console.log('Unsupported date format transformation');
+                                                sourceValue = 'Unsupported Format';
                                             }
                                         } catch (error) {
                                             console.error('Date transformation error:', error);
@@ -206,6 +222,7 @@ export default function Canvas() {
                                     
                                     if (sourceValue !== undefined && sourceValue !== '') {
                                         newTargetData[targetField.name] = sourceValue;
+                                        console.log(`Transform result: ${targetField.name} = ${sourceValue}`);
                                     }
                                 }
                             }
