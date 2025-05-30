@@ -128,20 +128,25 @@ export default function Canvas() {
                                 const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
                                 
                                 if (sourceField && targetField) {
-                                    // Get original value
+                                    // Get original value from the source field
                                     let sourceValue = sourceData.length > 0 
                                         ? sourceData[0][sourceField.name] 
                                         : sourceField.exampleValue;
                                     
                                     console.log('Original value before conversion:', sourceValue);
-                                    console.log('Source field name:', sourceField.name);
+                                    console.log('Source field:', sourceField);
                                     console.log('Available mappings:', mappings);
                                     
                                     // Apply conversion mapping - compare field VALUE to mapping rule
-                                    if (Array.isArray(mappings)) {
-                                        const mappingRule = mappings.find((mapping: any) => 
-                                            mapping.from === sourceValue
-                                        );
+                                    if (Array.isArray(mappings) && mappings.length > 0) {
+                                        // Convert sourceValue to string for comparison
+                                        const sourceValueStr = String(sourceValue).trim();
+                                        
+                                        const mappingRule = mappings.find((mapping: any) => {
+                                            const fromValueStr = String(mapping.from).trim();
+                                            console.log(`Comparing: "${sourceValueStr}" === "${fromValueStr}"`);
+                                            return fromValueStr === sourceValueStr;
+                                        });
                                         
                                         if (mappingRule) {
                                             sourceValue = mappingRule.to;
@@ -149,7 +154,7 @@ export default function Canvas() {
                                         } else {
                                             // Fallback for unmapped values
                                             sourceValue = 'NotMapped';
-                                            console.log(`No mapping rule found for value: ${sourceValue}, using fallback: NotMapped`);
+                                            console.log(`No mapping rule found for value: "${sourceValueStr}", using fallback: NotMapped`);
                                         }
                                     } else {
                                         // No mappings array, use fallback
