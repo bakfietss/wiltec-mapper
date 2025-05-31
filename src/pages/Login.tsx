@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +15,7 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [useApiValidation, setUseApiValidation] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -39,7 +41,28 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log('Starting login process...');
+      if (!useApiValidation) {
+        // Bypass API validation - directly log in
+        console.log('Bypassing API validation, logging in directly...');
+        
+        const userData = {
+          username: username,
+          loginTime: new Date().toISOString()
+        };
+        
+        login(userData);
+
+        toast({
+          title: "Success",
+          description: "Login successful! (API validation bypassed)",
+        });
+
+        navigate('/');
+        return;
+      }
+
+      // Use API validation
+      console.log('Starting login process with API validation...');
       console.log('Username:', username);
       
       const hashedPassword = await hashPassword(password);
@@ -172,6 +195,18 @@ const Login = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="useApiValidation"
+                checked={useApiValidation}
+                onCheckedChange={(checked) => setUseApiValidation(checked as boolean)}
+                disabled={isLoading}
+              />
+              <Label htmlFor="useApiValidation" className="text-sm">
+                Use API validation
+              </Label>
             </div>
             
             <Button 
