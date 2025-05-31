@@ -34,9 +34,15 @@ const getTypeColor = (type: string) => {
 const SourceField: React.FC<{
     field: SchemaField;
     level: number;
-}> = ({ field, level }) => {
+    onExpandChange?: () => void;
+}> = ({ field, level, onExpandChange }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = field.children && field.children.length > 0;
+
+    const handleToggle = () => {
+        setIsExpanded(!isExpanded);
+        if (onExpandChange) onExpandChange();
+    };
 
     return (
         <div className="relative">
@@ -46,7 +52,7 @@ const SourceField: React.FC<{
             >
                 {hasChildren && (
                     <button
-                        onClick={() => setIsExpanded(!isExpanded)}
+                        onClick={handleToggle}
                         className="p-0.5 hover:bg-gray-200 rounded"
                     >
                         {isExpanded ? (
@@ -86,6 +92,7 @@ const SourceField: React.FC<{
                             key={child.id}
                             field={child}
                             level={level + 1}
+                            onExpandChange={onExpandChange}
                         />
                     ))}
                 </div>
@@ -94,13 +101,17 @@ const SourceField: React.FC<{
     );
 };
 
-// Helper function to count visible fields recursively
-const countVisibleFields = (fields: SchemaField[]): number => {
+// Helper function to count actually visible fields (accounting for expanded/collapsed state)
+const countActuallyVisibleFields = (fields: SchemaField[], expandedStates: Map<string, boolean> = new Map()): number => {
     let count = 0;
     for (const field of fields) {
         count += 1; // Count the field itself
         if (field.children && field.children.length > 0) {
-            count += countVisibleFields(field.children); // Count expanded children
+            // Default to expanded (true) if not in map
+            const isExpanded = expandedStates.get(field.id) !== false;
+            if (isExpanded) {
+                count += countActuallyVisibleFields(field.children, expandedStates);
+            }
         }
     }
     return count;
@@ -108,13 +119,18 @@ const countVisibleFields = (fields: SchemaField[]): number => {
 
 const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
     const { label, fields } = data;
+    const [, forceUpdate] = useState({});
 
-    // Calculate dynamic height based on actual visible fields
-    const visibleFieldCount = countVisibleFields(fields);
+    // Force a re-render when expand/collapse happens
+    const handleExpandChange = () => {
+        forceUpdate({});
+    };
+
+    // Calculate dynamic height based on actual visible fields (all expanded by default)
+    const visibleFieldCount = countActuallyVisibleFields(fields);
     const fieldHeight = 32; // Height per field
     const headerHeight = 60;
-    const containerPadding = 8; // Just 4px top + 4px bottom
-    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + containerPadding;
+    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight);
 
     return (
         <div 
@@ -129,12 +145,13 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="py-1 px-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
+            <div className="overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {fields.map((field) => (
                     <SourceField
                         key={field.id}
                         field={field}
                         level={0}
+                        onExpandChange={handleExpandChange}
                     />
                 ))}
             </div>
@@ -143,4 +160,3 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
 };
 
 export default SourceNode;
-

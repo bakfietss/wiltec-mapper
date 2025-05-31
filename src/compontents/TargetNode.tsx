@@ -33,9 +33,15 @@ const TargetField: React.FC<{
     field: SchemaField;
     level: number;
     value: string | number | boolean | undefined;
-}> = ({ field, level, value }) => {
+    onExpandChange?: () => void;
+}> = ({ field, level, value, onExpandChange }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = field.children && field.children.length > 0;
+
+    const handleToggle = () => {
+        setIsExpanded(!isExpanded);
+        if (onExpandChange) onExpandChange();
+    };
 
     return (
         <div className="relative">
@@ -44,7 +50,7 @@ const TargetField: React.FC<{
                 style={{ marginLeft: `${level * 16}px` }}
             >
                 {hasChildren ? (
-                    <button onClick={() => setIsExpanded(!isExpanded)} className="p-0.5 hover:bg-gray-200 rounded">
+                    <button onClick={handleToggle} className="p-0.5 hover:bg-gray-200 rounded">
                         {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
                     </button>
                 ) : (
@@ -75,7 +81,7 @@ const TargetField: React.FC<{
             {hasChildren && isExpanded && (
                 <div>
                     {field.children?.map((child) => (
-                        <TargetField key={child.id} field={child} level={level + 1} value={undefined} />
+                        <TargetField key={child.id} field={child} level={level + 1} value={undefined} onExpandChange={onExpandChange} />
                     ))}
                 </div>
             )}
@@ -83,13 +89,17 @@ const TargetField: React.FC<{
     );
 };
 
-// Helper function to count visible fields recursively
-const countVisibleFields = (fields: SchemaField[]): number => {
+// Helper function to count actually visible fields (accounting for expanded/collapsed state)
+const countActuallyVisibleFields = (fields: SchemaField[], expandedStates: Map<string, boolean> = new Map()): number => {
     let count = 0;
     for (const field of fields) {
         count += 1; // Count the field itself
         if (field.children && field.children.length > 0) {
-            count += countVisibleFields(field.children); // Count expanded children
+            // Default to expanded (true) if not in map
+            const isExpanded = expandedStates.get(field.id) !== false;
+            if (isExpanded) {
+                count += countActuallyVisibleFields(field.children, expandedStates);
+            }
         }
     }
     return count;
@@ -98,6 +108,12 @@ const countVisibleFields = (fields: SchemaField[]): number => {
 const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
     const { getEdges } = useReactFlow();
     const edges = getEdges();
+    const [, forceUpdate] = useState({});
+
+    // Force a re-render when expand/collapse happens
+    const handleExpandChange = () => {
+        forceUpdate({});
+    };
 
     // Build a map of targetHandle → value from the data
     const firstRecord = data.data?.[0] ?? {};
@@ -111,12 +127,11 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         }
     }
 
-    // Calculate dynamic height based on actual visible fields
-    const visibleFieldCount = countVisibleFields(data.fields);
+    // Calculate dynamic height based on actual visible fields (all expanded by default)
+    const visibleFieldCount = countActuallyVisibleFields(data.fields);
     const fieldHeight = 32; // Height per field
     const headerHeight = 60;
-    const containerPadding = 8; // Just 4px top + 4px bottom
-    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + containerPadding;
+    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight);
 
     return (
         <div 
@@ -131,13 +146,14 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="py-1 px-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
+            <div className="overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {data.fields.map((field) => (
                     <TargetField
                         key={field.id}
                         field={field}
                         level={0}
                         value={handleValueMap[field.id]}
+                        onExpandChange={handleExpandChange}
                     />
                 ))}
             </div>
@@ -146,4 +162,3 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
 };
 
 export default TargetNode;
-
