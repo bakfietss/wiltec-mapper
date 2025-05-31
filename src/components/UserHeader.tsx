@@ -25,7 +25,7 @@ const UserHeader = () => {
   }
 
   return (
-    <div className="absolute top-4 left-4 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <User className="w-4 h-4 text-gray-600" />
