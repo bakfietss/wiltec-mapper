@@ -52,9 +52,9 @@ const Login = () => {
       };
       console.log('Request body:', requestBody);
       
-      console.log('Making API call to:', 'http://windmill.wiltec.nl/api/r/Mapping_Users_Check');
+      console.log('Making API call to:', 'https://windmill.wiltec.nl/api/r/Mapping_Users_Check');
       
-      const response = await fetch('http://windmill.wiltec.nl/api/r/Mapping_Users_Check', {
+      const response = await fetch('https://windmill.wiltec.nl/api/r/Mapping_Users_Check', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
