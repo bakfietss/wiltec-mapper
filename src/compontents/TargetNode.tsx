@@ -98,12 +98,12 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         }
     }
 
-    // Calculate dynamic height based on number of fields
+    // Calculate dynamic height based on number of fields with minimal padding
     const fieldCount = data.fields.length;
-    const minHeight = 200;
-    const fieldHeight = 32; // Approximate height per field
+    const fieldHeight = 32; // Height per field
     const headerHeight = 60;
-    const dynamicHeight = Math.max(minHeight, headerHeight + (fieldCount * fieldHeight));
+    const padding = 16; // Minimal padding (8px top + 8px bottom)
+    const dynamicHeight = headerHeight + (fieldCount * fieldHeight) + padding;
 
     return (
         <div 

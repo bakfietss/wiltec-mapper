@@ -1,3 +1,4 @@
+
 //SourceNode.tsx
 
 import React, { useState } from 'react';
@@ -95,8 +96,18 @@ const SourceField: React.FC<{
 const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
     const { label, fields } = data;
 
+    // Calculate dynamic height based on number of fields with minimal padding
+    const fieldCount = fields.length;
+    const fieldHeight = 32; // Height per field
+    const headerHeight = 60;
+    const padding = 16; // Minimal padding (8px top + 8px bottom)
+    const dynamicHeight = headerHeight + (fieldCount * fieldHeight) + padding;
+
     return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
+        <div 
+            className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80"
+            style={{ height: `${dynamicHeight}px` }}
+        >
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-blue-50">
                 <Database className="w-4 h-4 text-blue-600" />
                 <span className="font-semibold text-gray-900">{label}</span>
@@ -105,7 +116,7 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="p-2 max-h-96 overflow-y-auto">
+            <div className="p-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {fields.map((field) => (
                     <SourceField
                         key={field.id}
