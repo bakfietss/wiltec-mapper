@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
@@ -12,7 +13,7 @@ interface SchemaField {
 interface TargetNodeData {
     label: string;
     fields: SchemaField[];
-    data?: any[]; // Contains processed output data
+    data?: any[];
 }
 
 const getTypeColor = (type: string) => {
@@ -97,8 +98,18 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         }
     }
 
+    // Calculate dynamic height based on number of fields
+    const fieldCount = data.fields.length;
+    const minHeight = 200;
+    const fieldHeight = 32; // Approximate height per field
+    const headerHeight = 60;
+    const dynamicHeight = Math.max(minHeight, headerHeight + (fieldCount * fieldHeight));
+
     return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
+        <div 
+            className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80"
+            style={{ height: `${dynamicHeight}px` }}
+        >
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-green-50">
                 <FileText className="w-4 h-4 text-green-600" />
                 <span className="font-semibold text-gray-900">{data.label}</span>
@@ -107,7 +118,7 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="p-2 max-h-96 overflow-y-auto">
+            <div className="p-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {data.fields.map((field) => (
                     <TargetField
                         key={field.id}

@@ -253,8 +253,18 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
     }
   };
 
+  // Calculate dynamic height based on number of fields
+  const fieldCount = fields.length;
+  const minHeight = 200;
+  const fieldHeight = 32;
+  const headerHeight = 60;
+  const dynamicHeight = Math.max(minHeight, headerHeight + (fieldCount * fieldHeight));
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
+    <div 
+      className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80"
+      style={{ height: `${dynamicHeight}px` }}
+    >
       <div className={`px-4 py-3 border-b border-gray-200 flex items-center gap-2 ${
         schemaType === 'source' ? 'bg-blue-50' : 'bg-green-50'
       }`}>
@@ -276,19 +286,19 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
               <Edit3 className="w-3 h-3 text-gray-600" />
             </button>
           </SheetTrigger>
-          <SheetContent className="w-[600px] sm:w-[600px]">
+          <SheetContent className="w-[800px] sm:w-[800px] max-w-[90vw]">
             <SheetHeader>
               <SheetTitle>Edit {label} - {schemaType}</SheetTitle>
             </SheetHeader>
             
-            <div className="mt-6 space-y-6">
+            <div className="mt-6 h-[calc(100vh-120px)] flex flex-col space-y-4">
               {/* JSON Data Import */}
-              <div>
+              <div className="flex-shrink-0">
                 <h4 className="font-medium mb-2">Import JSON Data:</h4>
                 <textarea
                   value={jsonInput}
                   onChange={(e) => setJsonInput(e.target.value)}
-                  className="w-full h-32 border border-gray-300 rounded-md p-2 text-sm font-mono"
+                  className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono"
                   placeholder='{"field1": "value1", "field2": 123}'
                 />
                 <button
@@ -299,10 +309,10 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
                 </button>
               </div>
 
-              {/* Current Data Preview - ALWAYS SHOW */}
-              <div>
+              {/* Current Data Preview */}
+              <div className="flex-shrink-0">
                 <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                <div className="max-h-40 overflow-auto border rounded p-2 bg-gray-50">
+                <div className="h-32 overflow-auto border rounded p-2 bg-gray-50">
                   {nodeData.length > 0 ? (
                     <pre className="text-xs">
                       {JSON.stringify(nodeData.slice(0, 3), null, 2)}
@@ -314,8 +324,8 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
                 </div>
               </div>
 
-              {/* Schema Fields */}
-              <div>
+              {/* Schema Fields - This takes up the remaining space */}
+              <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium">Schema Fields:</h4>
                   <button
@@ -327,7 +337,7 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
                   </button>
                 </div>
                 
-                <div className="space-y-4 max-h-60 overflow-auto">
+                <div className="flex-1 overflow-auto space-y-4 min-h-0">
                   {fields.map((field) => (
                     <div key={field.id} className="border rounded p-3 space-y-2">
                       <div className="flex items-center gap-2">
@@ -371,7 +381,7 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
         </Sheet>
       </div>
       
-      <div className="p-2 max-h-96 overflow-y-auto">
+      <div className="p-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
         {fields.map((field) => (
           <SchemaField
             key={field.id}
