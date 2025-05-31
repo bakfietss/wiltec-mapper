@@ -3,7 +3,7 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { TargetFieldProps } from './types/TargetNodeTypes';
-import { getTypeColor, getFieldValue } from './utils/targetNodeUtils';
+import { getTypeColor } from './utils/targetNodeUtils';
 
 const TargetField: React.FC<TargetFieldProps> = ({ 
     field, 
@@ -20,8 +20,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
         if (onExpandChange) onExpandChange();
     };
 
-    const fieldValue = field.exampleValue; // Directly use example value
-    console.log('Target field value for', field.name, ':', fieldValue);
+    console.log('Target field:', field.name, 'Example value:', field.exampleValue);
 
     return (
         <div className="relative">
@@ -41,9 +40,10 @@ const TargetField: React.FC<TargetFieldProps> = ({
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                     {field.type}
                 </span>
-                {fieldValue && (
+                
+                {field.exampleValue && (
                     <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate">
-                        {String(fieldValue)}
+                        {String(field.exampleValue)}
                     </span>
                 )}
 

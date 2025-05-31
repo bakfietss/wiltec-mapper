@@ -26,8 +26,3 @@ export const countVisibleFields = (fields: SchemaField[], expandedStates: Map<st
     }
     return count;
 };
-
-export const getFieldValue = (field: SchemaField, nodeData: any[]) => {
-    // For now, just return the example value
-    return field.exampleValue;
-};
