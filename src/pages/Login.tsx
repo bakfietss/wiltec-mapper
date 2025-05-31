@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,24 @@ const Login = () => {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
+  const testApiConnection = async () => {
+    console.log('Testing API connection...');
+    try {
+      // First test with a simple GET request to see if the server responds at all
+      const testResponse = await fetch('https://windmill.wiltec.nl/api/r/Mapping_Users_Check', {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      console.log('GET test response status:', testResponse.status);
+      console.log('GET test response headers:', Object.fromEntries(testResponse.headers.entries()));
+    } catch (error) {
+      console.log('GET test failed:', error);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -43,6 +62,9 @@ const Login = () => {
       console.log('Starting login process...');
       console.log('Username:', username);
       
+      // Test connection first
+      await testApiConnection();
+      
       const hashedPassword = await hashPassword(password);
       console.log('Password hashed successfully');
       
@@ -52,16 +74,28 @@ const Login = () => {
       };
       console.log('Request body:', requestBody);
       
-      console.log('Making API call to:', 'https://windmill.wiltec.nl/api/r/Mapping_Users_Check');
+      const apiUrl = 'https://windmill.wiltec.nl/api/r/Mapping_Users_Check';
+      console.log('Making API call to:', apiUrl);
+      console.log('Request timestamp:', new Date().toISOString());
       
-      const response = await fetch('https://windmill.wiltec.nl/api/r/Mapping_Users_Check', {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+        mode: 'cors',
       });
 
+      clearTimeout(timeoutId);
+
+      console.log('Response received at:', new Date().toISOString());
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
       console.log('Response headers:', Object.fromEntries(response.headers.entries()));
@@ -92,17 +126,27 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
       
-      toast({
-        title: "Error",
-        description: "Failed to connect to server. Check console for details.",
-        variant: "destructive"
-      });
+      if (error.name === 'AbortError') {
+        console.log('Request timed out after 10 seconds');
+        toast({
+          title: "Timeout Error",
+          description: "The server took too long to respond. Please check if the API server is running.",
+          variant: "destructive"
+        });
+      } else {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+        
+        toast({
+          title: "Connection Error",
+          description: "Cannot connect to the API server. Please verify the server is running and accessible.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +202,7 @@ const Login = () => {
               className="w-full" 
               disabled={isLoading}
             >
-              {isLoading ? "Logging in..." : "Login"}
+              {isLoading ? "Connecting..." : "Login"}
             </Button>
           </form>
         </CardContent>
