@@ -28,11 +28,6 @@ export const countVisibleFields = (fields: SchemaField[], expandedStates: Map<st
 };
 
 export const getFieldValue = (field: SchemaField, nodeData: any[]) => {
-    // Check if we have connected data first
-    if (nodeData && nodeData.length > 0 && nodeData[0] && nodeData[0][field.id] !== undefined) {
-        return nodeData[0][field.id];
-    }
-    
-    // Fall back to example value if no connected data
+    // For now, just return the example value
     return field.exampleValue;
 };
