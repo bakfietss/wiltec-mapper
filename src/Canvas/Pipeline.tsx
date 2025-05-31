@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -12,8 +13,8 @@ import '@xyflow/react/dist/style.css';
 import { useTheme } from '../Theme/ThemeContext';
 import { useFieldStore } from '../store/fieldStore';
 
-import SourceNode from '../compontents/SourceNode';
-import TargetNode from '../compontents/TargetNode';
+import SourceNode from '../components/SourceNode';
+import TargetNode from '../components/TargetNode';
 import ConversionMappingNode from '../compontents/ConversionMappingNode';
 import TransformNode from '../compontents/TransformNode';
 import EditableSchemaNode from '../compontents/EditableSchemaNode';
