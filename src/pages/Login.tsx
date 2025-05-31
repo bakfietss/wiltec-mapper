@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
+import bcrypt from 'bcryptjs';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -19,11 +19,8 @@ const Login = () => {
   const { login } = useAuth();
 
   const hashPassword = async (password: string): Promise<string> => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const saltRounds = 10;
+    return await bcrypt.hash(password, saltRounds);
   };
 
   const testApiConnection = async () => {
@@ -66,7 +63,7 @@ const Login = () => {
       await testApiConnection();
       
       const hashedPassword = await hashPassword(password);
-      console.log('Password hashed successfully');
+      console.log('Password hashed successfully with bcryptjs');
       
       const requestBody = {
         username: username,
