@@ -9,6 +9,7 @@ interface SchemaField {
     name: string;
     type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
     children?: SchemaField[];
+    exampleValue?: any;
 }
 
 interface TargetNodeData {
@@ -32,10 +33,10 @@ const getTypeColor = (type: string) => {
 const TargetField: React.FC<{
     field: SchemaField;
     level: number;
-    value: string | number | boolean | undefined;
+    nodeData: any[];
     expandedStates: Map<string, boolean>;
     onExpandChange?: () => void;
-}> = ({ field, level, value, expandedStates, onExpandChange }) => {
+}> = ({ field, level, nodeData, expandedStates, onExpandChange }) => {
     const isExpanded = expandedStates.get(field.id) !== false;
     const hasChildren = field.children && field.children.length > 0;
 
@@ -43,6 +44,14 @@ const TargetField: React.FC<{
         expandedStates.set(field.id, !isExpanded);
         if (onExpandChange) onExpandChange();
     };
+
+    // Get the field value - prioritize actual data, then example value
+    const getFieldValue = () => {
+        const dataValue = nodeData?.[0]?.[field.id] || nodeData?.[0]?.[field.name];
+        return dataValue !== undefined ? dataValue : field.exampleValue;
+    };
+
+    const fieldValue = getFieldValue();
 
     return (
         <div className="relative">
@@ -62,7 +71,11 @@ const TargetField: React.FC<{
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                     {field.type}
                 </span>
-                <span className="text-xs text-gray-500 truncate max-w-[120px]">{String(value ?? '')}</span>
+                {fieldValue && (
+                    <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate">
+                        {String(fieldValue)}
+                    </span>
+                )}
 
                 {!hasChildren && (
                     <Handle
@@ -86,7 +99,7 @@ const TargetField: React.FC<{
                             key={child.id} 
                             field={child} 
                             level={level + 1} 
-                            value={undefined} 
+                            nodeData={nodeData}
                             expandedStates={expandedStates}
                             onExpandChange={onExpandChange} 
                         />
@@ -179,6 +192,9 @@ const TargetNode: React.FC<{ data: TargetNodeData; id?: string }> = ({ data, id 
     console.log('Target node current data:', targetNodeData);
     console.log('Final handle value map:', handleValueMap);
 
+    // Use the current node's data if available, otherwise use the prop data
+    const nodeData = currentNode?.data?.data || data.data || [];
+
     const visibleFieldCount = countVisibleFields(data.fields, expandedStates);
     const fieldHeight = 32;
     const headerHeight = 60;
@@ -204,7 +220,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id?: string }> = ({ data, id 
                         key={field.id}
                         field={field}
                         level={0}
-                        value={handleValueMap[field.id]}
+                        nodeData={nodeData}
                         expandedStates={expandedStates}
                         onExpandChange={handleExpandChange}
                     />
