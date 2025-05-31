@@ -1,10 +1,10 @@
-
 export interface SchemaField {
     id: string;
     name: string;
     type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
     children?: SchemaField[];
     exampleValue?: any;
+    value?: any;
 }
 
 export interface TargetNodeData {
