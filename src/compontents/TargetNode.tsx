@@ -35,7 +35,7 @@ const TargetField: React.FC<{
     expandedStates: Map<string, boolean>;
     onExpandChange?: () => void;
 }> = ({ field, level, value, expandedStates, onExpandChange }) => {
-    const isExpanded = expandedStates.get(field.id) !== false; // Default to true
+    const isExpanded = expandedStates.get(field.id) !== false;
     const hasChildren = field.children && field.children.length > 0;
 
     const handleToggle = () => {
@@ -96,7 +96,6 @@ const TargetField: React.FC<{
     );
 };
 
-// Helper function to count actually visible fields
 const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, boolean>): number => {
     let count = 0;
     for (const field of fields) {
@@ -112,8 +111,9 @@ const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, b
 };
 
 const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
-    const { getEdges } = useReactFlow();
+    const { getEdges, getNodes } = useReactFlow();
     const edges = getEdges();
+    const nodes = getNodes();
     const [expandedStates] = useState(() => new Map<string, boolean>());
     const [, forceUpdate] = useState({});
 
@@ -121,35 +121,37 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         forceUpdate({});
     };
 
-    // Build a map of targetHandle → value from edges AND target node's own data
-    const firstRecord = data.data?.[0] ?? {};
-    const handleValueMap: Record<string, any> = {};
+    // Get the current node to access its data
+    const currentNode = nodes.find(node => node.type === 'target' || (node.type === 'editableSchema' && node.data?.schemaType === 'target'));
+    
+    // Build a map of targetHandle → value from the target node's own data
+    const targetNodeData = data.data?.[0] ?? {};
+    const handleValueMap: Record<string, any> = { ...targetNodeData };
 
-    // First, populate with target node's own data
-    for (const field of data.fields) {
-        if (firstRecord[field.id] !== undefined) {
-            handleValueMap[field.id] = firstRecord[field.id];
-        }
-    }
-
-    // Then, override with edge-connected values
+    // Override with edge-connected values from source nodes
     for (const edge of edges) {
         const targetHandle = edge.targetHandle;
         const sourceHandle = edge.sourceHandle;
         if (targetHandle && sourceHandle) {
-            // Find source node data
-            const sourceNode = edges.find(e => e.source)?.source;
-            if (sourceNode) {
-                handleValueMap[targetHandle] = firstRecord[sourceHandle];
+            // Find source node
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            if (sourceNode && sourceNode.data?.data?.[0]) {
+                const sourceValue = sourceNode.data.data[0][sourceHandle];
+                if (sourceValue !== undefined && !targetNodeData[targetHandle]) {
+                    // Only use source value if target doesn't have its own value
+                    handleValueMap[targetHandle] = sourceValue;
+                }
             }
         }
     }
 
-    // Calculate actual visible field count
+    console.log('Target node data:', targetNodeData);
+    console.log('Handle value map:', handleValueMap);
+
     const visibleFieldCount = countVisibleFields(data.fields, expandedStates);
     const fieldHeight = 32;
     const headerHeight = 60;
-    const padding = 8; // Small padding for borders
+    const padding = 8;
     const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + padding;
 
     return (
