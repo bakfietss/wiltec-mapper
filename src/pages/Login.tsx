@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 
 const Login = () => {
@@ -15,6 +15,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const hashPassword = async (password: string): Promise<string> => {
     const encoder = new TextEncoder();
@@ -39,27 +40,42 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      console.log('Starting login process...');
+      console.log('Username:', username);
+      
       const hashedPassword = await hashPassword(password);
+      console.log('Password hashed successfully');
+      
+      const requestBody = {
+        username: username,
+        password: hashedPassword
+      };
+      console.log('Request body:', requestBody);
+      
+      console.log('Making API call to:', 'http://windmill.wiltec.nl/api/r/Mapping_Users_Check');
       
       const response = await fetch('http://windmill.wiltec.nl/api/r/Mapping_Users_Check', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          username: username,
-          password: hashedPassword
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
       const result = await response.json();
+      console.log('API Response:', result);
 
       if (response.ok && result.success) {
-        // Store user info in localStorage
-        localStorage.setItem('user', JSON.stringify({
+        const userData = {
           username: username,
           loginTime: new Date().toISOString()
-        }));
+        };
+        
+        login(userData);
 
         toast({
           title: "Success",
@@ -76,9 +92,15 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
       toast({
         title: "Error",
-        description: "Failed to connect to server",
+        description: "Failed to connect to server. Check console for details.",
         variant: "destructive"
       });
     } finally {
