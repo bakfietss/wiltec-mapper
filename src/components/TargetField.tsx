@@ -20,7 +20,12 @@ const TargetField: React.FC<TargetFieldProps> = ({
         if (onExpandChange) onExpandChange();
     };
 
-    console.log('Target field:', field.name, 'Example value:', field.exampleValue);
+    // Get the actual value from node data or fall back to example value
+    const currentValue = nodeData.length > 0 && nodeData[0] && nodeData[0][field.id] !== undefined 
+        ? nodeData[0][field.id] 
+        : field.exampleValue;
+
+    console.log('Target field:', field.name, 'Current value:', currentValue, 'Example value:', field.exampleValue, 'Node data:', nodeData);
 
     return (
         <div className="relative">
@@ -41,9 +46,9 @@ const TargetField: React.FC<TargetFieldProps> = ({
                     {field.type}
                 </span>
                 
-                {field.exampleValue && (
-                    <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate">
-                        {String(field.exampleValue)}
+                {currentValue !== undefined && currentValue !== null && (
+                    <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate" title={String(currentValue)}>
+                        {String(currentValue)}
                     </span>
                 )}
 
