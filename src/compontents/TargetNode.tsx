@@ -12,7 +12,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id?: string }> = ({ data, id 
     const visibleFieldCount = countVisibleFields(data.fields, expandedStates);
     const fieldHeight = 32;
     const headerHeight = 60;
-    const padding = 8;
+    const padding = 0;
     const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + padding;
 
     return (
