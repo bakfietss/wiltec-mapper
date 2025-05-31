@@ -52,6 +52,7 @@ export default function Pipeline() {
     const [sourceData, setSourceData] = useState([]);
     const [targetData, setTargetData] = useState([]);
     const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
+    const [currentMappingName, setCurrentMappingName] = useState('Untitled Mapping');
     const canvasRef = useRef(null);
 
     // Use custom edge handlers
@@ -141,9 +142,39 @@ export default function Pipeline() {
         }
     }, [isToolbarExpanded]);
 
+    // Add new mapping functionality
+    const handleNewMapping = useCallback((name: string) => {
+        // Clear all nodes and edges
+        setNodes([]);
+        setEdges([]);
+        setCurrentMappingName(name);
+        console.log('Created new mapping:', name);
+    }, [setNodes, setEdges]);
+
+    // Add save mapping functionality
+    const handleSaveMapping = useCallback((name: string) => {
+        setCurrentMappingName(name);
+        // Here you could also save to a database or local storage
+        console.log('Saved mapping as:', name);
+        
+        // Optionally export the file with the new name
+        const config = exportMappingConfiguration(nodes, edges, name);
+        const dataStr = JSON.stringify(config, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${name.replace(/\s+/g, '_').toLowerCase()}-mapping.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, [nodes, edges]);
+
     // Add export functionality
     const exportCurrentMapping = useCallback(() => {
-        const config = exportMappingConfiguration(nodes, edges, 'Current Mapping');
+        const config = exportMappingConfiguration(nodes, edges, currentMappingName);
         
         // Create download link
         const dataStr = JSON.stringify(config, null, 2);
@@ -152,14 +183,14 @@ export default function Pipeline() {
         
         const link = document.createElement('a');
         link.href = url;
-        link.download = `mapping-config-${Date.now()}.json`;
+        link.download = `${currentMappingName.replace(/\s+/g, '_').toLowerCase()}-mapping.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
         console.log('Exported mapping configuration:', config);
-    }, [nodes, edges]);
+    }, [nodes, edges, currentMappingName]);
 
     // Add import functionality
     const importMapping = useCallback((file: File) => {
@@ -171,6 +202,7 @@ export default function Pipeline() {
                 
                 setNodes(importedNodes);
                 setEdges(importedEdges);
+                setCurrentMappingName(config.name || 'Imported Mapping');
                 
                 console.log('Imported mapping configuration:', config);
             } catch (error) {
@@ -218,6 +250,9 @@ export default function Pipeline() {
                 <MappingManager
                     onExportMapping={exportCurrentMapping}
                     onImportMapping={importMapping}
+                    onNewMapping={handleNewMapping}
+                    onSaveMapping={handleSaveMapping}
+                    currentMappingName={currentMappingName}
                 />
                 
                 <div className="relative w-full h-full overflow-hidden">
