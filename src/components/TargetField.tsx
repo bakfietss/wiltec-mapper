@@ -20,12 +20,20 @@ const TargetField: React.FC<TargetFieldProps> = ({
         if (onExpandChange) onExpandChange();
     };
 
-    // Get the actual value from node data or fall back to example value
-    const currentValue = nodeData.length > 0 && nodeData[0] && nodeData[0][field.id] !== undefined 
-        ? nodeData[0][field.id] 
-        : field.exampleValue;
+    // Check for manual input value first, then connected value, then example value
+    let displayValue = field.exampleValue; // Default to example value
+    
+    // Check if there's data from connections
+    if (nodeData.length > 0 && nodeData[0] && nodeData[0][field.id] !== undefined) {
+        displayValue = nodeData[0][field.id];
+    }
+    
+    // Check if there's a manual value set (assuming it might be stored as 'value' property)
+    if (field.value !== undefined && field.value !== null && field.value !== '') {
+        displayValue = field.value;
+    }
 
-    console.log('Target field:', field.name, 'Current value:', currentValue, 'Example value:', field.exampleValue, 'Node data:', nodeData);
+    console.log('Target field:', field.name, 'Display value:', displayValue, 'Field value:', field.value, 'Example value:', field.exampleValue, 'Node data:', nodeData);
 
     return (
         <div className="relative">
@@ -46,9 +54,9 @@ const TargetField: React.FC<TargetFieldProps> = ({
                     {field.type}
                 </span>
                 
-                {currentValue !== undefined && currentValue !== null && (
-                    <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate" title={String(currentValue)}>
-                        {String(currentValue)}
+                {displayValue !== undefined && displayValue !== null && displayValue !== '' && (
+                    <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate" title={String(displayValue)}>
+                        {String(displayValue)}
                     </span>
                 )}
 
