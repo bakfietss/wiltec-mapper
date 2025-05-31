@@ -21,6 +21,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
     };
 
     const fieldValue = getFieldValue(field, nodeData);
+    console.log('Target field value for', field.name, ':', fieldValue);
 
     return (
         <div className="relative">
@@ -40,7 +41,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                     {field.type}
                 </span>
-                {fieldValue && (
+                {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' && (
                     <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate">
                         {String(fieldValue)}
                     </span>
