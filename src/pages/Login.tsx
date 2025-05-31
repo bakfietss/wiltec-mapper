@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,24 +24,6 @@ const Login = () => {
     return await bcrypt.hash(password, saltRounds);
   };
 
-  const testApiConnection = async () => {
-    console.log('Testing API connection...');
-    try {
-      // First test with a simple GET request to see if the server responds at all
-      const testResponse = await fetch('https://windmill.wiltec.nl/api/r/Mapping_Users_Check', {
-        method: 'GET',
-        mode: 'cors',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-      console.log('GET test response status:', testResponse.status);
-      console.log('GET test response headers:', Object.fromEntries(testResponse.headers.entries()));
-    } catch (error) {
-      console.log('GET test failed:', error);
-    }
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -59,9 +42,6 @@ const Login = () => {
       console.log('Starting login process...');
       console.log('Username:', username);
       
-      // Test connection first
-      await testApiConnection();
-      
       const hashedPassword = await hashPassword(password);
       console.log('Password hashed successfully with bcryptjs');
       
@@ -72,12 +52,12 @@ const Login = () => {
       console.log('Request body:', requestBody);
       
       const apiUrl = 'https://windmill.wiltec.nl/api/r/Mapping_Users_Check';
-      console.log('Making API call to:', apiUrl);
+      console.log('Making POST API call to:', apiUrl);
       console.log('Request timestamp:', new Date().toISOString());
       
       // Create AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -125,7 +105,7 @@ const Login = () => {
       console.error('Login error:', error);
       
       if (error.name === 'AbortError') {
-        console.log('Request timed out after 10 seconds');
+        console.log('Request timed out after 15 seconds');
         toast({
           title: "Timeout Error",
           description: "The server took too long to respond. Please check if the API server is running.",
