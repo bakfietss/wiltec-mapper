@@ -20,7 +20,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
         if (onExpandChange) onExpandChange();
     };
 
-    const fieldValue = getFieldValue(field, nodeData);
+    const fieldValue = field.exampleValue; // Directly use example value
     console.log('Target field value for', field.name, ':', fieldValue);
 
     return (
@@ -41,7 +41,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                     {field.type}
                 </span>
-                {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' && (
+                {fieldValue && (
                     <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate">
                         {String(fieldValue)}
                     </span>
