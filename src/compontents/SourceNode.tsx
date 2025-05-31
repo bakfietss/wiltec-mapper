@@ -1,7 +1,4 @@
 
-
-//SourceNode.tsx
-
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database } from 'lucide-react';
@@ -34,13 +31,14 @@ const getTypeColor = (type: string) => {
 const SourceField: React.FC<{
     field: SchemaField;
     level: number;
+    expandedStates: Map<string, boolean>;
     onExpandChange?: () => void;
-}> = ({ field, level, onExpandChange }) => {
-    const [isExpanded, setIsExpanded] = useState(true);
+}> = ({ field, level, expandedStates, onExpandChange }) => {
+    const isExpanded = expandedStates.get(field.id) !== false; // Default to true
     const hasChildren = field.children && field.children.length > 0;
 
     const handleToggle = () => {
-        setIsExpanded(!isExpanded);
+        expandedStates.set(field.id, !isExpanded);
         if (onExpandChange) onExpandChange();
     };
 
@@ -69,7 +67,6 @@ const SourceField: React.FC<{
                     {field.type}
                 </span>
 
-                {/* Source handles on the right */}
                 {!hasChildren && (
                     <Handle
                         type="source"
@@ -92,6 +89,7 @@ const SourceField: React.FC<{
                             key={child.id}
                             field={child}
                             level={level + 1}
+                            expandedStates={expandedStates}
                             onExpandChange={onExpandChange}
                         />
                     ))}
@@ -101,16 +99,15 @@ const SourceField: React.FC<{
     );
 };
 
-// Helper function to count actually visible fields (accounting for expanded/collapsed state)
-const countActuallyVisibleFields = (fields: SchemaField[], expandedStates: Map<string, boolean> = new Map()): number => {
+// Helper function to count actually visible fields
+const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, boolean>): number => {
     let count = 0;
     for (const field of fields) {
-        count += 1; // Count the field itself
+        count += 1;
         if (field.children && field.children.length > 0) {
-            // Default to expanded (true) if not in map
             const isExpanded = expandedStates.get(field.id) !== false;
             if (isExpanded) {
-                count += countActuallyVisibleFields(field.children, expandedStates);
+                count += countVisibleFields(field.children, expandedStates);
             }
         }
     }
@@ -119,18 +116,19 @@ const countActuallyVisibleFields = (fields: SchemaField[], expandedStates: Map<s
 
 const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
     const { label, fields } = data;
+    const [expandedStates] = useState(() => new Map<string, boolean>());
     const [, forceUpdate] = useState({});
 
-    // Force a re-render when expand/collapse happens
     const handleExpandChange = () => {
         forceUpdate({});
     };
 
-    // Calculate dynamic height based on actual visible fields (all expanded by default)
-    const visibleFieldCount = countActuallyVisibleFields(fields);
-    const fieldHeight = 32; // Height per field
+    // Calculate actual visible field count
+    const visibleFieldCount = countVisibleFields(fields, expandedStates);
+    const fieldHeight = 32;
     const headerHeight = 60;
-    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight);
+    const padding = 8; // Small padding for borders
+    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + padding;
 
     return (
         <div 
@@ -145,12 +143,13 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
+            <div className="p-2" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {fields.map((field) => (
                     <SourceField
                         key={field.id}
                         field={field}
                         level={0}
+                        expandedStates={expandedStates}
                         onExpandChange={handleExpandChange}
                     />
                 ))}
