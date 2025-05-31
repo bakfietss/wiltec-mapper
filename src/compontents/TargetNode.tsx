@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
@@ -110,7 +111,7 @@ const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, b
     return count;
 };
 
-const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
+const TargetNode: React.FC<{ data: TargetNodeData; id?: string }> = ({ data, id }) => {
     const { getEdges, getNodes, setNodes } = useReactFlow();
     const edges = getEdges();
     const nodes = getNodes();
@@ -121,11 +122,12 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         forceUpdate({});
     };
 
-    // Find current node
-    const currentNode = nodes.find(node => 
-        (node.type === 'target' || (node.type === 'editableSchema' && node.data?.schemaType === 'target')) &&
-        node.data === data
-    );
+    // Find current node by ID (passed as prop) or by matching target nodes
+    const currentNode = nodes.find(node => {
+        if (id) return node.id === id;
+        return (node.type === 'target' || (node.type === 'editableSchema' && node.data?.schemaType === 'target')) &&
+               node.data?.label === data.label;
+    });
 
     // Build the complete data record from both manual input and connections
     const targetNodeData = data.data?.[0] ?? {};
@@ -213,3 +215,4 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
 };
 
 export default TargetNode;
+
