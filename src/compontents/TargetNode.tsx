@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
@@ -193,7 +192,9 @@ const TargetNode: React.FC<{ data: TargetNodeData; id?: string }> = ({ data, id 
     console.log('Final handle value map:', handleValueMap);
 
     // Use the current node's data if available, otherwise use the prop data
-    const nodeData = currentNode?.data?.data || data.data || [];
+    // Ensure we always have an array
+    const nodeData = Array.isArray(currentNode?.data?.data) ? currentNode.data.data : 
+                     Array.isArray(data.data) ? data.data : [];
 
     const visibleFieldCount = countVisibleFields(data.fields, expandedStates);
     const fieldHeight = 32;
@@ -231,4 +232,3 @@ const TargetNode: React.FC<{ data: TargetNodeData; id?: string }> = ({ data, id 
 };
 
 export default TargetNode;
-
