@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -15,14 +14,14 @@ import { useFieldStore } from '../store/fieldStore';
 
 import SourceNode from '../components/SourceNode';
 import TargetNode from '../components/TargetNode';
-import ConversionMappingNode from '../compontents/ConversionMappingNode';
-import TransformNode from '../compontents/TransformNode';
-import EditableSchemaNode from '../compontents/EditableSchemaNode';
-import EditableTransformNode from '../compontents/EditableTransformNode';
-import SplitterTransformNode from '../compontents/SplitterTransformNode';
-import MappingToolbar from '../compontents/MappingToolbar';
-import DataSidebar from '../compontents/DataSidebar';
-import MappingManager from '../compontents/MappingManager';
+import ConversionMappingNode from '../components/ConversionMappingNode';
+import TransformNode from '../components/TransformNode';
+import EditableSchemaNode from '../components/EditableSchemaNode';
+import EditableTransformNode from '../components/EditableTransformNode';
+import SplitterTransformNode from '../components/SplitterTransformNode';
+import MappingToolbar from '../components/MappingToolbar';
+import DataSidebar from '../components/DataSidebar';
+import MappingManager from '../components/MappingManager';
 
 import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
