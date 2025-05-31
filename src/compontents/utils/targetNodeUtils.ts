@@ -28,6 +28,6 @@ export const countVisibleFields = (fields: SchemaField[], expandedStates: Map<st
 };
 
 export const getFieldValue = (field: SchemaField, nodeData: any[]) => {
-    const dataValue = nodeData?.[0]?.[field.id] || nodeData?.[0]?.[field.name];
-    return dataValue !== undefined ? dataValue : field.exampleValue;
+    // Always show example value if it exists, just like the source node
+    return field.exampleValue;
 };
