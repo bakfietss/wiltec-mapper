@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 
@@ -111,7 +111,7 @@ const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, b
 };
 
 const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
-    const { getEdges, getNodes } = useReactFlow();
+    const { getEdges, getNodes, setNodes } = useReactFlow();
     const edges = getEdges();
     const nodes = getNodes();
     const [expandedStates] = useState(() => new Map<string, boolean>());
@@ -121,32 +121,61 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         forceUpdate({});
     };
 
-    // Get the current node to access its data
-    const currentNode = nodes.find(node => node.type === 'target' || (node.type === 'editableSchema' && node.data?.schemaType === 'target'));
-    
-    // Build a map of targetHandle → value from the target node's own data
+    // Find current node
+    const currentNode = nodes.find(node => 
+        (node.type === 'target' || (node.type === 'editableSchema' && node.data?.schemaType === 'target')) &&
+        node.data === data
+    );
+
+    // Build the complete data record from both manual input and connections
     const targetNodeData = data.data?.[0] ?? {};
     const handleValueMap: Record<string, any> = { ...targetNodeData };
 
-    // Override with edge-connected values from source nodes
+    // Check for connected values and merge them
+    let hasNewConnectionData = false;
     for (const edge of edges) {
-        const targetHandle = edge.targetHandle;
-        const sourceHandle = edge.sourceHandle;
-        if (targetHandle && sourceHandle) {
-            // Find source node
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            if (sourceNode && sourceNode.data?.data?.[0]) {
-                const sourceValue = sourceNode.data.data[0][sourceHandle];
-                if (sourceValue !== undefined && !targetNodeData[targetHandle]) {
-                    // Only use source value if target doesn't have its own value
-                    handleValueMap[targetHandle] = sourceValue;
+        if (edge.target === currentNode?.id) {
+            const targetHandle = edge.targetHandle;
+            const sourceHandle = edge.sourceHandle;
+            if (targetHandle && sourceHandle) {
+                const sourceNode = nodes.find(n => n.id === edge.source);
+                if (sourceNode && sourceNode.data?.data?.[0]) {
+                    const sourceValue = sourceNode.data.data[0][sourceHandle];
+                    if (sourceValue !== undefined) {
+                        handleValueMap[targetHandle] = sourceValue;
+                        // Check if this is new data that needs to be stored
+                        if (targetNodeData[targetHandle] !== sourceValue) {
+                            hasNewConnectionData = true;
+                        }
+                    }
                 }
             }
         }
     }
 
-    console.log('Target node data:', targetNodeData);
-    console.log('Handle value map:', handleValueMap);
+    // Update the node's data if we have new connection data
+    useEffect(() => {
+        if (hasNewConnectionData && currentNode) {
+            const updatedData = { ...handleValueMap };
+            console.log('Updating target node data with:', updatedData);
+            
+            setNodes(nodes => nodes.map(node => {
+                if (node.id === currentNode.id) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            data: [updatedData]
+                        }
+                    };
+                }
+                return node;
+            }));
+        }
+    }, [hasNewConnectionData, currentNode?.id, JSON.stringify(handleValueMap)]);
+
+    console.log('Target node current data:', targetNodeData);
+    console.log('Final handle value map:', handleValueMap);
 
     const visibleFieldCount = countVisibleFields(data.fields, expandedStates);
     const fieldHeight = 32;
