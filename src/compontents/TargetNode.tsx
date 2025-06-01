@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { ChevronDown, ChevronRight, FileText, Edit3, Plus, Trash2 } from 'lucide-react';
+import { FileText, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
@@ -34,12 +33,8 @@ const getTypeColor = (type: string) => {
 
 const TargetField: React.FC<{
     field: SchemaField;
-    level: number;
     fieldValues: Record<string, any>;
-}> = ({ field, level, fieldValues }) => {
-    const [isExpanded, setIsExpanded] = useState(true);
-    const hasChildren = field.children && field.children.length > 0;
-    
+}> = ({ field, fieldValues }) => {
     // Get the value for this specific field
     const fieldValue = fieldValues[field.id];
     
@@ -48,25 +43,11 @@ const TargetField: React.FC<{
 
     return (
         <div className="relative">
-            <div
-                className="flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group"
-                style={{ marginLeft: `${level * 16}px` }}
-            >
-                {hasChildren ? (
-                    <button onClick={() => setIsExpanded(!isExpanded)} className="p-0.5 hover:bg-gray-200 rounded">
-                        {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
-                    </button>
-                ) : (
-                    <div className="w-4" />
-                )}
-
+            <div className="flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group">
                 <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
-                    {field.type}
-                </span>
                 
-                {/* Value display - show the calculated value */}
-                <div className="text-xs min-w-[80px] text-right">
+                {/* Value display */}
+                <div className="text-xs min-w-[80px] text-center">
                     {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
                             {String(fieldValue)}
@@ -75,35 +56,22 @@ const TargetField: React.FC<{
                         <span className="text-gray-400 italic">no value</span>
                     )}
                 </div>
+                
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
+                    {field.type}
+                </span>
 
-                {!hasChildren && (
-                    <Handle
-                        type="target"
-                        position={Position.Left}
-                        id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !left-1"
-                        style={{
-                            position: 'absolute',
-                            left: '4px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                        }}
-                    />
-                )}
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={field.id}
+                    className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !left-1"
+                    style={{
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                    }}
+                />
             </div>
-
-            {hasChildren && isExpanded && (
-                <div>
-                    {field.children?.map((child) => (
-                        <TargetField 
-                            key={child.id} 
-                            field={child} 
-                            level={level + 1} 
-                            fieldValues={fieldValues}
-                        />
-                    ))}
-                </div>
-            )}
         </div>
     );
 };
@@ -281,7 +249,6 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                     <TargetField
                         key={field.id}
                         field={field}
-                        level={0}
                         fieldValues={data.fieldValues || {}}
                     />
                 ))}
