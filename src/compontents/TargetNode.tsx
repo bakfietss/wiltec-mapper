@@ -40,7 +40,8 @@ const TargetField: React.FC<{
     // Get the value for this specific field
     const fieldValue = fieldValues[field.id];
     
-    console.log(`TargetField ${field.name} (${field.id}) - fieldValues:`, fieldValues, 'thisValue:', fieldValue);
+    console.log(`TargetField ${field.name} (${field.id}) - looking for value in fieldValues:`, fieldValues);
+    console.log(`Found value for ${field.name}:`, fieldValue);
 
     return (
         <div className="relative">
@@ -61,7 +62,7 @@ const TargetField: React.FC<{
                     {field.type}
                 </span>
                 
-                {/* Value display */}
+                {/* Value display - show the calculated value */}
                 <div className="text-xs min-w-[120px] text-right">
                     {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
@@ -108,9 +109,8 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
-    console.log('Node data:', data);
     console.log('Field values received:', data.fieldValues);
-    console.log('Fields:', data.fields?.map(f => ({ id: f.id, name: f.name })));
+    console.log('All fields:', data.fields?.map(f => ({ id: f.id, name: f.name })));
 
     const MAX_VISIBLE_FIELDS = 8;
     const visibleFields = showAllFields ? data.fields : data.fields.slice(0, MAX_VISIBLE_FIELDS);
