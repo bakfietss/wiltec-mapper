@@ -33,12 +33,12 @@ const TargetField: React.FC<TargetFieldProps> = ({
         displayValue = field.value;
     }
 
-    console.log('Target field rendering:', field.name, 'Field ID:', field.id, 'Display value:', displayValue, 'Field value:', field.value, 'Example value:', field.exampleValue, 'Node data:', nodeData, 'Has children:', hasChildren);
+    console.log('Target field rendering:', field.name, 'Field ID:', field.id, 'Display value:', displayValue, 'Has children:', hasChildren, 'Level:', level);
 
     return (
         <div className="relative">
             <div
-                className="flex items-center justify-between gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm group"
+                className="flex items-center justify-between gap-2 py-2 px-2 hover:bg-gray-50 rounded text-sm group"
                 style={{ marginLeft: `${level * 16}px` }}
             >
                 {hasChildren ? (
@@ -59,25 +59,23 @@ const TargetField: React.FC<TargetFieldProps> = ({
                         {String(displayValue)}
                     </span>
                 )}
-
-                {/* Always render target handle for leaf nodes (no children) */}
-                {!hasChildren && (
-                    <Handle
-                        type="target"
-                        position={Position.Left}
-                        id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
-                        style={{
-                            left: '-6px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                        }}
-                        onConnect={(params) => {
-                            console.log('Target handle connected:', field.id, params);
-                        }}
-                    />
-                )}
             </div>
+
+            {/* Always render target handle for leaf nodes (no children) - positioned outside the content div */}
+            {!hasChildren && (
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={field.id}
+                    className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
+                    style={{
+                        left: `${level * 16 - 6}px`,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        position: 'absolute'
+                    }}
+                />
+            )}
 
             {hasChildren && isExpanded && (
                 <div>

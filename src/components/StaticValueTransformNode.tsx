@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -108,7 +107,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
 
   // Calculate dynamic height based on number of values
   const currentValues = config.values || [];
-  const valueHeight = 32;
+  const valueHeight = 40; // Increased to accommodate handles
   const headerHeight = 100;
   const padding = 16;
   const dynamicHeight = headerHeight + (currentValues.length * valueHeight) + padding;
@@ -221,27 +220,30 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
           Static Value
         </div>
 
-        {/* Display configured values with source handles */}
-        <div className="space-y-1">
+        {/* Display configured values with properly positioned source handles */}
+        <div className="space-y-2">
           {currentValues.map((value, index) => (
-            <div key={value.id} className="relative flex items-center justify-between py-1 px-2 hover:bg-white/50 rounded text-xs group">
-              <div className="flex-1">
-                <span className="font-medium text-gray-900">{value.name}</span>
-                <div className="text-indigo-600">
-                  {value.valueType}: {String(value.value || 'Not set')}
+            <div key={value.id} className="relative">
+              <div className="flex items-center justify-between py-2 px-3 bg-white/80 rounded text-xs border group hover:bg-white">
+                <div className="flex-1 pr-4">
+                  <div className="font-medium text-gray-900">{value.name}</div>
+                  <div className="text-indigo-600 text-xs">
+                    {value.valueType}: {String(value.value || 'Not set')}
+                  </div>
                 </div>
               </div>
               
-              {/* Source handle for each value */}
+              {/* Source handle positioned on the right edge */}
               <Handle
                 type="source"
                 position={Position.Right}
                 id={value.id}
-                className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
+                className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
                 style={{
                   right: '-6px',
                   top: '50%',
                   transform: 'translateY(-50%)',
+                  position: 'absolute'
                 }}
                 onConnect={(params) => {
                   console.log('Source handle connected:', value.id, params);
