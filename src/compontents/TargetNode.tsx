@@ -82,22 +82,24 @@ const TargetField: React.FC<{
     );
 };
 
-const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
+const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
     const { getEdges } = useReactFlow();
     const [showAllFields, setShowAllFields] = useState(false);
     const edges = getEdges();
 
-    // Build a map of targetHandle → value from the data
+    // Build a map of field name → value from the processed data
     const firstRecord = data.data?.[0] ?? {};
     const handleValueMap: Record<string, any> = {};
 
-    for (const edge of edges) {
-        const targetHandle = edge.targetHandle;
-        const sourceHandle = edge.sourceHandle;
-        if (targetHandle && sourceHandle) {
-            handleValueMap[targetHandle] = firstRecord[sourceHandle];
+    // Map field names to their values from the processed data
+    data.fields.forEach(field => {
+        if (firstRecord[field.name] !== undefined) {
+            handleValueMap[field.id] = firstRecord[field.name];
         }
-    }
+    });
+
+    console.log('Target node data:', firstRecord);
+    console.log('Handle value map:', handleValueMap);
 
     const MAX_VISIBLE_FIELDS = 8;
     const visibleFields = showAllFields ? data.fields : data.fields.slice(0, MAX_VISIBLE_FIELDS);
