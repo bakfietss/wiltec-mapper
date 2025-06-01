@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -105,152 +106,136 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
     updateValue(valueId, { value: parsedValue });
   };
 
-  // Calculate dynamic height based on number of values
+  // Calculate dynamic height based on number of values (copied from SourceNode approach)
   const currentValues = config.values || [];
-  const valueHeight = 40; // Increased to accommodate handles
-  const headerHeight = 100;
-  const padding = 16;
-  const dynamicHeight = headerHeight + (currentValues.length * valueHeight) + padding;
+  const fieldHeight = 32;
+  const headerHeight = 60;
+  const padding = 8;
+  const dynamicHeight = headerHeight + (currentValues.length * fieldHeight) + padding;
   
   return (
     <div 
-      className="relative border-2 rounded-lg shadow-sm min-w-48 border-indigo-300 bg-indigo-50"
+      className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80"
       style={{ height: currentValues.length > 0 ? `${dynamicHeight}px` : 'auto' }}
     >
-      <div className="p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="p-1.5 bg-white rounded-md shadow-sm">
-            <Hash className="w-4 h-4" />
-          </div>
-          <div className="flex-1">
-            <div className="font-semibold text-gray-900 text-sm">{label}</div>
-            {description && (
-              <div className="text-xs text-gray-600">{description}</div>
-            )}
-          </div>
-          <Sheet>
-            <SheetTrigger asChild>
-              <button className="p-1 hover:bg-white/50 rounded">
-                <Edit3 className="w-3 h-3 text-gray-600" />
-              </button>
-            </SheetTrigger>
-            <SheetContent className="w-[400px] sm:w-[400px]">
-              <SheetHeader>
-                <SheetTitle>Configure Static Values</SheetTitle>
-              </SheetHeader>
-              
-              <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Static Values</h4>
-                  <button
-                    onClick={addValue}
-                    className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add Value
-                  </button>
-                </div>
+      <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-indigo-50">
+        <Hash className="w-4 h-4 text-indigo-600" />
+        <span className="font-semibold text-gray-900">{label}</span>
+        <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">
+          static
+        </span>
+        <Sheet>
+          <SheetTrigger asChild>
+            <button className="p-1 hover:bg-white/50 rounded ml-auto">
+              <Edit3 className="w-3 h-3 text-gray-600" />
+            </button>
+          </SheetTrigger>
+          <SheetContent className="w-[400px] sm:w-[400px]">
+            <SheetHeader>
+              <SheetTitle>Configure Static Values</SheetTitle>
+            </SheetHeader>
+            
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Static Values</h4>
+                <button
+                  onClick={addValue}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Value
+                </button>
+              </div>
 
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {currentValues.map((value) => (
-                    <div key={value.id} className="border rounded p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <input
-                          type="text"
-                          value={value.name}
-                          onChange={(e) => updateValue(value.id, { name: e.target.value })}
-                          placeholder="Value name"
-                          className="text-sm font-medium border rounded px-2 py-1 flex-1"
-                        />
-                        <button
-                          onClick={() => removeValue(value.id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded ml-2"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs font-medium mb-1">Type:</label>
-                        <select
-                          value={value.valueType}
-                          onChange={(e) => updateValue(value.id, { valueType: e.target.value as 'string' | 'number' | 'date' })}
-                          className="w-full border rounded px-2 py-1 text-xs"
-                        >
-                          <option value="string">String</option>
-                          <option value="number">Number</option>
-                          <option value="date">Date</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs font-medium mb-1">Value:</label>
-                        {value.valueType === 'date' ? (
-                          <input
-                            type="date"
-                            value={value.value ? new Date(value.value).toISOString().split('T')[0] : ''}
-                            onChange={(e) => handleValueChange(value.id, e.target.value)}
-                            className="w-full border rounded px-2 py-1 text-xs"
-                          />
-                        ) : (
-                          <input
-                            type={value.valueType === 'number' ? 'number' : 'text'}
-                            value={value.value?.toString() || ''}
-                            onChange={(e) => handleValueChange(value.id, e.target.value)}
-                            className="w-full border rounded px-2 py-1 text-xs"
-                            placeholder={`Enter ${value.valueType} value`}
-                          />
-                        )}
-                      </div>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {currentValues.map((value) => (
+                  <div key={value.id} className="border rounded p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <input
+                        type="text"
+                        value={value.name}
+                        onChange={(e) => updateValue(value.id, { name: e.target.value })}
+                        placeholder="Value name"
+                        className="text-sm font-medium border rounded px-2 py-1 flex-1"
+                      />
+                      <button
+                        onClick={() => removeValue(value.id)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded ml-2"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
-                  ))}
-                </div>
-
-                {currentValues.length === 0 && (
-                  <div className="text-center text-gray-500 text-sm py-8">
-                    No static values configured. Click "Add Value" to get started.
+                    
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Type:</label>
+                      <select
+                        value={value.valueType}
+                        onChange={(e) => updateValue(value.id, { valueType: e.target.value as 'string' | 'number' | 'date' })}
+                        className="w-full border rounded px-2 py-1 text-xs"
+                      >
+                        <option value="string">String</option>
+                        <option value="number">Number</option>
+                        <option value="date">Date</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Value:</label>
+                      {value.valueType === 'date' ? (
+                        <input
+                          type="date"
+                          value={value.value ? new Date(value.value).toISOString().split('T')[0] : ''}
+                          onChange={(e) => handleValueChange(value.id, e.target.value)}
+                          className="w-full border rounded px-2 py-1 text-xs"
+                        />
+                      ) : (
+                        <input
+                          type={value.valueType === 'number' ? 'number' : 'text'}
+                          value={value.value?.toString() || ''}
+                          onChange={(e) => handleValueChange(value.id, e.target.value)}
+                          className="w-full border rounded px-2 py-1 text-xs"
+                          placeholder={`Enter ${value.valueType} value`}
+                        />
+                      )}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-        
-        <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border mb-2">
-          Static Value
-        </div>
 
-        {/* Display configured values with properly positioned source handles */}
-        <div className="space-y-2">
-          {currentValues.map((value, index) => (
-            <div key={value.id} className="relative">
-              <div className="flex items-center justify-between py-2 px-3 bg-white/80 rounded text-xs border group hover:bg-white">
-                <div className="flex-1 pr-4">
-                  <div className="font-medium text-gray-900">{value.name}</div>
-                  <div className="text-indigo-600 text-xs">
-                    {value.valueType}: {String(value.value || 'Not set')}
-                  </div>
+              {currentValues.length === 0 && (
+                <div className="text-center text-gray-500 text-sm py-8">
+                  No static values configured. Click "Add Value" to get started.
                 </div>
-                
-                {/* Source handle positioned inside the row */}
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id={value.id}
-                  className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
-                  style={{
-                    right: '-6px',
-                    position: 'relative',
-                    transform: 'none'
-                  }}
-                  onConnect={(params) => {
-                    console.log('Source handle connected:', value.id, params);
-                  }}
-                />
-              </div>
+              )}
             </div>
-          ))}
-        </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <div className="p-2" style={{ height: currentValues.length > 0 ? `${dynamicHeight - headerHeight}px` : 'auto' }}>
+        {currentValues.map((value) => (
+          <div key={value.id} className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm group">
+            <span className="font-medium text-gray-900 flex-1">{value.name}</span>
+            <span className="px-2 py-0.5 rounded text-xs font-medium text-indigo-600 bg-indigo-50">
+              {value.valueType}
+            </span>
+            <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded max-w-20 truncate" title={String(value.value)}>
+              {String(value.value || 'Not set')}
+            </span>
+
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={value.id}
+              className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
+              style={{
+                right: '-6px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            />
+          </div>
+        ))}
 
         {currentValues.length === 0 && (
           <div className="text-xs text-gray-500 italic">
