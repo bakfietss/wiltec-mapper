@@ -32,7 +32,7 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
   };
 
   return (
-    <div className="bg-white border-2 border-purple-300 rounded-lg shadow-sm min-w-48 bg-purple-50">
+    <div className="relative border-2 border-purple-300 bg-purple-50 rounded-lg shadow-sm min-w-48">
       {/* Input Handle */}
       <Handle
         type="target"
@@ -53,7 +53,7 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
           
           <Sheet>
             <SheetTrigger asChild>
-              <button className="p-1 hover:bg-gray-200 rounded">
+              <button className="p-1 hover:bg-white/50 rounded">
                 <Edit3 className="w-3 h-3 text-gray-600" />
               </button>
             </SheetTrigger>
@@ -108,8 +108,14 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
         </div>
         
         <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
-          {condition ? `IF: ${condition}` : 'Configure condition'}
+          IF THEN Logic
         </div>
+        
+        {data.condition && (
+          <div className="text-xs text-purple-600 mt-1 font-medium">
+            IF: {data.condition}
+          </div>
+        )}
       </div>
       
       {/* Output Handle */}
