@@ -18,8 +18,6 @@ import SourceNode from '../compontents/SourceNode';
 import TargetNode from '../compontents/TargetNode';
 import ConversionMappingNode from '../compontents/ConversionMappingNode';
 import TransformNode from '../compontents/TransformNode';
-import EditableSchemaNode from '../compontents/EditableSchemaNode';
-import EditableTransformNode from '../compontents/EditableTransformNode';
 import SplitterTransformNode from '../compontents/SplitterTransformNode';
 import MappingToolbar from '../compontents/MappingToolbar';
 import DataSidebar from '../compontents/DataSidebar';
@@ -35,8 +33,6 @@ const nodeTypes = {
     target: TargetNode,
     conversionMapping: ConversionMappingNode,
     transform: TransformNode,
-    editableSchema: EditableSchemaNode,
-    editableTransform: EditableTransformNode,
     splitterTransform: SplitterTransformNode,
     ifThen: IfThenNode,
     staticValue: StaticValueNode,
@@ -44,20 +40,14 @@ const nodeTypes = {
 
 // Helper function to check if a node is a source-type node
 const isSourceNode = (node: any): boolean => {
-    console.log('Checking if source node:', node.id, node.type, node.data?.schemaType);
-    return (
-        (node.type === 'source') ||
-        (node.type === 'editableSchema' && node.data?.schemaType === 'source')
-    );
+    console.log('Checking if source node:', node.id, node.type);
+    return node.type === 'source';
 };
 
 // Helper function to check if a node is a target-type node
 const isTargetNode = (node: any): boolean => {
-    console.log('Checking if target node:', node.id, node.type, node.data?.schemaType);
-    return (
-        (node.type === 'target') ||
-        (node.type === 'editableSchema' && node.data?.schemaType === 'target')
-    );
+    console.log('Checking if target node:', node.id, node.type);
+    return node.type === 'target';
 };
 
 // Helper function to evaluate conditions for IF THEN nodes
@@ -429,6 +419,22 @@ export default function Pipeline() {
         };
         reader.readAsText(file);
     }, [setNodes, setEdges]);
+
+    // Add node factory to create source nodes
+    const addSchemaNode = useCallback((type: 'source' | 'target') => {
+        const newNode: Node = {
+            id: `${type}-${Date.now()}`,
+            type: type, // Use 'source' or 'target' instead of 'editableSchema'
+            position: { x: type === 'source' ? 100 : 800, y: 100 + nodes.length * 50 },
+            data: {
+                label: type === 'source' ? 'Source Schema' : 'Target Schema',
+                fields: [],
+                data: [],
+            },
+        };
+
+        setNodes((nds) => [...nds, newNode]);
+    }, [nodes.length, setNodes]);
 
     const style = useMemo(
         () => ({

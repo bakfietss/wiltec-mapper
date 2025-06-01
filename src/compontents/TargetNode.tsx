@@ -1,7 +1,9 @@
 
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { ChevronDown, ChevronRight, FileText, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, ChevronUp, Edit3, Plus, Trash2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { ScrollArea } from '../components/ui/scroll-area';
 
 interface SchemaField {
     id: string;
@@ -106,24 +108,111 @@ const TargetField: React.FC<{
 
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
     const [showAllFields, setShowAllFields] = useState(false);
+    const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
     console.log('Field values received:', data.fieldValues);
     console.log('All fields:', data.fields?.map(f => ({ id: f.id, name: f.name })));
 
+    const addField = () => {
+        const newField: SchemaField = {
+            id: `field-${Date.now()}`,
+            name: 'New Field',
+            type: 'string'
+        };
+        setFields([...fields, newField]);
+    };
+
+    const updateField = (fieldId: string, updates: Partial<SchemaField>) => {
+        const updatedFields = fields.map(field => 
+            field.id === fieldId ? { ...field, ...updates } : field
+        );
+        setFields(updatedFields);
+    };
+
+    const deleteField = (fieldId: string) => {
+        const updatedFields = fields.filter(field => field.id !== fieldId);
+        setFields(updatedFields);
+    };
+
     const MAX_VISIBLE_FIELDS = 8;
-    const visibleFields = showAllFields ? data.fields : data.fields.slice(0, MAX_VISIBLE_FIELDS);
-    const hasMoreFields = data.fields.length > MAX_VISIBLE_FIELDS;
+    const visibleFields = showAllFields ? fields : fields.slice(0, MAX_VISIBLE_FIELDS);
+    const hasMoreFields = fields.length > MAX_VISIBLE_FIELDS;
 
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-green-50">
                 <FileText className="w-4 h-4 text-green-600" />
-                <span className="font-semibold text-gray-900">{data.label}</span>
+                <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
                 <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
                     target
                 </span>
+                
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <button className="p-1 hover:bg-gray-200 rounded">
+                            <Edit3 className="w-3 h-3 text-gray-600" />
+                        </button>
+                    </SheetTrigger>
+                    <SheetContent className="w-[600px] sm:w-[600px] flex flex-col">
+                        <SheetHeader>
+                            <SheetTitle>Edit {data.label} - Target Schema</SheetTitle>
+                        </SheetHeader>
+                        
+                        <div className="flex-1 flex flex-col space-y-4 mt-6">
+                            {/* Schema Fields */}
+                            <div className="flex-1 flex flex-col min-h-0">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-medium">Schema Fields:</h4>
+                                    <button
+                                        onClick={addField}
+                                        className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                        Add Field
+                                    </button>
+                                </div>
+                                
+                                <ScrollArea className="flex-1">
+                                    <div className="space-y-4 pr-4">
+                                        {fields.map((field) => (
+                                            <div key={field.id} className="border rounded p-3 space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={field.name}
+                                                        onChange={(e) => updateField(field.id, { name: e.target.value })}
+                                                        className="flex-1 border rounded px-2 py-1 text-sm"
+                                                        placeholder="Field name"
+                                                    />
+                                                    <select
+                                                        value={field.type}
+                                                        onChange={(e) => updateField(field.id, { type: e.target.value as any })}
+                                                        className="border rounded px-2 py-1 text-sm"
+                                                    >
+                                                        <option value="string">String</option>
+                                                        <option value="number">Number</option>
+                                                        <option value="boolean">Boolean</option>
+                                                        <option value="date">Date</option>
+                                                        <option value="object">Object</option>
+                                                        <option value="array">Array</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() => deleteField(field.id)}
+                                                        className="p-1 text-red-500 hover:text-red-700"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        </div>
+                    </SheetContent>
+                </Sheet>
             </div>
 
             <div className="p-2">
@@ -144,15 +233,21 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                         {showAllFields ? (
                             <>
                                 <ChevronUp className="w-3 h-3" />
-                                Show Less ({data.fields.length - MAX_VISIBLE_FIELDS} hidden)
+                                Show Less ({fields.length - MAX_VISIBLE_FIELDS} hidden)
                             </>
                         ) : (
                             <>
                                 <ChevronDown className="w-3 h-3" />
-                                Show More ({data.fields.length - MAX_VISIBLE_FIELDS} more fields)
+                                Show More ({fields.length - MAX_VISIBLE_FIELDS} more fields)
                             </>
                         )}
                     </button>
+                )}
+                
+                {fields.length === 0 && (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                        No fields defined. Click edit to add schema fields.
+                    </div>
                 )}
             </div>
         </div>

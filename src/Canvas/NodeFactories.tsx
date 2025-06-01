@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 
@@ -8,11 +9,10 @@ export const useNodeFactories = (
     const addSchemaNode = useCallback((type: 'source' | 'target') => {
         const newNode: Node = {
             id: `${type}-${Date.now()}`,
-            type: 'editableSchema',
+            type: type, // Use 'source' or 'target' instead of 'editableSchema'
             position: { x: type === 'source' ? 100 : 800, y: 100 + nodes.length * 50 },
             data: {
                 label: type === 'source' ? 'Source Schema' : 'Target Schema',
-                schemaType: type,
                 fields: [],
                 data: [],
             },
@@ -22,7 +22,7 @@ export const useNodeFactories = (
     }, [nodes.length, setNodes]);
 
     const addTransformNode = useCallback((transformType: string) => {
-        let nodeType = 'editableTransform';
+        let nodeType = 'transform';
         let nodeData: any = {
             label: transformType,
             transformType: transformType,
