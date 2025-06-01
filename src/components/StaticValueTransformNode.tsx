@@ -51,29 +51,33 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
   };
 
   const addValue = () => {
+    const currentValues = config.values || [];
     const newValue: StaticValue = {
       id: `value-${Date.now()}`,
-      name: `Value ${config.values.length + 1}`,
+      name: `Value ${currentValues.length + 1}`,
       value: '',
       valueType: 'string'
     };
-    updateConfig({ values: [...config.values, newValue] });
+    updateConfig({ values: [...currentValues, newValue] });
   };
 
   const updateValue = (valueId: string, updates: Partial<StaticValue>) => {
-    const updatedValues = config.values.map(value => 
+    const currentValues = config.values || [];
+    const updatedValues = currentValues.map(value => 
       value.id === valueId ? { ...value, ...updates } : value
     );
     updateConfig({ values: updatedValues });
   };
 
   const removeValue = (valueId: string) => {
-    const updatedValues = config.values.filter(value => value.id !== valueId);
+    const currentValues = config.values || [];
+    const updatedValues = currentValues.filter(value => value.id !== valueId);
     updateConfig({ values: updatedValues });
   };
 
   const handleValueChange = (valueId: string, newValue: string) => {
-    const value = config.values.find(v => v.id === valueId);
+    const currentValues = config.values || [];
+    const value = currentValues.find(v => v.id === valueId);
     if (!value) return;
 
     let parsedValue: string | number | Date = newValue;
@@ -88,15 +92,16 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
   };
 
   // Calculate dynamic height based on number of values
+  const currentValues = config.values || [];
   const valueHeight = 32;
   const headerHeight = 100;
   const padding = 16;
-  const dynamicHeight = headerHeight + (config.values.length * valueHeight) + padding;
+  const dynamicHeight = headerHeight + (currentValues.length * valueHeight) + padding;
   
   return (
     <div 
       className="relative border-2 rounded-lg shadow-sm min-w-48 border-indigo-300 bg-indigo-50"
-      style={{ height: config.values.length > 0 ? `${dynamicHeight}px` : 'auto' }}
+      style={{ height: currentValues.length > 0 ? `${dynamicHeight}px` : 'auto' }}
     >
       <div className="p-3">
         <div className="flex items-center gap-2 mb-2">
@@ -133,7 +138,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
                 </div>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {config.values.map((value) => (
+                  {currentValues.map((value) => (
                     <div key={value.id} className="border rounded p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <input
@@ -187,7 +192,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
                   ))}
                 </div>
 
-                {config.values.length === 0 && (
+                {currentValues.length === 0 && (
                   <div className="text-center text-gray-500 text-sm py-8">
                     No static values configured. Click "Add Value" to get started.
                   </div>
@@ -203,7 +208,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
 
         {/* Display configured values */}
         <div className="space-y-1">
-          {config.values.map((value, index) => (
+          {currentValues.map((value, index) => (
             <div key={value.id} className="relative flex items-center justify-between py-1 px-2 hover:bg-white/50 rounded text-xs group">
               <div className="flex-1">
                 <span className="font-medium text-gray-900">{value.name}</span>
@@ -227,7 +232,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
           ))}
         </div>
 
-        {config.values.length === 0 && (
+        {currentValues.length === 0 && (
           <div className="text-xs text-gray-500 italic">
             No values configured
           </div>
