@@ -106,7 +106,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
     updateValue(valueId, { value: parsedValue });
   };
 
-  // Calculate dynamic height based on number of values (copied from SourceNode approach)
+  // Calculate dynamic height based on number of values
   const currentValues = config.values || [];
   const fieldHeight = 32;
   const headerHeight = 60;
@@ -214,7 +214,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
 
       <div className="p-2" style={{ height: currentValues.length > 0 ? `${dynamicHeight - headerHeight}px` : 'auto' }}>
         {currentValues.map((value) => (
-          <div key={value.id} className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm group">
+          <div key={value.id} className="relative flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm group">
             <span className="font-medium text-gray-900 flex-1">{value.name}</span>
             <span className="px-2 py-0.5 rounded text-xs font-medium text-indigo-600 bg-indigo-50">
               {value.valueType}
@@ -229,6 +229,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
               id={value.id}
               className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
               style={{
+                position: 'absolute',
                 right: '-6px',
                 top: '50%',
                 transform: 'translateY(-50%)',
