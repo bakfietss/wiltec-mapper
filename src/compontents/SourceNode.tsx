@@ -1,5 +1,3 @@
-
-
 //SourceNode.tsx
 
 import React, { useState } from 'react';
@@ -94,33 +92,11 @@ const SourceField: React.FC<{
     );
 };
 
-// Helper function to count visible fields recursively
-const countVisibleFields = (fields: SchemaField[]): number => {
-    let count = 0;
-    for (const field of fields) {
-        count += 1; // Count the field itself
-        if (field.children && field.children.length > 0) {
-            count += countVisibleFields(field.children); // Count expanded children
-        }
-    }
-    return count;
-};
-
 const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
     const { label, fields } = data;
 
-    // Calculate dynamic height based on actual visible fields
-    const visibleFieldCount = countVisibleFields(fields);
-    const fieldHeight = 32; // Height per field
-    const headerHeight = 60;
-    const containerPadding = 8; // Just 4px top + 4px bottom
-    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + containerPadding;
-
     return (
-        <div 
-            className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80"
-            style={{ height: `${dynamicHeight}px` }}
-        >
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-blue-50">
                 <Database className="w-4 h-4 text-blue-600" />
                 <span className="font-semibold text-gray-900">{label}</span>
@@ -129,7 +105,7 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="py-1 px-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
+            <div className="p-2 max-h-96 overflow-y-auto">
                 {fields.map((field) => (
                     <SourceField
                         key={field.id}
@@ -143,4 +119,3 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
 };
 
 export default SourceNode;
-

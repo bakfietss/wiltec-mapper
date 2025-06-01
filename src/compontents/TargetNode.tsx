@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
@@ -83,18 +82,6 @@ const TargetField: React.FC<{
     );
 };
 
-// Helper function to count visible fields recursively
-const countVisibleFields = (fields: SchemaField[]): number => {
-    let count = 0;
-    for (const field of fields) {
-        count += 1; // Count the field itself
-        if (field.children && field.children.length > 0) {
-            count += countVisibleFields(field.children); // Count expanded children
-        }
-    }
-    return count;
-};
-
 const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
     const { getEdges } = useReactFlow();
     const edges = getEdges();
@@ -111,12 +98,12 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         }
     }
 
-    // Calculate dynamic height based on actual visible fields
-    const visibleFieldCount = countVisibleFields(data.fields);
-    const fieldHeight = 32; // Height per field
+    // Calculate dynamic height based on number of fields
+    const fieldCount = data.fields.length;
+    const minHeight = 200;
+    const fieldHeight = 32; // Approximate height per field
     const headerHeight = 60;
-    const containerPadding = 8; // Just 4px top + 4px bottom
-    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + containerPadding;
+    const dynamicHeight = Math.max(minHeight, headerHeight + (fieldCount * fieldHeight));
 
     return (
         <div 
@@ -131,7 +118,7 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="py-1 px-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
+            <div className="p-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {data.fields.map((field) => (
                     <TargetField
                         key={field.id}
@@ -146,4 +133,3 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
 };
 
 export default TargetNode;
-
