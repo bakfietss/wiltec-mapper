@@ -8,7 +8,6 @@ import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface StaticValue {
   id: string;
-  name: string;
   value: string;
   valueType: 'string' | 'number' | 'boolean';
 }
@@ -36,7 +35,6 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
   const addValue = () => {
     const newValue: StaticValue = {
       id: `value-${Date.now()}`,
-      name: 'New Value',
       value: '',
       valueType: 'string'
     };
@@ -98,13 +96,6 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
                     {values.map((value) => (
                       <div key={value.id} className="border rounded p-3 space-y-2">
                         <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={value.name}
-                            onChange={(e) => updateValue(value.id, { name: e.target.value })}
-                            className="flex-1 border rounded px-2 py-1 text-sm"
-                            placeholder="Value name"
-                          />
                           <select
                             value={value.valueType}
                             onChange={(e) => updateValue(value.id, { valueType: e.target.value as any })}
@@ -160,17 +151,15 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
         </Sheet>
       </div>
 
-      <div className="p-2 max-h-96">
+      <div className="p-2 max-h-96 relative">
         <ScrollArea className="h-full">
           {visibleValues.map((value, index) => (
             <div
               key={value.id}
-              className="relative flex items-center justify-between gap-2 py-2 px-2 hover:bg-gray-50 rounded text-sm group"
+              className="relative flex items-center justify-between gap-2 py-2 px-2 pr-6 hover:bg-gray-50 rounded text-sm group"
             >
-              <span className="font-medium text-gray-900 flex-1 truncate">{value.name}</span>
-              
-              <div className="flex items-center gap-2">
-                <div className="text-xs min-w-[80px] text-right">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="text-xs min-w-[80px]">
                   {value.value ? (
                     <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded font-medium truncate">
                       {value.value}
@@ -190,9 +179,10 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
                 type="source"
                 position={Position.Right}
                 id={value.id}
-                className="w-3 h-3 bg-indigo-500 border-2 border-white group-hover:bg-indigo-600"
+                className="w-3 h-3 bg-indigo-500 border-2 border-white group-hover:bg-indigo-600 !right-1"
                 style={{
-                  right: '-6px',
+                  position: 'absolute',
+                  right: '4px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                 }}
