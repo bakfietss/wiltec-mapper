@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
@@ -32,16 +33,9 @@ const TargetField: React.FC<{
     field: SchemaField;
     level: number;
     value: string | number | boolean | undefined;
-    expandedStates: Map<string, boolean>;
-    onExpandChange?: () => void;
-}> = ({ field, level, value, expandedStates, onExpandChange }) => {
-    const isExpanded = expandedStates.get(field.id) !== false; // Default to true
+}> = ({ field, level, value }) => {
+    const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = field.children && field.children.length > 0;
-
-    const handleToggle = () => {
-        expandedStates.set(field.id, !isExpanded);
-        if (onExpandChange) onExpandChange();
-    };
 
     return (
         <div className="relative">
@@ -50,7 +44,7 @@ const TargetField: React.FC<{
                 style={{ marginLeft: `${level * 16}px` }}
             >
                 {hasChildren ? (
-                    <button onClick={handleToggle} className="p-0.5 hover:bg-gray-200 rounded">
+                    <button onClick={() => setIsExpanded(!isExpanded)} className="p-0.5 hover:bg-gray-200 rounded">
                         {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
                     </button>
                 ) : (
@@ -81,14 +75,7 @@ const TargetField: React.FC<{
             {hasChildren && isExpanded && (
                 <div>
                     {field.children?.map((child) => (
-                        <TargetField 
-                            key={child.id} 
-                            field={child} 
-                            level={level + 1} 
-                            value={undefined} 
-                            expandedStates={expandedStates}
-                            onExpandChange={onExpandChange} 
-                        />
+                        <TargetField key={child.id} field={child} level={level + 1} value={undefined} />
                     ))}
                 </div>
             )}
@@ -96,16 +83,13 @@ const TargetField: React.FC<{
     );
 };
 
-// Helper function to count actually visible fields
-const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, boolean>): number => {
+// Helper function to count visible fields recursively
+const countVisibleFields = (fields: SchemaField[]): number => {
     let count = 0;
     for (const field of fields) {
-        count += 1;
+        count += 1; // Count the field itself
         if (field.children && field.children.length > 0) {
-            const isExpanded = expandedStates.get(field.id) !== false;
-            if (isExpanded) {
-                count += countVisibleFields(field.children, expandedStates);
-            }
+            count += countVisibleFields(field.children); // Count expanded children
         }
     }
     return count;
@@ -114,43 +98,25 @@ const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, b
 const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
     const { getEdges } = useReactFlow();
     const edges = getEdges();
-    const [expandedStates] = useState(() => new Map<string, boolean>());
-    const [, forceUpdate] = useState({});
 
-    const handleExpandChange = () => {
-        forceUpdate({});
-    };
-
-    // Build a map of targetHandle → value from edges AND target node's own data
+    // Build a map of targetHandle → value from the data
     const firstRecord = data.data?.[0] ?? {};
     const handleValueMap: Record<string, any> = {};
 
-    // First, populate with target node's own data
-    for (const field of data.fields) {
-        if (firstRecord[field.id] !== undefined) {
-            handleValueMap[field.id] = firstRecord[field.id];
-        }
-    }
-
-    // Then, override with edge-connected values
     for (const edge of edges) {
         const targetHandle = edge.targetHandle;
         const sourceHandle = edge.sourceHandle;
         if (targetHandle && sourceHandle) {
-            // Find source node data
-            const sourceNode = edges.find(e => e.source)?.source;
-            if (sourceNode) {
-                handleValueMap[targetHandle] = firstRecord[sourceHandle];
-            }
+            handleValueMap[targetHandle] = firstRecord[sourceHandle];
         }
     }
 
-    // Calculate actual visible field count
-    const visibleFieldCount = countVisibleFields(data.fields, expandedStates);
-    const fieldHeight = 32;
+    // Calculate dynamic height based on actual visible fields
+    const visibleFieldCount = countVisibleFields(data.fields);
+    const fieldHeight = 32; // Height per field
     const headerHeight = 60;
-    const padding = 8; // Small padding for borders
-    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + padding;
+    const containerPadding = 8; // Just 4px top + 4px bottom
+    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + containerPadding;
 
     return (
         <div 
@@ -165,15 +131,13 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="p-2" style={{ height: `${dynamicHeight - headerHeight}px` }}>
+            <div className="py-1 px-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {data.fields.map((field) => (
                     <TargetField
                         key={field.id}
                         field={field}
                         level={0}
                         value={handleValueMap[field.id]}
-                        expandedStates={expandedStates}
-                        onExpandChange={handleExpandChange}
                     />
                 ))}
             </div>
@@ -182,3 +146,4 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
 };
 
 export default TargetNode;
+

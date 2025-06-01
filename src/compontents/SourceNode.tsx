@@ -1,4 +1,7 @@
 
+
+//SourceNode.tsx
+
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database } from 'lucide-react';
@@ -31,16 +34,9 @@ const getTypeColor = (type: string) => {
 const SourceField: React.FC<{
     field: SchemaField;
     level: number;
-    expandedStates: Map<string, boolean>;
-    onExpandChange?: () => void;
-}> = ({ field, level, expandedStates, onExpandChange }) => {
-    const isExpanded = expandedStates.get(field.id) !== false; // Default to true
+}> = ({ field, level }) => {
+    const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = field.children && field.children.length > 0;
-
-    const handleToggle = () => {
-        expandedStates.set(field.id, !isExpanded);
-        if (onExpandChange) onExpandChange();
-    };
 
     return (
         <div className="relative">
@@ -50,7 +46,7 @@ const SourceField: React.FC<{
             >
                 {hasChildren && (
                     <button
-                        onClick={handleToggle}
+                        onClick={() => setIsExpanded(!isExpanded)}
                         className="p-0.5 hover:bg-gray-200 rounded"
                     >
                         {isExpanded ? (
@@ -67,6 +63,7 @@ const SourceField: React.FC<{
                     {field.type}
                 </span>
 
+                {/* Source handles on the right */}
                 {!hasChildren && (
                     <Handle
                         type="source"
@@ -89,8 +86,6 @@ const SourceField: React.FC<{
                             key={child.id}
                             field={child}
                             level={level + 1}
-                            expandedStates={expandedStates}
-                            onExpandChange={onExpandChange}
                         />
                     ))}
                 </div>
@@ -99,16 +94,13 @@ const SourceField: React.FC<{
     );
 };
 
-// Helper function to count actually visible fields
-const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, boolean>): number => {
+// Helper function to count visible fields recursively
+const countVisibleFields = (fields: SchemaField[]): number => {
     let count = 0;
     for (const field of fields) {
-        count += 1;
+        count += 1; // Count the field itself
         if (field.children && field.children.length > 0) {
-            const isExpanded = expandedStates.get(field.id) !== false;
-            if (isExpanded) {
-                count += countVisibleFields(field.children, expandedStates);
-            }
+            count += countVisibleFields(field.children); // Count expanded children
         }
     }
     return count;
@@ -116,19 +108,13 @@ const countVisibleFields = (fields: SchemaField[], expandedStates: Map<string, b
 
 const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
     const { label, fields } = data;
-    const [expandedStates] = useState(() => new Map<string, boolean>());
-    const [, forceUpdate] = useState({});
 
-    const handleExpandChange = () => {
-        forceUpdate({});
-    };
-
-    // Calculate actual visible field count
-    const visibleFieldCount = countVisibleFields(fields, expandedStates);
-    const fieldHeight = 32;
+    // Calculate dynamic height based on actual visible fields
+    const visibleFieldCount = countVisibleFields(fields);
+    const fieldHeight = 32; // Height per field
     const headerHeight = 60;
-    const padding = 8; // Small padding for borders
-    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + padding;
+    const containerPadding = 8; // Just 4px top + 4px bottom
+    const dynamicHeight = headerHeight + (visibleFieldCount * fieldHeight) + containerPadding;
 
     return (
         <div 
@@ -143,14 +129,12 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="p-2" style={{ height: `${dynamicHeight - headerHeight}px` }}>
+            <div className="py-1 px-2 overflow-y-auto" style={{ height: `${dynamicHeight - headerHeight}px` }}>
                 {fields.map((field) => (
                     <SourceField
                         key={field.id}
                         field={field}
                         level={0}
-                        expandedStates={expandedStates}
-                        onExpandChange={handleExpandChange}
                     />
                 ))}
             </div>
@@ -159,3 +143,4 @@ const SourceNode: React.FC<{ data: SourceNodeData }> = ({ data }) => {
 };
 
 export default SourceNode;
+
