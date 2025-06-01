@@ -151,25 +151,25 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
         </Sheet>
       </div>
 
-      <div className="p-2 max-h-96 relative">
+      <div className="p-1 max-h-96 relative">
         <ScrollArea className="h-full">
           {visibleValues.map((value, index) => (
             <div
               key={value.id}
-              className="relative flex items-center justify-between gap-2 py-2 px-2 pr-6 hover:bg-gray-50 rounded text-sm group"
+              className="relative flex items-center justify-between gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-xs group"
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="text-xs min-w-[80px]">
+                <div className="min-w-[60px]">
                   {value.value ? (
-                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded font-medium truncate">
+                    <span className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded font-medium truncate text-xs">
                       {value.value}
                     </span>
                   ) : (
-                    <span className="text-gray-400 italic">no value</span>
+                    <span className="text-gray-400 italic text-xs">no value</span>
                   )}
                 </div>
                 
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(value.valueType)}`}>
+                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getTypeColor(value.valueType)}`}>
                   {value.valueType}
                 </span>
               </div>
@@ -193,7 +193,7 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
           {hasMoreValues && (
             <button
               onClick={() => setShowAllValues(!showAllValues)}
-              className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 mt-2 px-2 py-1 rounded hover:bg-indigo-50 w-full justify-center"
+              className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 mt-1 px-2 py-1 rounded hover:bg-indigo-50 w-full justify-center"
             >
               {showAllValues ? (
                 <>Show Less ({values.length - MAX_VISIBLE_VALUES} hidden)</>
@@ -204,7 +204,7 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
           )}
           
           {values.length === 0 && (
-            <div className="text-center py-4 text-gray-500 text-sm">
+            <div className="text-center py-3 text-gray-500 text-xs">
               No static values defined. Click edit to add values.
             </div>
           )}

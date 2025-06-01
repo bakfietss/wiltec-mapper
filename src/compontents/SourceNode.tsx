@@ -53,7 +53,7 @@ const SourceField: React.FC<{
     return (
         <div className="relative">
             <div
-                className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm group"
+                className="flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group"
                 style={{ marginLeft: `${level * 16}px` }}
             >
                 {hasChildren && (
@@ -86,9 +86,10 @@ const SourceField: React.FC<{
                         type="source"
                         position={Position.Right}
                         id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
+                        className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !right-1"
                         style={{
-                            right: '-6px',
+                            position: 'absolute',
+                            right: '4px',
                             top: '50%',
                             transform: 'translateY(-50%)',
                         }}

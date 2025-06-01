@@ -49,7 +49,7 @@ const TargetField: React.FC<{
     return (
         <div className="relative">
             <div
-                className="flex items-center justify-between gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm group"
+                className="flex items-center justify-between gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group"
                 style={{ marginLeft: `${level * 16}px` }}
             >
                 {hasChildren ? (
@@ -81,9 +81,10 @@ const TargetField: React.FC<{
                         type="target"
                         position={Position.Left}
                         id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
+                        className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !left-1"
                         style={{
-                            left: '-6px',
+                            position: 'absolute',
+                            left: '4px',
                             top: '50%',
                             transform: 'translateY(-50%)',
                         }}
