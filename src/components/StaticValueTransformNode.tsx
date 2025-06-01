@@ -1,12 +1,18 @@
 
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { Hash, Edit3 } from 'lucide-react';
+import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 
+interface StaticValue {
+  id: string;
+  name: string;
+  value: string | number | Date;
+  valueType: 'string' | 'number' | 'date';
+}
+
 interface StaticValueConfig {
-  value?: string | number | Date;
-  valueType?: 'string' | 'number' | 'date';
+  values: StaticValue[];
 }
 
 interface StaticValueTransformNodeData {
@@ -18,7 +24,7 @@ interface StaticValueTransformNodeData {
 
 const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; id: string }> = ({ data, id }) => {
   const { setNodes } = useReactFlow();
-  const [config, setConfig] = useState<StaticValueConfig>(data.config || { value: '', valueType: 'string' });
+  const [config, setConfig] = useState<StaticValueConfig>(data.config || { values: [] });
   const { label, description } = data;
   
   const updateNodeData = useCallback((newConfig: StaticValueConfig) => {
@@ -44,20 +50,54 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
     updateNodeData(newConfig);
   };
 
-  const handleValueChange = (value: string) => {
-    let parsedValue: string | number | Date = value;
+  const addValue = () => {
+    const newValue: StaticValue = {
+      id: `value-${Date.now()}`,
+      name: `Value ${config.values.length + 1}`,
+      value: '',
+      valueType: 'string'
+    };
+    updateConfig({ values: [...config.values, newValue] });
+  };
+
+  const updateValue = (valueId: string, updates: Partial<StaticValue>) => {
+    const updatedValues = config.values.map(value => 
+      value.id === valueId ? { ...value, ...updates } : value
+    );
+    updateConfig({ values: updatedValues });
+  };
+
+  const removeValue = (valueId: string) => {
+    const updatedValues = config.values.filter(value => value.id !== valueId);
+    updateConfig({ values: updatedValues });
+  };
+
+  const handleValueChange = (valueId: string, newValue: string) => {
+    const value = config.values.find(v => v.id === valueId);
+    if (!value) return;
+
+    let parsedValue: string | number | Date = newValue;
     
-    if (config.valueType === 'number') {
-      parsedValue = parseFloat(value) || 0;
-    } else if (config.valueType === 'date') {
-      parsedValue = new Date(value);
+    if (value.valueType === 'number') {
+      parsedValue = parseFloat(newValue) || 0;
+    } else if (value.valueType === 'date') {
+      parsedValue = new Date(newValue);
     }
     
-    updateConfig({ value: parsedValue });
+    updateValue(valueId, { value: parsedValue });
   };
+
+  // Calculate dynamic height based on number of values
+  const valueHeight = 32;
+  const headerHeight = 100;
+  const padding = 16;
+  const dynamicHeight = headerHeight + (config.values.length * valueHeight) + padding;
   
   return (
-    <div className="relative border-2 rounded-lg shadow-sm min-w-48 border-indigo-300 bg-indigo-50">
+    <div 
+      className="relative border-2 rounded-lg shadow-sm min-w-48 border-indigo-300 bg-indigo-50"
+      style={{ height: config.values.length > 0 ? `${dynamicHeight}px` : 'auto' }}
+    >
       <div className="p-3">
         <div className="flex items-center gap-2 mb-2">
           <div className="p-1.5 bg-white rounded-md shadow-sm">
@@ -77,70 +117,122 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
             </SheetTrigger>
             <SheetContent className="w-[400px] sm:w-[400px]">
               <SheetHeader>
-                <SheetTitle>Configure Static Value</SheetTitle>
+                <SheetTitle>Configure Static Values</SheetTitle>
               </SheetHeader>
               
               <div className="mt-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Value Type:</label>
-                  <select
-                    value={config.valueType || 'string'}
-                    onChange={(e) => updateConfig({ valueType: e.target.value as 'string' | 'number' | 'date' })}
-                    className="w-full border rounded px-3 py-2"
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Static Values</h4>
+                  <button
+                    onClick={addValue}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
                   >
-                    <option value="string">String</option>
-                    <option value="number">Number</option>
-                    <option value="date">Date</option>
-                  </select>
+                    <Plus className="w-3 h-3" />
+                    Add Value
+                  </button>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Value:</label>
-                  {config.valueType === 'date' ? (
-                    <input
-                      type="date"
-                      value={config.value ? new Date(config.value).toISOString().split('T')[0] : ''}
-                      onChange={(e) => handleValueChange(e.target.value)}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                  ) : (
-                    <input
-                      type={config.valueType === 'number' ? 'number' : 'text'}
-                      value={config.value?.toString() || ''}
-                      onChange={(e) => handleValueChange(e.target.value)}
-                      className="w-full border rounded px-3 py-2"
-                      placeholder={`Enter ${config.valueType} value`}
-                    />
-                  )}
+
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {config.values.map((value) => (
+                    <div key={value.id} className="border rounded p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <input
+                          type="text"
+                          value={value.name}
+                          onChange={(e) => updateValue(value.id, { name: e.target.value })}
+                          placeholder="Value name"
+                          className="text-sm font-medium border rounded px-2 py-1 flex-1"
+                        />
+                        <button
+                          onClick={() => removeValue(value.id)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded ml-2"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Type:</label>
+                        <select
+                          value={value.valueType}
+                          onChange={(e) => updateValue(value.id, { valueType: e.target.value as 'string' | 'number' | 'date' })}
+                          className="w-full border rounded px-2 py-1 text-xs"
+                        >
+                          <option value="string">String</option>
+                          <option value="number">Number</option>
+                          <option value="date">Date</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Value:</label>
+                        {value.valueType === 'date' ? (
+                          <input
+                            type="date"
+                            value={value.value ? new Date(value.value).toISOString().split('T')[0] : ''}
+                            onChange={(e) => handleValueChange(value.id, e.target.value)}
+                            className="w-full border rounded px-2 py-1 text-xs"
+                          />
+                        ) : (
+                          <input
+                            type={value.valueType === 'number' ? 'number' : 'text'}
+                            value={value.value?.toString() || ''}
+                            onChange={(e) => handleValueChange(value.id, e.target.value)}
+                            className="w-full border rounded px-2 py-1 text-xs"
+                            placeholder={`Enter ${value.valueType} value`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                
-                <div className="mt-6 p-3 bg-gray-50 rounded">
-                  <h4 className="font-medium mb-2">Preview:</h4>
-                  <div className="text-sm text-gray-600">
-                    Type: {config.valueType}<br/>
-                    Value: {String(config.value || 'Not set')}
+
+                {config.values.length === 0 && (
+                  <div className="text-center text-gray-500 text-sm py-8">
+                    No static values configured. Click "Add Value" to get started.
                   </div>
-                </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>
         </div>
         
-        <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
+        <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border mb-2">
           Static Value
         </div>
-        
-        <div className="text-xs text-indigo-600 mt-1 font-medium">
-          {config.valueType}: {String(config.value || 'Not set')}
+
+        {/* Display configured values */}
+        <div className="space-y-1">
+          {config.values.map((value, index) => (
+            <div key={value.id} className="relative flex items-center justify-between py-1 px-2 hover:bg-white/50 rounded text-xs group">
+              <div className="flex-1">
+                <span className="font-medium text-gray-900">{value.name}</span>
+                <div className="text-indigo-600">
+                  {value.valueType}: {String(value.value || 'Not set')}
+                </div>
+              </div>
+              
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={value.id}
+                className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
+                style={{
+                  right: '-6px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
+              />
+            </div>
+          ))}
         </div>
+
+        {config.values.length === 0 && (
+          <div className="text-xs text-gray-500 italic">
+            No values configured
+          </div>
+        )}
       </div>
-      
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
-        style={{ right: '-6px' }}
-      />
     </div>
   );
 };
