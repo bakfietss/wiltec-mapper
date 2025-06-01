@@ -70,8 +70,11 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
                     value={condition}
                     onChange={(e) => setCondition(e.target.value)}
                     className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="e.g., value > 100"
+                    placeholder="e.g., value > 100, value = 'Active', value < 50"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Use 'value' to reference the input. Operators: =, &gt;, &lt;
+                  </p>
                 </div>
                 
                 <div>

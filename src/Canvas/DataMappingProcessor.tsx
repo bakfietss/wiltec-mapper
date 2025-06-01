@@ -10,6 +10,16 @@ const hasTransformConfig = (data: any): data is { config: Record<string, any>; t
     return data && typeof data === 'object' && 'config' in data && data.config && typeof data.config === 'object' && 'transformType' in data;
 };
 
+// Helper function to check if node is a static value node
+const isStaticValueNode = (data: any): data is { value: string; valueType: 'string' | 'number' | 'boolean' } => {
+    return data && typeof data === 'object' && 'value' in data && 'valueType' in data;
+};
+
+// Helper function to check if node is an IF THEN node
+const isIfThenNode = (data: any): data is { condition: string; thenValue: string; elseValue: string } => {
+    return data && typeof data === 'object' && 'condition' in data && 'thenValue' in data && 'elseValue' in data;
+};
+
 export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
     console.log('Processing data mapping with edges:', edges.length, 'and nodes:', nodes.length);
     
@@ -57,6 +67,65 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
                         if (sourceValue !== undefined && sourceValue !== '') {
                             newTargetData[targetField.name] = sourceValue;
                             console.log(`Direct mapping ${sourceField.name}(${sourceValue}) -> ${targetField.name}`);
+                        }
+                    }
+                } else if (sourceNode?.type === 'staticValue' && isStaticValueNode(sourceNode.data)) {
+                    // Static value node
+                    const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
+                    const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                    
+                    if (targetField && sourceNode.data.value) {
+                        let value = sourceNode.data.value;
+                        
+                        // Convert value based on type
+                        if (sourceNode.data.valueType === 'number') {
+                            value = Number(value);
+                        } else if (sourceNode.data.valueType === 'boolean') {
+                            value = value === 'true';
+                        }
+                        
+                        newTargetData[targetField.name] = value;
+                        console.log(`Static value mapping: ${value} (${sourceNode.data.valueType}) -> ${targetField.name}`);
+                    }
+                } else if (sourceNode?.type === 'ifThen' && isIfThenNode(sourceNode.data)) {
+                    // IF THEN node - needs to evaluate condition based on connected input
+                    const targetFields = Array.isArray(node.data?.fields) ? node.data.fields : [];
+                    const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
+                    
+                    if (targetField) {
+                        // Find input edges to the IF THEN node
+                        const ifThenInputEdges = edges.filter(e => e.target === sourceNode.id);
+                        let conditionResult = false;
+                        let inputValue: any = null;
+                        
+                        // Get the input value for condition evaluation
+                        ifThenInputEdges.forEach(inputEdge => {
+                            const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+                            
+                            if (inputSourceNode?.type === 'editableSchema' && isSchemaNodeData(inputSourceNode.data)) {
+                                const sourceFields = Array.isArray(inputSourceNode.data?.fields) ? inputSourceNode.data.fields : [];
+                                const sourceData = Array.isArray(inputSourceNode.data?.data) ? inputSourceNode.data.data : [];
+                                const sourceField = sourceFields.find((f: any) => f.id === inputEdge.sourceHandle);
+                                
+                                if (sourceField) {
+                                    inputValue = sourceData.length > 0 
+                                        ? sourceData[0][sourceField.name] 
+                                        : sourceField.exampleValue;
+                                }
+                            }
+                        });
+                        
+                        // Evaluate the condition if we have both input value and condition
+                        if (inputValue !== null && sourceNode.data.condition) {
+                            conditionResult = evaluateCondition(inputValue, sourceNode.data.condition);
+                        }
+                        
+                        // Use THEN or ELSE value based on condition result
+                        const resultValue = conditionResult ? sourceNode.data.thenValue : sourceNode.data.elseValue;
+                        
+                        if (resultValue !== undefined && resultValue !== '') {
+                            newTargetData[targetField.name] = resultValue;
+                            console.log(`IF THEN result: ${inputValue} ${sourceNode.data.condition} = ${conditionResult} -> ${resultValue}`);
                         }
                     }
                 } else if (sourceNode?.type === 'conversionMapping') {
@@ -186,6 +255,47 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
     });
     
     return updatedNodes;
+};
+
+// Helper function to evaluate conditions for IF THEN nodes
+const evaluateCondition = (value: any, condition: string): boolean => {
+    try {
+        // Parse simple conditions like "value > 100", "value = 'test'", etc.
+        const conditionStr = condition.trim();
+        
+        // Replace 'value' in condition with actual value
+        let evalCondition = conditionStr.replace(/\bvalue\b/g, JSON.stringify(value));
+        
+        // Handle string comparisons - wrap non-quoted strings in quotes
+        if (typeof value === 'string') {
+            evalCondition = conditionStr.replace(/\bvalue\b/g, `"${value}"`);
+        }
+        
+        console.log(`Evaluating condition: ${evalCondition}`);
+        
+        // Simple evaluation for basic operators
+        if (conditionStr.includes('=')) {
+            const [left, right] = conditionStr.split('=').map(s => s.trim());
+            const leftValue = left === 'value' ? value : left.replace(/['"]/g, '');
+            const rightValue = right.replace(/['"]/g, '');
+            return String(leftValue) === String(rightValue);
+        } else if (conditionStr.includes('>')) {
+            const [left, right] = conditionStr.split('>').map(s => s.trim());
+            const leftValue = left === 'value' ? Number(value) : Number(left);
+            const rightValue = Number(right);
+            return leftValue > rightValue;
+        } else if (conditionStr.includes('<')) {
+            const [left, right] = conditionStr.split('<').map(s => s.trim());
+            const leftValue = left === 'value' ? Number(value) : Number(left);
+            const rightValue = Number(right);
+            return leftValue < rightValue;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Error evaluating condition:', error);
+        return false;
+    }
 };
 
 // Helper function to apply transformations
