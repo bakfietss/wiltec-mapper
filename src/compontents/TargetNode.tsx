@@ -32,12 +32,15 @@ const getTypeColor = (type: string) => {
 const TargetField: React.FC<{
     field: SchemaField;
     level: number;
-    value: string | number | boolean | undefined;
-}> = ({ field, level, value }) => {
+    fieldValues: Record<string, any>;
+}> = ({ field, level, fieldValues }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = field.children && field.children.length > 0;
-
-    console.log(`TargetField ${field.name} (${field.id}) rendering with value:`, value);
+    
+    // Get the value for this specific field
+    const fieldValue = fieldValues[field.id];
+    
+    console.log(`TargetField ${field.name} (${field.id}) - fieldValues:`, fieldValues, 'thisValue:', fieldValue);
 
     return (
         <div className="relative">
@@ -58,11 +61,11 @@ const TargetField: React.FC<{
                     {field.type}
                 </span>
                 
-                {/* Display the value with better formatting and visibility */}
+                {/* Value display */}
                 <div className="text-xs min-w-[120px] text-right">
-                    {value !== undefined && value !== null && value !== '' ? (
+                    {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
-                            {String(value)}
+                            {String(fieldValue)}
                         </span>
                     ) : (
                         <span className="text-gray-400 italic">no value</span>
@@ -87,7 +90,12 @@ const TargetField: React.FC<{
             {hasChildren && isExpanded && (
                 <div>
                     {field.children?.map((child) => (
-                        <TargetField key={child.id} field={child} level={level + 1} value={undefined} />
+                        <TargetField 
+                            key={child.id} 
+                            field={child} 
+                            level={level + 1} 
+                            fieldValues={fieldValues}
+                        />
                     ))}
                 </div>
             )}
@@ -98,13 +106,11 @@ const TargetField: React.FC<{
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
     const [showAllFields, setShowAllFields] = useState(false);
     
-    console.log('TargetNode rendering:', {
-        id,
-        label: data.label,
-        fieldsCount: data.fields?.length,
-        fieldValues: data.fieldValues,
-        fields: data.fields?.map(f => ({ id: f.id, name: f.name }))
-    });
+    console.log('=== TARGET NODE RENDER ===');
+    console.log('Node ID:', id);
+    console.log('Node data:', data);
+    console.log('Field values received:', data.fieldValues);
+    console.log('Fields:', data.fields?.map(f => ({ id: f.id, name: f.name })));
 
     const MAX_VISIBLE_FIELDS = 8;
     const visibleFields = showAllFields ? data.fields : data.fields.slice(0, MAX_VISIBLE_FIELDS);
@@ -121,19 +127,14 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
             </div>
 
             <div className="p-2">
-                {visibleFields.map((field) => {
-                    const fieldValue = data.fieldValues?.[field.id];
-                    console.log(`Rendering field ${field.name} (${field.id}) with value from fieldValues:`, fieldValue);
-                    
-                    return (
-                        <TargetField
-                            key={field.id}
-                            field={field}
-                            level={0}
-                            value={fieldValue}
-                        />
-                    );
-                })}
+                {visibleFields.map((field) => (
+                    <TargetField
+                        key={field.id}
+                        field={field}
+                        level={0}
+                        fieldValues={data.fieldValues || {}}
+                    />
+                ))}
                 
                 {hasMoreFields && (
                     <button
