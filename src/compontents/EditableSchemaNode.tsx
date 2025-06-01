@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, FileText, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { ScrollArea } from '../components/ui/scroll-area';
 
 interface SchemaField {
   id: string;
@@ -127,6 +128,7 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
   const [nodeData, setNodeData] = useState<any[]>(data.data || []);
   const [editingField, setEditingField] = useState<SchemaField | null>(null);
   const [jsonInput, setJsonInput] = useState('');
+  const [showAllFields, setShowAllFields] = useState(false);
   const { setNodes } = useReactFlow();
   
   const { label, schemaType } = data;
@@ -253,6 +255,10 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
     }
   };
 
+  const MAX_VISIBLE_FIELDS = 6;
+  const visibleFields = showAllFields ? fields : fields.slice(0, MAX_VISIBLE_FIELDS);
+  const hasMoreFields = fields.length > MAX_VISIBLE_FIELDS;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
       <div className={`px-4 py-3 border-b border-gray-200 flex items-center gap-2 ${
@@ -276,19 +282,19 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
               <Edit3 className="w-3 h-3 text-gray-600" />
             </button>
           </SheetTrigger>
-          <SheetContent className="w-[600px] sm:w-[600px]">
+          <SheetContent className="w-[600px] sm:w-[600px] flex flex-col">
             <SheetHeader>
               <SheetTitle>Edit {label} - {schemaType}</SheetTitle>
             </SheetHeader>
             
-            <div className="mt-6 space-y-6">
+            <div className="flex-1 flex flex-col space-y-4 mt-6">
               {/* JSON Data Import */}
-              <div>
+              <div className="flex-shrink-0">
                 <h4 className="font-medium mb-2">Import JSON Data:</h4>
                 <textarea
                   value={jsonInput}
                   onChange={(e) => setJsonInput(e.target.value)}
-                  className="w-full h-32 border border-gray-300 rounded-md p-2 text-sm font-mono"
+                  className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono resize-none"
                   placeholder='{"field1": "value1", "field2": 123}'
                 />
                 <button
@@ -299,23 +305,25 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
                 </button>
               </div>
 
-              {/* Current Data Preview - ALWAYS SHOW */}
-              <div>
+              {/* Current Data Preview */}
+              <div className="flex-shrink-0">
                 <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                <div className="max-h-40 overflow-auto border rounded p-2 bg-gray-50">
-                  {nodeData.length > 0 ? (
-                    <pre className="text-xs">
-                      {JSON.stringify(nodeData.slice(0, 3), null, 2)}
-                      {nodeData.length > 3 && '\n... and more'}
-                    </pre>
-                  ) : (
-                    <p className="text-gray-500 text-sm">No data available</p>
-                  )}
+                <div className="h-32 border rounded p-2 bg-gray-50">
+                  <ScrollArea className="h-full">
+                    {nodeData.length > 0 ? (
+                      <pre className="text-xs">
+                        {JSON.stringify(nodeData.slice(0, 3), null, 2)}
+                        {nodeData.length > 3 && '\n... and more'}
+                      </pre>
+                    ) : (
+                      <p className="text-gray-500 text-sm">No data available</p>
+                    )}
+                  </ScrollArea>
                 </div>
               </div>
 
-              {/* Schema Fields */}
-              <div>
+              {/* Schema Fields - Takes remaining space */}
+              <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium">Schema Fields:</h4>
                   <button
@@ -327,52 +335,54 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
                   </button>
                 </div>
                 
-                <div className="space-y-4 max-h-60 overflow-auto">
-                  {fields.map((field) => (
-                    <div key={field.id} className="border rounded p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={field.name}
-                          onChange={(e) => updateField(field.id, { name: e.target.value })}
-                          className="flex-1 border rounded px-2 py-1 text-sm"
-                          placeholder="Field name"
-                        />
-                        <select
-                          value={field.type}
-                          onChange={(e) => updateField(field.id, { type: e.target.value as any })}
-                          className="border rounded px-2 py-1 text-sm"
-                        >
-                          <option value="string">String</option>
-                          <option value="number">Number</option>
-                          <option value="boolean">Boolean</option>
-                          <option value="date">Date</option>
-                          <option value="object">Object</option>
-                          <option value="array">Array</option>
-                        </select>
-                        <button
-                          onClick={() => deleteField(field.id)}
-                          className="p-1 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                <ScrollArea className="flex-1">
+                  <div className="space-y-4 pr-4">
+                    {fields.map((field) => (
+                      <div key={field.id} className="border rounded p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={field.name}
+                            onChange={(e) => updateField(field.id, { name: e.target.value })}
+                            className="flex-1 border rounded px-2 py-1 text-sm"
+                            placeholder="Field name"
+                          />
+                          <select
+                            value={field.type}
+                            onChange={(e) => updateField(field.id, { type: e.target.value as any })}
+                            className="border rounded px-2 py-1 text-sm"
+                          >
+                            <option value="string">String</option>
+                            <option value="number">Number</option>
+                            <option value="boolean">Boolean</option>
+                            <option value="date">Date</option>
+                            <option value="object">Object</option>
+                            <option value="array">Array</option>
+                          </select>
+                          <button
+                            onClick={() => deleteField(field.id)}
+                            className="p-1 text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-gray-600 w-20">Example:</label>
+                          {getExampleValueInput(field)}
+                        </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-600 w-20">Example:</label>
-                        {getExampleValueInput(field)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
           </SheetContent>
         </Sheet>
       </div>
       
-      <div className="p-2 max-h-96 overflow-y-auto">
-        {fields.map((field) => (
+      <div className="p-2">
+        {visibleFields.map((field) => (
           <SchemaField
             key={field.id}
             field={field}
@@ -382,6 +392,26 @@ const EditableSchemaNode: React.FC<{ data: EditableSchemaNodeData; id: string }>
             nodeData={nodeData}
           />
         ))}
+        
+        {hasMoreFields && (
+          <button
+            onClick={() => setShowAllFields(!showAllFields)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-2 px-2 py-1 rounded hover:bg-blue-50 w-full justify-center"
+          >
+            {showAllFields ? (
+              <>
+                <ChevronDown className="w-3 h-3" />
+                Show Less ({fields.length - MAX_VISIBLE_FIELDS} hidden)
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3 h-3" />
+                Show More ({fields.length - MAX_VISIBLE_FIELDS} more fields)
+              </>
+            )}
+          </button>
+        )}
+        
         {fields.length === 0 && (
           <div className="text-center py-4 text-gray-500 text-sm">
             No fields defined. Click edit to add schema fields.

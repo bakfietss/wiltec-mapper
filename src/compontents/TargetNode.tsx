@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, ChevronUp } from 'lucide-react';
 
 interface SchemaField {
     id: string;
@@ -83,6 +84,7 @@ const TargetField: React.FC<{
 
 const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
     const { getEdges } = useReactFlow();
+    const [showAllFields, setShowAllFields] = useState(false);
     const edges = getEdges();
 
     // Build a map of targetHandle → value from the data
@@ -97,6 +99,10 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
         }
     }
 
+    const MAX_VISIBLE_FIELDS = 8;
+    const visibleFields = showAllFields ? data.fields : data.fields.slice(0, MAX_VISIBLE_FIELDS);
+    const hasMoreFields = data.fields.length > MAX_VISIBLE_FIELDS;
+
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-green-50">
@@ -107,8 +113,8 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
                 </span>
             </div>
 
-            <div className="p-2 max-h-96 overflow-y-auto">
-                {data.fields.map((field) => (
+            <div className="p-2">
+                {visibleFields.map((field) => (
                     <TargetField
                         key={field.id}
                         field={field}
@@ -116,6 +122,25 @@ const TargetNode: React.FC<{ data: TargetNodeData }> = ({ data }) => {
                         value={handleValueMap[field.id]}
                     />
                 ))}
+                
+                {hasMoreFields && (
+                    <button
+                        onClick={() => setShowAllFields(!showAllFields)}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-2 px-2 py-1 rounded hover:bg-blue-50 w-full justify-center"
+                    >
+                        {showAllFields ? (
+                            <>
+                                <ChevronUp className="w-3 h-3" />
+                                Show Less ({data.fields.length - MAX_VISIBLE_FIELDS} hidden)
+                            </>
+                        ) : (
+                            <>
+                                <ChevronDown className="w-3 h-3" />
+                                Show More ({data.fields.length - MAX_VISIBLE_FIELDS} more fields)
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
         </div>
     );
