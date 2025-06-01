@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { ChevronDown, ChevronRight, FileText, ChevronUp, Edit3, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
@@ -49,7 +49,7 @@ const TargetField: React.FC<{
     return (
         <div className="relative">
             <div
-                className="flex items-center justify-between gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group"
+                className="flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group"
                 style={{ marginLeft: `${level * 16}px` }}
             >
                 {hasChildren ? (
@@ -60,13 +60,13 @@ const TargetField: React.FC<{
                     <div className="w-4" />
                 )}
 
-                <span className="font-medium text-gray-900 flex-1">{field.name}</span>
+                <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                     {field.type}
                 </span>
                 
                 {/* Value display - show the calculated value */}
-                <div className="text-xs min-w-[120px] text-right">
+                <div className="text-xs min-w-[80px] text-right">
                     {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
                             {String(fieldValue)}
@@ -109,7 +109,6 @@ const TargetField: React.FC<{
 };
 
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
-    const [showAllFields, setShowAllFields] = useState(false);
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     const [nodeData, setNodeData] = useState<any[]>(data.data || []);
     const [jsonInput, setJsonInput] = useState('');
@@ -165,10 +164,6 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
             alert('Invalid JSON format');
         }
     };
-
-    const MAX_VISIBLE_FIELDS = 8;
-    const visibleFields = showAllFields ? fields : fields.slice(0, MAX_VISIBLE_FIELDS);
-    const hasMoreFields = fields.length > MAX_VISIBLE_FIELDS;
 
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
@@ -281,42 +276,21 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                 </Sheet>
             </div>
 
-            <div className="p-2 max-h-96">
-                <ScrollArea className="h-full">
-                    {visibleFields.map((field) => (
-                        <TargetField
-                            key={field.id}
-                            field={field}
-                            level={0}
-                            fieldValues={data.fieldValues || {}}
-                        />
-                    ))}
-                    
-                    {hasMoreFields && (
-                        <button
-                            onClick={() => setShowAllFields(!showAllFields)}
-                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-2 px-2 py-1 rounded hover:bg-blue-50 w-full justify-center"
-                        >
-                            {showAllFields ? (
-                                <>
-                                    <ChevronUp className="w-3 h-3" />
-                                    Show Less ({fields.length - MAX_VISIBLE_FIELDS} hidden)
-                                </>
-                            ) : (
-                                <>
-                                    <ChevronDown className="w-3 h-3" />
-                                    Show More ({fields.length - MAX_VISIBLE_FIELDS} more fields)
-                                </>
-                            )}
-                        </button>
-                    )}
-                    
-                    {fields.length === 0 && (
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                            No fields defined. Click edit to add schema fields.
-                        </div>
-                    )}
-                </ScrollArea>
+            <div className="p-1">
+                {fields.map((field) => (
+                    <TargetField
+                        key={field.id}
+                        field={field}
+                        level={0}
+                        fieldValues={data.fieldValues || {}}
+                    />
+                ))}
+                
+                {fields.length === 0 && (
+                    <div className="text-center py-3 text-gray-500 text-xs">
+                        No fields defined. Click edit to add schema fields.
+                    </div>
+                )}
             </div>
         </div>
     );
