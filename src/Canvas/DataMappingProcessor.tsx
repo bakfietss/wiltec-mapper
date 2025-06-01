@@ -75,13 +75,15 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
                     const targetField = targetFields.find((f: any) => f.id === edge.targetHandle);
                     
                     if (targetField && sourceNode.data.value) {
-                        let value = sourceNode.data.value;
+                        let value: any = sourceNode.data.value;
                         
-                        // Convert value based on type
+                        // Convert value based on type, but keep as string for now to avoid type errors
                         if (sourceNode.data.valueType === 'number') {
-                            value = Number(value);
+                            value = String(Number(sourceNode.data.value));
                         } else if (sourceNode.data.valueType === 'boolean') {
-                            value = value === 'true';
+                            value = String(sourceNode.data.value === 'true');
+                        } else {
+                            value = String(sourceNode.data.value);
                         }
                         
                         newTargetData[targetField.name] = value;
@@ -124,7 +126,7 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
                         const resultValue = conditionResult ? sourceNode.data.thenValue : sourceNode.data.elseValue;
                         
                         if (resultValue !== undefined && resultValue !== '') {
-                            newTargetData[targetField.name] = resultValue;
+                            newTargetData[targetField.name] = String(resultValue);
                             console.log(`IF THEN result: ${inputValue} ${sourceNode.data.condition} = ${conditionResult} -> ${resultValue}`);
                         }
                     }
