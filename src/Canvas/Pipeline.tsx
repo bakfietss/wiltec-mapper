@@ -127,7 +127,22 @@ export default function Pipeline() {
     const handleEdgesChangeWrapper = useCallback((changes: any) => {
         onEdgesChange(changes);
         handleEdgesChange(changes);
-    }, [onEdgesChange, handleEdgesChange]);
+        
+        // Trigger data processing immediately when edges are added or removed
+        const hasEdgeChanges = changes.some((change: any) => 
+            change.type === 'add' || change.type === 'remove'
+        );
+        
+        if (hasEdgeChanges) {
+            setTimeout(() => {
+                setNodes(currentNodes => {
+                    const updatedNodes = processDataMapping(edges, currentNodes);
+                    const hasChanges = updatedNodes.some((node, index) => node !== currentNodes[index]);
+                    return hasChanges ? updatedNodes : currentNodes;
+                });
+            }, 100);
+        }
+    }, [onEdgesChange, handleEdgesChange, edges, setNodes]);
 
     // Handle canvas clicks to close toolbars
     const handleCanvasClick = useCallback((event: React.MouseEvent) => {

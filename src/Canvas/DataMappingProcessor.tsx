@@ -16,8 +16,8 @@ const isStaticValueNode = (data: any): data is { value: string; valueType: 'stri
 };
 
 // Helper function to check if node is an IF THEN node
-const isIfThenNode = (data: any): data is { condition: string; thenValue: string; elseValue: string } => {
-    return data && typeof data === 'object' && 'condition' in data && 'thenValue' in data && 'elseValue' in data;
+const isIfThenNode = (data: any): data is { operator: string; compareValue: string; thenValue: string; elseValue: string } => {
+    return data && typeof data === 'object' && 'operator' in data && 'compareValue' in data && 'thenValue' in data && 'elseValue' in data;
 };
 
 export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
@@ -117,9 +117,9 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
                             }
                         });
                         
-                        // Evaluate the condition if we have both input value and condition
-                        if (inputValue !== null && sourceNode.data.condition) {
-                            conditionResult = evaluateCondition(inputValue, sourceNode.data.condition);
+                        // Evaluate the condition if we have both input value and operator/compareValue
+                        if (inputValue !== null && sourceNode.data.operator && sourceNode.data.compareValue) {
+                            conditionResult = evaluateCondition(inputValue, sourceNode.data.operator, sourceNode.data.compareValue);
                         }
                         
                         // Use THEN or ELSE value based on condition result
@@ -127,7 +127,7 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
                         
                         if (resultValue !== undefined && resultValue !== '') {
                             newTargetData[targetField.name] = String(resultValue);
-                            console.log(`IF THEN result: ${inputValue} ${sourceNode.data.condition} = ${conditionResult} -> ${resultValue}`);
+                            console.log(`IF THEN result: ${inputValue} ${sourceNode.data.operator} ${sourceNode.data.compareValue} = ${conditionResult} -> ${resultValue}`);
                         }
                     }
                 } else if (sourceNode?.type === 'conversionMapping') {
@@ -260,40 +260,31 @@ export const processDataMapping = (edges: Edge[], nodes: Node[]) => {
 };
 
 // Helper function to evaluate conditions for IF THEN nodes
-const evaluateCondition = (value: any, condition: string): boolean => {
+const evaluateCondition = (inputValue: any, operator: string, compareValue: string): boolean => {
     try {
-        // Parse simple conditions like "value > 100", "value = 'test'", etc.
-        const conditionStr = condition.trim();
+        console.log(`Evaluating condition: ${inputValue} ${operator} ${compareValue}`);
         
-        // Replace 'value' in condition with actual value
-        let evalCondition = conditionStr.replace(/\bvalue\b/g, JSON.stringify(value));
+        // Convert values for comparison
+        const leftValue = String(inputValue).trim();
+        const rightValue = String(compareValue).trim();
         
-        // Handle string comparisons - wrap non-quoted strings in quotes
-        if (typeof value === 'string') {
-            evalCondition = conditionStr.replace(/\bvalue\b/g, `"${value}"`);
+        switch (operator) {
+            case '=':
+                return leftValue === rightValue;
+            case '!=':
+                return leftValue !== rightValue;
+            case '>':
+                return Number(leftValue) > Number(rightValue);
+            case '<':
+                return Number(leftValue) < Number(rightValue);
+            case '>=':
+                return Number(leftValue) >= Number(rightValue);
+            case '<=':
+                return Number(leftValue) <= Number(rightValue);
+            default:
+                console.log('Unknown operator:', operator);
+                return false;
         }
-        
-        console.log(`Evaluating condition: ${evalCondition}`);
-        
-        // Simple evaluation for basic operators
-        if (conditionStr.includes('=')) {
-            const [left, right] = conditionStr.split('=').map(s => s.trim());
-            const leftValue = left === 'value' ? value : left.replace(/['"]/g, '');
-            const rightValue = right.replace(/['"]/g, '');
-            return String(leftValue) === String(rightValue);
-        } else if (conditionStr.includes('>')) {
-            const [left, right] = conditionStr.split('>').map(s => s.trim());
-            const leftValue = left === 'value' ? Number(value) : Number(left);
-            const rightValue = Number(right);
-            return leftValue > rightValue;
-        } else if (conditionStr.includes('<')) {
-            const [left, right] = conditionStr.split('<').map(s => s.trim());
-            const leftValue = left === 'value' ? Number(value) : Number(left);
-            const rightValue = Number(right);
-            return leftValue < rightValue;
-        }
-        
-        return false;
     } catch (error) {
         console.error('Error evaluating condition:', error);
         return false;

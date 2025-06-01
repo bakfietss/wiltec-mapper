@@ -3,16 +3,19 @@ import React, { useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { GitBranch, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
 interface IfThenNodeData {
   label: string;
-  condition: string;
+  operator: string;
+  compareValue: string;
   thenValue: string;
   elseValue: string;
 }
 
 const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }) => {
-  const [condition, setCondition] = useState(data.condition || '');
+  const [operator, setOperator] = useState(data.operator || '=');
+  const [compareValue, setCompareValue] = useState(data.compareValue || '');
   const [thenValue, setThenValue] = useState(data.thenValue || '');
   const [elseValue, setElseValue] = useState(data.elseValue || '');
   const { setNodes } = useReactFlow();
@@ -28,7 +31,7 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
   };
 
   const handleSave = () => {
-    updateNodeData({ condition, thenValue, elseValue });
+    updateNodeData({ operator, compareValue, thenValue, elseValue });
   };
 
   return (
@@ -64,16 +67,33 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
               
               <div className="space-y-4 mt-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Condition:</label>
+                  <label className="block text-sm font-medium mb-2">Operator:</label>
+                  <Select value={operator} onValueChange={setOperator}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select operator" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="=">=</SelectItem>
+                      <SelectItem value="!=">!=</SelectItem>
+                      <SelectItem value=">">&gt;</SelectItem>
+                      <SelectItem value="<">&lt;</SelectItem>
+                      <SelectItem value=">=">&gt;=</SelectItem>
+                      <SelectItem value="<=">&lt;=</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2">Compare Value:</label>
                   <input
                     type="text"
-                    value={condition}
-                    onChange={(e) => setCondition(e.target.value)}
+                    value={compareValue}
+                    onChange={(e) => setCompareValue(e.target.value)}
                     className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="e.g., value > 100, value = 'Active', value < 50"
+                    placeholder="Value to compare against input"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Use 'value' to reference the input. Operators: =, &gt;, &lt;
+                    Input value will be compared with this value using the operator above
                   </p>
                 </div>
                 
@@ -114,9 +134,9 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
           IF THEN Logic
         </div>
         
-        {data.condition && (
+        {data.operator && data.compareValue && (
           <div className="text-xs text-purple-600 mt-1 font-medium">
-            IF: {data.condition}
+            IF input {data.operator} {data.compareValue}
           </div>
         )}
       </div>
