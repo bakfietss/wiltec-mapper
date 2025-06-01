@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
@@ -26,19 +26,18 @@ interface StaticValueTransformNodeData {
 const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; id: string }> = ({ data, id }) => {
   const { setNodes } = useReactFlow();
   const [config, setConfig] = useState<StaticValueConfig>(data.config || { values: [] });
-  const { label, description } = data;
+  const { label } = data;
   
-  // Memoize the update function to prevent unnecessary re-renders
   const updateNodeData = useCallback((newConfig: StaticValueConfig) => {
     console.log('Updating static value node config:', newConfig);
     
-    // Create data object exactly like source nodes do
+    // Create data object like source nodes do
     const dataObject: Record<string, any> = {};
     (newConfig.values || []).forEach(value => {
       dataObject[value.id] = value.value;
     });
     
-    console.log('Static value data object (source-like):', dataObject);
+    console.log('Static value data object:', dataObject);
     
     setNodes((nodes) =>
       nodes.map((node) =>
@@ -48,25 +47,19 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
               data: {
                 ...node.data,
                 config: newConfig,
-                data: [dataObject], // Match source node data structure exactly
+                data: [dataObject],
               },
             }
           : node
       )
     );
   }, [id, setNodes]);
-
-  // Update node data whenever config changes, but debounce to prevent rapid updates
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      updateNodeData(config);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [config, updateNodeData]);
   
   const updateConfig = (updates: Partial<StaticValueConfig>) => {
     const newConfig = { ...config, ...updates };
     setConfig(newConfig);
+    // Update immediately without debouncing
+    updateNodeData(newConfig);
   };
 
   const addValue = () => {
@@ -110,20 +103,10 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
     updateValue(valueId, { value: parsedValue });
   };
 
-  // Memoize the current values to prevent unnecessary re-renders
-  const currentValues = useMemo(() => config.values || [], [config.values]);
-  
-  // Calculate dynamic height based on number of values
-  const fieldHeight = 32;
-  const headerHeight = 60;
-  const padding = 8;
-  const dynamicHeight = headerHeight + (currentValues.length * fieldHeight) + padding;
+  const currentValues = config.values || [];
   
   return (
-    <div 
-      className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80"
-      style={{ height: currentValues.length > 0 ? `${dynamicHeight}px` : 'auto' }}
-    >
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
       <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-indigo-50">
         <Hash className="w-4 h-4 text-indigo-600" />
         <span className="font-semibold text-gray-900">{label}</span>
@@ -218,9 +201,9 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
         </Sheet>
       </div>
 
-      <div className="p-2" style={{ height: currentValues.length > 0 ? `${dynamicHeight - headerHeight}px` : 'auto' }}>
+      <div className="p-2">
         {currentValues.map((value) => (
-          <div key={value.id} className="relative flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm group">
+          <div key={value.id} className="relative flex items-center gap-2 py-2 px-2 hover:bg-gray-50 rounded text-sm">
             <span className="font-medium text-gray-900 flex-1">{value.name}</span>
             <span className="px-2 py-0.5 rounded text-xs font-medium text-indigo-600 bg-indigo-50">
               {value.valueType}
@@ -233,7 +216,13 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
               type="source"
               position={Position.Right}
               id={value.id}
-              className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white group-hover:!bg-blue-600 !absolute !right-[-6px] !top-1/2 !-translate-y-1/2"
+              className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
+              style={{
+                position: 'absolute',
+                right: '-6px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
             />
           </div>
         ))}
