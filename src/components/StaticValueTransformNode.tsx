@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
@@ -28,6 +28,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
   const [config, setConfig] = useState<StaticValueConfig>(data.config || { values: [] });
   const { label, description } = data;
   
+  // Memoize the update function to prevent unnecessary re-renders
   const updateNodeData = useCallback((newConfig: StaticValueConfig) => {
     console.log('Updating static value node config:', newConfig);
     
@@ -55,9 +56,12 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
     );
   }, [id, setNodes]);
 
-  // Update node data whenever config changes
+  // Update node data whenever config changes, but debounce to prevent rapid updates
   useEffect(() => {
-    updateNodeData(config);
+    const timer = setTimeout(() => {
+      updateNodeData(config);
+    }, 100);
+    return () => clearTimeout(timer);
   }, [config, updateNodeData]);
   
   const updateConfig = (updates: Partial<StaticValueConfig>) => {
@@ -106,8 +110,10 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
     updateValue(valueId, { value: parsedValue });
   };
 
+  // Memoize the current values to prevent unnecessary re-renders
+  const currentValues = useMemo(() => config.values || [], [config.values]);
+  
   // Calculate dynamic height based on number of values
-  const currentValues = config.values || [];
   const fieldHeight = 32;
   const headerHeight = 60;
   const padding = 8;
@@ -227,13 +233,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
               type="source"
               position={Position.Right}
               id={value.id}
-              className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600"
-              style={{
-                position: 'absolute',
-                right: '-6px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-              }}
+              className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white group-hover:!bg-blue-600 !absolute !right-[-6px] !top-1/2 !-translate-y-1/2"
             />
           </div>
         ))}

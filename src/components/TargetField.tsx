@@ -66,12 +66,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
                         type="target"
                         position={Position.Left}
                         id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
-                        style={{
-                            left: '-6px',
-                            position: 'relative',
-                            transform: 'none'
-                        }}
+                        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white hover:!bg-blue-600 !absolute !left-[-6px] !top-1/2 !-translate-y-1/2"
                         onConnect={(params) => {
                             console.log('Target handle connected:', field.id, params);
                         }}
