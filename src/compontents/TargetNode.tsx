@@ -15,8 +15,6 @@ interface TargetNodeData {
     fields: SchemaField[];
     data?: any[];
     fieldValues?: Record<string, any>;
-    allNodes?: any[];
-    allEdges?: any[];
 }
 
 const getTypeColor = (type: string) => {
@@ -88,7 +86,12 @@ const TargetField: React.FC<{
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
     const [showAllFields, setShowAllFields] = useState(false);
     
-    console.log('Target node rendering with field values:', data.fieldValues);
+    console.log('TargetNode rendering:', {
+        id,
+        label: data.label,
+        fieldsCount: data.fields?.length,
+        fieldValues: data.fieldValues
+    });
 
     const MAX_VISIBLE_FIELDS = 8;
     const visibleFields = showAllFields ? data.fields : data.fields.slice(0, MAX_VISIBLE_FIELDS);
@@ -105,14 +108,19 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
             </div>
 
             <div className="p-2">
-                {visibleFields.map((field) => (
-                    <TargetField
-                        key={field.id}
-                        field={field}
-                        level={0}
-                        value={data.fieldValues?.[field.id]}
-                    />
-                ))}
+                {visibleFields.map((field) => {
+                    const fieldValue = data.fieldValues?.[field.id];
+                    console.log(`Field ${field.name} (${field.id}) value:`, fieldValue);
+                    
+                    return (
+                        <TargetField
+                            key={field.id}
+                            field={field}
+                            level={0}
+                            value={fieldValue}
+                        />
+                    );
+                })}
                 
                 {hasMoreFields && (
                     <button

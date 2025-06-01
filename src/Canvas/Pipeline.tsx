@@ -65,14 +65,18 @@ const evaluateCondition = (inputValue: any, operator: string, compareValue: stri
 
 // Calculate field values for target nodes based on connections
 const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
+    console.log('Calculating values for target node:', targetNodeId);
     const valueMap: Record<string, any> = {};
     
     // Find incoming edges to this target node
     const incomingEdges = allEdges.filter(edge => edge.target === targetNodeId);
+    console.log('Incoming edges:', incomingEdges);
     
     incomingEdges.forEach(edge => {
         const sourceNode = allNodes.find(n => n.id === edge.source);
         const targetField = targetFields.find(f => f.id === edge.targetHandle);
+        
+        console.log('Processing edge:', { edge, sourceNode: sourceNode?.type, targetField: targetField?.name });
         
         if (sourceNode && targetField) {
             let value: any = undefined;
@@ -80,6 +84,7 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
             // Handle different source node types
             if (sourceNode.type === 'staticValue' && sourceNode.data?.value) {
                 value = sourceNode.data.value;
+                console.log('Static value:', value);
             } else if (sourceNode.type === 'ifThen') {
                 // For IF THEN nodes, evaluate the condition
                 const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
@@ -105,6 +110,7 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                     const conditionResult = evaluateCondition(inputValue, operator, compareValue);
                     value = conditionResult ? thenValue : elseValue;
                 }
+                console.log('IF THEN value:', value);
             } else if (sourceNode.type === 'editableSchema' && sourceNode.data?.fields && sourceNode.data?.data) {
                 // Direct schema connection
                 const sourceField = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
@@ -113,14 +119,17 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                         ? sourceNode.data.data[0][sourceField.name] 
                         : sourceField.exampleValue;
                 }
+                console.log('Schema value:', value);
             }
             
             if (value !== undefined) {
                 valueMap[targetField.id] = value;
+                console.log('Set value for field:', targetField.name, '=', value);
             }
         }
     });
     
+    console.log('Final value map for target:', valueMap);
     return valueMap;
 };
 
@@ -198,18 +207,17 @@ export default function Pipeline() {
 
     // Enhanced nodes with calculated field values for target nodes
     const enhancedNodes = useMemo(() => {
+        console.log('Computing enhanced nodes...');
         return nodes.map(node => {
             if (node.type === 'target' && node.data?.fields) {
                 const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
-                console.log(`Target node ${node.id} field values:`, fieldValues);
+                console.log(`Target node ${node.id} enhanced with values:`, fieldValues);
                 
                 return {
                     ...node,
                     data: {
                         ...node.data,
                         fieldValues,
-                        allNodes: nodes,
-                        allEdges: edges,
                     }
                 };
             }
