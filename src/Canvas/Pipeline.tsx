@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -31,12 +30,9 @@ import StaticValueNode from '../compontents/StaticValueNode';
 import { useNodeFactories } from './NodeFactories';
 import { exportMappingConfiguration, importMappingConfiguration, MappingConfiguration } from './MappingExporter';
 
-// Create wrapper components that receive nodes and edges as props
-const TargetNodeWrapper = (props: any) => <TargetNode {...props} allNodes={props.allNodes} allEdges={props.allEdges} />;
-
 const nodeTypes = {
     source: SourceNode,
-    target: TargetNodeWrapper,
+    target: TargetNode,
     conversionMapping: ConversionMappingNode,
     transform: TransformNode,
     editableSchema: EditableSchemaNode,
@@ -49,6 +45,83 @@ const nodeTypes = {
 // Helper function to check if node data has schema properties
 const isSchemaNodeData = (data: any): data is { schemaType: 'source' | 'target'; fields: any[]; data: any[] } => {
     return data && typeof data === 'object' && 'schemaType' in data && 'fields' in data;
+};
+
+// Helper function to evaluate conditions for IF THEN nodes
+const evaluateCondition = (inputValue: any, operator: string, compareValue: string): boolean => {
+    const leftValue = String(inputValue).trim();
+    const rightValue = String(compareValue).trim();
+    
+    switch (operator) {
+        case '=': return leftValue === rightValue;
+        case '!=': return leftValue !== rightValue;
+        case '>': return Number(leftValue) > Number(rightValue);
+        case '<': return Number(leftValue) < Number(rightValue);
+        case '>=': return Number(leftValue) >= Number(rightValue);
+        case '<=': return Number(leftValue) <= Number(rightValue);
+        default: return false;
+    }
+};
+
+// Calculate field values for target nodes based on connections
+const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
+    const valueMap: Record<string, any> = {};
+    
+    // Find incoming edges to this target node
+    const incomingEdges = allEdges.filter(edge => edge.target === targetNodeId);
+    
+    incomingEdges.forEach(edge => {
+        const sourceNode = allNodes.find(n => n.id === edge.source);
+        const targetField = targetFields.find(f => f.id === edge.targetHandle);
+        
+        if (sourceNode && targetField) {
+            let value: any = undefined;
+            
+            // Handle different source node types
+            if (sourceNode.type === 'staticValue' && sourceNode.data?.value) {
+                value = sourceNode.data.value;
+            } else if (sourceNode.type === 'ifThen') {
+                // For IF THEN nodes, evaluate the condition
+                const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
+                
+                // Find input to the IF THEN node
+                const ifThenInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+                let inputValue: any = null;
+                
+                ifThenInputEdges.forEach(inputEdge => {
+                    const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                    if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.fields && inputSourceNode.data?.data) {
+                        const sourceField = inputSourceNode.data.fields.find((f: any) => f.id === inputEdge.sourceHandle);
+                        if (sourceField) {
+                            inputValue = inputSourceNode.data.data.length > 0 
+                                ? inputSourceNode.data.data[0][sourceField.name] 
+                                : sourceField.exampleValue;
+                        }
+                    }
+                });
+                
+                // Evaluate condition
+                if (inputValue !== null && operator && compareValue) {
+                    const conditionResult = evaluateCondition(inputValue, operator, compareValue);
+                    value = conditionResult ? thenValue : elseValue;
+                }
+            } else if (sourceNode.type === 'editableSchema' && sourceNode.data?.fields && sourceNode.data?.data) {
+                // Direct schema connection
+                const sourceField = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
+                if (sourceField) {
+                    value = sourceNode.data.data.length > 0 
+                        ? sourceNode.data.data[0][sourceField.name] 
+                        : sourceField.exampleValue;
+                }
+            }
+            
+            if (value !== undefined) {
+                valueMap[targetField.id] = value;
+            }
+        }
+    });
+    
+    return valueMap;
 };
 
 export default function Pipeline() {
@@ -123,14 +196,18 @@ export default function Pipeline() {
         setTargetData(allTargetData);
     }, [nodes]);
 
-    // Enhanced nodes with props injection for target nodes
+    // Enhanced nodes with calculated field values for target nodes
     const enhancedNodes = useMemo(() => {
         return nodes.map(node => {
-            if (node.type === 'target') {
+            if (node.type === 'target' && node.data?.fields) {
+                const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
+                console.log(`Target node ${node.id} field values:`, fieldValues);
+                
                 return {
                     ...node,
                     data: {
                         ...node.data,
+                        fieldValues,
                         allNodes: nodes,
                         allEdges: edges,
                     }
