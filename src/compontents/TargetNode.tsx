@@ -37,7 +37,7 @@ const TargetField: React.FC<{
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = field.children && field.children.length > 0;
 
-    console.log(`TargetField ${field.name} rendering with value:`, value);
+    console.log(`TargetField ${field.name} (${field.id}) rendering with value:`, value);
 
     return (
         <div className="relative">
@@ -60,7 +60,7 @@ const TargetField: React.FC<{
                 
                 {/* Display the value with better formatting and visibility */}
                 <div className="text-xs min-w-[120px] text-right">
-                    {value !== undefined ? (
+                    {value !== undefined && value !== null && value !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
                             {String(value)}
                         </span>
@@ -102,7 +102,8 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
         id,
         label: data.label,
         fieldsCount: data.fields?.length,
-        fieldValues: data.fieldValues
+        fieldValues: data.fieldValues,
+        fields: data.fields?.map(f => ({ id: f.id, name: f.name }))
     });
 
     const MAX_VISIBLE_FIELDS = 8;
@@ -122,7 +123,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
             <div className="p-2">
                 {visibleFields.map((field) => {
                     const fieldValue = data.fieldValues?.[field.id];
-                    console.log(`Field ${field.name} (${field.id}) value:`, fieldValue);
+                    console.log(`Rendering field ${field.name} (${field.id}) with value from fieldValues:`, fieldValue);
                     
                     return (
                         <TargetField
