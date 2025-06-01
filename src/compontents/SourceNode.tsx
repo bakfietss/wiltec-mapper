@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -328,22 +327,24 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </Sheet>
             </div>
 
-            <ScrollArea className="p-2 max-h-96">
-                {fields.map((field) => (
-                    <SourceField
-                        key={field.id}
-                        field={field}
-                        level={0}
-                        nodeData={nodeData}
-                    />
-                ))}
-                
-                {fields.length === 0 && (
-                    <div className="text-center py-4 text-gray-500 text-sm">
-                        No fields defined. Click edit to add schema fields.
-                    </div>
-                )}
-            </ScrollArea>
+            <div className="p-2 max-h-96">
+                <ScrollArea className="h-full">
+                    {fields.map((field) => (
+                        <SourceField
+                            key={field.id}
+                            field={field}
+                            level={0}
+                            nodeData={nodeData}
+                        />
+                    ))}
+                    
+                    {fields.length === 0 && (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                            No fields defined. Click edit to add schema fields.
+                        </div>
+                    )}
+                </ScrollArea>
+            </div>
         </div>
     );
 };

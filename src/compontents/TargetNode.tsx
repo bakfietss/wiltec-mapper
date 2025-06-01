@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText, ChevronUp, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -278,41 +277,43 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                 </Sheet>
             </div>
 
-            <ScrollArea className="p-2 max-h-96">
-                {visibleFields.map((field) => (
-                    <TargetField
-                        key={field.id}
-                        field={field}
-                        level={0}
-                        fieldValues={data.fieldValues || {}}
-                    />
-                ))}
-                
-                {hasMoreFields && (
-                    <button
-                        onClick={() => setShowAllFields(!showAllFields)}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-2 px-2 py-1 rounded hover:bg-blue-50 w-full justify-center"
-                    >
-                        {showAllFields ? (
-                            <>
-                                <ChevronUp className="w-3 h-3" />
-                                Show Less ({fields.length - MAX_VISIBLE_FIELDS} hidden)
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown className="w-3 h-3" />
-                                Show More ({fields.length - MAX_VISIBLE_FIELDS} more fields)
-                            </>
-                        )}
-                    </button>
-                )}
-                
-                {fields.length === 0 && (
-                    <div className="text-center py-4 text-gray-500 text-sm">
-                        No fields defined. Click edit to add schema fields.
-                    </div>
-                )}
-            </ScrollArea>
+            <div className="p-2 max-h-96">
+                <ScrollArea className="h-full">
+                    {visibleFields.map((field) => (
+                        <TargetField
+                            key={field.id}
+                            field={field}
+                            level={0}
+                            fieldValues={data.fieldValues || {}}
+                        />
+                    ))}
+                    
+                    {hasMoreFields && (
+                        <button
+                            onClick={() => setShowAllFields(!showAllFields)}
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-2 px-2 py-1 rounded hover:bg-blue-50 w-full justify-center"
+                        >
+                            {showAllFields ? (
+                                <>
+                                    <ChevronUp className="w-3 h-3" />
+                                    Show Less ({fields.length - MAX_VISIBLE_FIELDS} hidden)
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="w-3 h-3" />
+                                    Show More ({fields.length - MAX_VISIBLE_FIELDS} more fields)
+                                </>
+                            )}
+                        </button>
+                    )}
+                    
+                    {fields.length === 0 && (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                            No fields defined. Click edit to add schema fields.
+                        </div>
+                    )}
+                </ScrollArea>
+            </div>
         </div>
     );
 };
