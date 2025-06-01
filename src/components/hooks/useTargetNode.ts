@@ -31,12 +31,18 @@ export const useTargetNode = (data: TargetNodeData, id?: string) => {
             if (targetHandle && sourceHandle) {
                 const sourceNode = nodes.find(n => n.id === edge.source);
                 if (sourceNode && sourceNode.data?.data?.[0]) {
+                    console.log('Source node data:', sourceNode.data.data[0]);
+                    console.log('Looking for source handle:', sourceHandle);
+                    
                     const sourceValue = sourceNode.data.data[0][sourceHandle];
                     if (sourceValue !== undefined) {
+                        console.log('Found source value:', sourceValue, 'for handle:', sourceHandle);
                         handleValueMap[targetHandle] = sourceValue;
                         if (targetNodeData[targetHandle] !== sourceValue) {
                             hasNewConnectionData = true;
                         }
+                    } else {
+                        console.log('No source value found for handle:', sourceHandle, 'in data:', sourceNode.data.data[0]);
                     }
                 }
             }

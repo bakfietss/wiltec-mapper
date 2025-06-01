@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -36,6 +37,8 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
       dataObject[value.id] = value.value;
     });
     
+    console.log('Static value data object:', dataObject);
+    
     setNodes((nodes) =>
       nodes.map((node) =>
         node.id === id
@@ -44,7 +47,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
               data: {
                 ...node.data,
                 config: newConfig,
-                data: [dataObject], // Add data in the format expected by mapping system
+                data: [dataObject], // Ensure data is in array format
               },
             }
           : node
