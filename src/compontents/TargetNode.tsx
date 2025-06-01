@@ -37,6 +37,8 @@ const TargetField: React.FC<{
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = field.children && field.children.length > 0;
 
+    console.log(`TargetField ${field.name} rendering with value:`, value);
+
     return (
         <div className="relative">
             <div
@@ -55,7 +57,17 @@ const TargetField: React.FC<{
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                     {field.type}
                 </span>
-                <span className="text-xs text-gray-500 truncate max-w-[120px]">{String(value ?? '')}</span>
+                
+                {/* Display the value with better formatting and visibility */}
+                <div className="text-xs min-w-[120px] text-right">
+                    {value !== undefined ? (
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                            {String(value)}
+                        </span>
+                    ) : (
+                        <span className="text-gray-400 italic">no value</span>
+                    )}
+                </div>
 
                 {!hasChildren && (
                     <Handle
