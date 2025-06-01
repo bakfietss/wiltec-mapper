@@ -12,18 +12,16 @@ import '@xyflow/react/dist/style.css';
 import { useTheme } from '../Theme/ThemeContext';
 import { useFieldStore } from '../store/fieldStore';
 
-import SourceNode from '../components/SourceNode';
-import TargetNode from '../components/TargetNode';
-import ConversionMappingNode from '../components/ConversionMappingNode';
-import TransformNode from '../components/TransformNode';
-import EditableSchemaNode from '../components/EditableSchemaNode';
-import EditableTransformNode from '../components/EditableTransformNode';
-import SplitterTransformNode from '../components/SplitterTransformNode';
-import StaticValueTransformNode from '../components/StaticValueTransformNode';
-import ConditionalTransformNode from '../components/ConditionalTransformNode';
-import MappingToolbar from '../components/MappingToolbar';
-import DataSidebar from '../components/DataSidebar';
-import MappingManager from '../components/MappingManager';
+import SourceNode from '../compontents/SourceNode';
+import TargetNode from '../compontents/TargetNode';
+import ConversionMappingNode from '../compontents/ConversionMappingNode';
+import TransformNode from '../compontents/TransformNode';
+import EditableSchemaNode from '../compontents/EditableSchemaNode';
+import EditableTransformNode from '../compontents/EditableTransformNode';
+import SplitterTransformNode from '../compontents/SplitterTransformNode';
+import MappingToolbar from '../compontents/MappingToolbar';
+import DataSidebar from '../compontents/DataSidebar';
+import MappingManager from '../compontents/MappingManager';
 
 import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
@@ -38,8 +36,6 @@ const nodeTypes = {
     editableSchema: EditableSchemaNode,
     editableTransform: EditableTransformNode,
     splitterTransform: SplitterTransformNode,
-    staticValueTransform: StaticValueTransformNode,
-    conditionalTransform: ConditionalTransformNode,
 };
 
 // Helper function to check if node data has schema properties

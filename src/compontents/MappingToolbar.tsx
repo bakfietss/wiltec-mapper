@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Plus, Database, FileText, Shuffle, GitMerge, ChevronDown, ChevronUp, Layers, Hash, Zap } from 'lucide-react';
+import { Plus, Database, FileText, Shuffle, GitMerge, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 
 interface MappingToolbarProps {
   onAddTransform: (type: string) => void;
@@ -24,8 +24,6 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
     { type: 'Text Splitter', label: 'Text Splitter', icon: Shuffle },
     { type: 'concat', label: 'Concatenate', icon: GitMerge },
     { type: 'format', label: 'Format', icon: Shuffle },
-    { type: 'Static Value', label: 'Static Value', icon: Hash },
-    { type: 'IF-THEN', label: 'IF-THEN', icon: Zap },
   ];
 
   const handleToggle = () => {
