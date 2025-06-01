@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
+import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface SchemaField {
     id: string;
@@ -115,6 +116,9 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     const [nodeData, setNodeData] = useState<any[]>(data.data || []);
     const [jsonInput, setJsonInput] = useState('');
+
+    // Sync local state changes back to React Flow
+    useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
 
     const { label } = data;
 

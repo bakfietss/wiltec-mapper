@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText, ChevronUp, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
+import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface SchemaField {
     id: string;
@@ -110,10 +111,13 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     const [showAllFields, setShowAllFields] = useState(false);
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     
+    // Sync local state changes back to React Flow
+    useNodeDataSync(id, { fields }, [fields]);
+    
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
     console.log('Field values received:', data.fieldValues);
-    console.log('All fields:', data.fields?.map(f => ({ id: f.id, name: f.name })));
+    console.log('All fields:', fields?.map(f => ({ id: f.id, name: f.name })));
 
     const addField = () => {
         const newField: SchemaField = {
