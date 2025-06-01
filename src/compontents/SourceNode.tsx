@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -281,46 +282,48 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                                     </button>
                                 </div>
                                 
-                                <ScrollArea className="flex-1">
-                                    <div className="space-y-4 pr-4">
-                                        {fields.map((field) => (
-                                            <div key={field.id} className="border rounded p-3 space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="text"
-                                                        value={field.name}
-                                                        onChange={(e) => updateField(field.id, { name: e.target.value })}
-                                                        className="flex-1 border rounded px-2 py-1 text-sm"
-                                                        placeholder="Field name"
-                                                    />
-                                                    <select
-                                                        value={field.type}
-                                                        onChange={(e) => updateField(field.id, { type: e.target.value as any })}
-                                                        className="border rounded px-2 py-1 text-sm"
-                                                    >
-                                                        <option value="string">String</option>
-                                                        <option value="number">Number</option>
-                                                        <option value="boolean">Boolean</option>
-                                                        <option value="date">Date</option>
-                                                        <option value="object">Object</option>
-                                                        <option value="array">Array</option>
-                                                    </select>
-                                                    <button
-                                                        onClick={() => deleteField(field.id)}
-                                                        className="p-1 text-red-500 hover:text-red-700"
-                                                    >
-                                                        <Trash2 className="w-3 h-3" />
-                                                    </button>
+                                <div className="flex-1 border rounded min-h-0">
+                                    <ScrollArea className="h-full max-h-96">
+                                        <div className="space-y-4 p-4">
+                                            {fields.map((field) => (
+                                                <div key={field.id} className="border rounded p-3 space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={field.name}
+                                                            onChange={(e) => updateField(field.id, { name: e.target.value })}
+                                                            className="flex-1 border rounded px-2 py-1 text-sm"
+                                                            placeholder="Field name"
+                                                        />
+                                                        <select
+                                                            value={field.type}
+                                                            onChange={(e) => updateField(field.id, { type: e.target.value as any })}
+                                                            className="border rounded px-2 py-1 text-sm"
+                                                        >
+                                                            <option value="string">String</option>
+                                                            <option value="number">Number</option>
+                                                            <option value="boolean">Boolean</option>
+                                                            <option value="date">Date</option>
+                                                            <option value="object">Object</option>
+                                                            <option value="array">Array</option>
+                                                        </select>
+                                                        <button
+                                                            onClick={() => deleteField(field.id)}
+                                                            className="p-1 text-red-500 hover:text-red-700"
+                                                        >
+                                                            <Trash2 className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="text-sm text-gray-600 w-20">Example:</label>
+                                                        {getExampleValueInput(field)}
+                                                    </div>
                                                 </div>
-                                                
-                                                <div className="flex items-center gap-2">
-                                                    <label className="text-sm text-gray-600 w-20">Example:</label>
-                                                    {getExampleValueInput(field)}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </div>
                             </div>
                         </div>
                     </SheetContent>
