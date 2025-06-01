@@ -156,8 +156,19 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 }
             }
         } else if (sourceNode.type === 'staticValue') {
-            value = sourceNode.data?.value || '';
-            console.log('Static value:', value);
+            // Handle new multi-value static value nodes
+            const staticValues = sourceNode.data?.values;
+            if (Array.isArray(staticValues)) {
+                const staticValue = staticValues.find((v: any) => v.id === edge.sourceHandle);
+                if (staticValue) {
+                    value = staticValue.value || '';
+                    console.log('Static value from multi-value node:', value);
+                }
+            } else {
+                // Fallback for old single-value static nodes
+                value = sourceNode.data?.value || '';
+                console.log('Static value (legacy):', value);
+            }
         } else if (sourceNode.type === 'conversionMapping') {
             console.log('Processing CONVERSION MAPPING node');
             // Handle conversion mapping logic...
