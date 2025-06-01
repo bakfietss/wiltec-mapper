@@ -22,6 +22,8 @@ import SplitterTransformNode from '../compontents/SplitterTransformNode';
 import MappingToolbar from '../compontents/MappingToolbar';
 import DataSidebar from '../compontents/DataSidebar';
 import MappingManager from '../compontents/MappingManager';
+import IfThenNode from '../compontents/IfThenNode';
+import StaticValueNode from '../compontents/StaticValueNode';
 
 import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
@@ -36,6 +38,8 @@ const nodeTypes = {
     editableSchema: EditableSchemaNode,
     editableTransform: EditableTransformNode,
     splitterTransform: SplitterTransformNode,
+    ifThen: IfThenNode,
+    staticValue: StaticValueNode,
 };
 
 // Helper function to check if node data has schema properties

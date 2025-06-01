@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 
@@ -23,18 +22,38 @@ export const useNodeFactories = (
     }, [nodes.length, setNodes]);
 
     const addTransformNode = useCallback((transformType: string) => {
-        const nodeType = transformType === 'Text Splitter' ? 'splitterTransform' : 'editableTransform';
+        let nodeType = 'editableTransform';
+        let nodeData: any = {
+            label: transformType,
+            transformType: transformType,
+            description: `Apply ${transformType} transformation`,
+            config: {},
+        };
+
+        if (transformType === 'Text Splitter') {
+            nodeType = 'splitterTransform';
+        } else if (transformType === 'IF THEN') {
+            nodeType = 'ifThen';
+            nodeData = {
+                label: 'IF THEN Logic',
+                condition: '',
+                thenValue: '',
+                elseValue: '',
+            };
+        } else if (transformType === 'Static Value') {
+            nodeType = 'staticValue';
+            nodeData = {
+                label: 'Static Value',
+                value: '',
+                valueType: 'string',
+            };
+        }
         
         const newNode: Node = {
             id: `transform-${Date.now()}`,
             type: nodeType,
             position: { x: 400, y: 100 + nodes.length * 50 },
-            data: {
-                label: transformType,
-                transformType: transformType,
-                description: `Apply ${transformType} transformation`,
-                config: {},
-            },
+            data: nodeData,
         };
 
         setNodes((nds) => [...nds, newNode]);
