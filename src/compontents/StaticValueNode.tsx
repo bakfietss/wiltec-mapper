@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { Hash, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface StaticValueNodeData {
   label: string;
@@ -13,20 +14,13 @@ interface StaticValueNodeData {
 const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ data, id }) => {
   const [value, setValue] = useState(data.value || '');
   const [valueType, setValueType] = useState(data.valueType || 'string');
-  const { setNodes } = useReactFlow();
 
-  const updateNodeData = (updates: Partial<StaticValueNodeData>) => {
-    setNodes(nodes => 
-      nodes.map(node => 
-        node.id === id 
-          ? { ...node, data: { ...node.data, ...updates } }
-          : node
-      )
-    );
-  };
+  // Auto-sync state changes with React Flow's central state
+  useNodeDataSync(id, { value, valueType }, [value, valueType]);
 
   const handleSave = () => {
-    updateNodeData({ value, valueType });
+    // State is already synced via useNodeDataSync, just close the sheet
+    console.log('Static value saved:', { value, valueType });
   };
 
   const getTypeColor = (type: string) => {
@@ -113,13 +107,13 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
           Static Value
         </div>
         
-        {data.value && (
+        {value && (
           <div className="flex items-center gap-2 mt-2">
             <div className="text-xs text-gray-700 bg-white px-2 py-1 rounded border flex-1 truncate">
-              {data.value}
+              {value}
             </div>
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(data.valueType)}`}>
-              {data.valueType}
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(valueType)}`}>
+              {valueType}
             </span>
           </div>
         )}

@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { GitBranch, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface IfThenNodeData {
   label: string;
@@ -18,20 +19,13 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
   const [compareValue, setCompareValue] = useState(data.compareValue || '');
   const [thenValue, setThenValue] = useState(data.thenValue || '');
   const [elseValue, setElseValue] = useState(data.elseValue || '');
-  const { setNodes } = useReactFlow();
 
-  const updateNodeData = (updates: Partial<IfThenNodeData>) => {
-    setNodes(nodes => 
-      nodes.map(node => 
-        node.id === id 
-          ? { ...node, data: { ...node.data, ...updates } }
-          : node
-      )
-    );
-  };
+  // Auto-sync state changes with React Flow's central state
+  useNodeDataSync(id, { operator, compareValue, thenValue, elseValue }, [operator, compareValue, thenValue, elseValue]);
 
   const handleSave = () => {
-    updateNodeData({ operator, compareValue, thenValue, elseValue });
+    // State is already synced via useNodeDataSync, just close the sheet
+    console.log('IF THEN node saved:', { operator, compareValue, thenValue, elseValue });
   };
 
   return (
@@ -134,9 +128,9 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
           IF THEN Logic
         </div>
         
-        {data.operator && data.compareValue && (
+        {operator && compareValue && (
           <div className="text-xs text-purple-600 mt-1 font-medium">
-            IF input {data.operator} {data.compareValue}
+            IF input {operator} {compareValue}
           </div>
         )}
       </div>
