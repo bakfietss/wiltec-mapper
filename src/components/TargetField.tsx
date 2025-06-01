@@ -33,7 +33,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
         displayValue = field.value;
     }
 
-    console.log('Target field:', field.name, 'Display value:', displayValue, 'Field value:', field.value, 'Example value:', field.exampleValue, 'Node data:', nodeData);
+    console.log('Target field rendering:', field.name, 'Field ID:', field.id, 'Display value:', displayValue, 'Field value:', field.value, 'Example value:', field.exampleValue, 'Node data:', nodeData);
 
     return (
         <div className="relative">
