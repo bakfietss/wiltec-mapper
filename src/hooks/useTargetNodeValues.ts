@@ -39,22 +39,25 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                     let value: any = undefined;
                     
                     // Handle different source node types
-                    if (sourceNode.type === 'staticValue' && sourceNode.data.value) {
+                    if (sourceNode.type === 'staticValue' && sourceNode.data?.value) {
                         value = sourceNode.data.value;
                     } else if (sourceNode.type === 'ifThen') {
                         // For IF THEN nodes, show configuration summary
-                        const { operator, compareValue, thenValue, elseValue } = sourceNode.data;
+                        const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
                         if (operator && compareValue) {
                             value = `IF ? ${operator} ${compareValue} THEN ${thenValue} ELSE ${elseValue}`;
                         }
-                    } else if (sourceNode.type === 'editableSchema' && sourceNode.data.fields) {
-                        // Handle schema nodes
-                        const sourceField = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
-                        if (sourceField) {
-                            const sourceData = sourceNode.data.data || [];
-                            value = sourceData.length > 0 
-                                ? sourceData[0][sourceField.name] 
-                                : sourceField.exampleValue;
+                    } else if (sourceNode.type === 'editableSchema' && sourceNode.data) {
+                        // Handle schema nodes with proper type checking
+                        const nodeData = sourceNode.data;
+                        if (nodeData && typeof nodeData === 'object' && 'fields' in nodeData && Array.isArray(nodeData.fields)) {
+                            const sourceField = nodeData.fields.find((f: any) => f.id === edge.sourceHandle);
+                            if (sourceField) {
+                                const sourceData = (nodeData.data && Array.isArray(nodeData.data)) ? nodeData.data : [];
+                                value = sourceData.length > 0 
+                                    ? sourceData[0][sourceField.name] 
+                                    : sourceField.exampleValue;
+                            }
                         }
                     }
                     
