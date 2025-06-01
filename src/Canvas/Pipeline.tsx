@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -102,6 +103,13 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                                 ? inputSourceNode.data.data[0][sourceField.name] 
                                 : sourceField.exampleValue;
                         }
+                    } else if (inputSourceNode?.type === 'source' && inputSourceNode.data?.fields && inputSourceNode.data?.data) {
+                        const sourceField = inputSourceNode.data.fields.find((f: any) => f.id === inputEdge.sourceHandle);
+                        if (sourceField) {
+                            inputValue = inputSourceNode.data.data.length > 0 
+                                ? inputSourceNode.data.data[0][sourceField.name] 
+                                : sourceField.exampleValue;
+                        }
                     }
                 });
                 
@@ -120,6 +128,50 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                         : sourceField.exampleValue;
                 }
                 console.log('Schema value:', value);
+            } else if (sourceNode.type === 'source' && sourceNode.data?.fields && sourceNode.data?.data) {
+                // Direct source node connection
+                const sourceField = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
+                if (sourceField) {
+                    value = sourceNode.data.data.length > 0 
+                        ? sourceNode.data.data[0][sourceField.name] 
+                        : sourceField.exampleValue;
+                }
+                console.log('Source node value:', value);
+            } else if (sourceNode.type === 'conversionMapping') {
+                // Handle conversion mapping nodes
+                const conversionIncomingEdges = allEdges.filter(e => e.target === sourceNode.id && e.targetHandle === 'input');
+                
+                conversionIncomingEdges.forEach(conversionEdge => {
+                    const originalSourceNode = allNodes.find(n => n.id === conversionEdge.source);
+                    
+                    if (originalSourceNode && (originalSourceNode.type === 'editableSchema' || originalSourceNode.type === 'source') && originalSourceNode.data?.fields && originalSourceNode.data?.data) {
+                        const sourceField = originalSourceNode.data.fields.find((f: any) => f.id === conversionEdge.sourceHandle);
+                        
+                        if (sourceField) {
+                            let sourceValue = originalSourceNode.data.data.length > 0 
+                                ? originalSourceNode.data.data[0][sourceField.name] 
+                                : sourceField.exampleValue;
+                            
+                            const mappings = sourceNode.data?.mappings;
+                            if (Array.isArray(mappings) && mappings.length > 0) {
+                                const sourceValueStr = String(sourceValue).trim();
+                                const mappingRule = mappings.find((mapping: any) => {
+                                    const fromValueStr = String(mapping.from).trim();
+                                    return fromValueStr === sourceValueStr;
+                                });
+                                
+                                if (mappingRule) {
+                                    value = mappingRule.to;
+                                    console.log('Applied conversion rule:', mappingRule.from, '->', mappingRule.to);
+                                } else {
+                                    value = 'NotMapped';
+                                }
+                            } else {
+                                value = 'NotMapped';
+                            }
+                        }
+                    }
+                });
             }
             
             if (value !== undefined) {
@@ -188,14 +240,30 @@ export default function Pipeline() {
     useEffect(() => {
         console.log('Nodes changed, updating sidebar data');
         
-        // Update source data from all source nodes
+        // Update source data from all source-type nodes (both 'source' and 'editableSchema' with schemaType source)
         const allSourceData = nodes
-            .filter(node => node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'source')
+            .filter(node => {
+                if (node.type === 'source' && node.data?.data) {
+                    return true;
+                }
+                if (node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'source') {
+                    return true;
+                }
+                return false;
+            })
             .flatMap(node => node.data?.data || []);
         
-        // Update target data from all target nodes
+        // Update target data from all target-type nodes (both 'target' and 'editableSchema' with schemaType target)
         const allTargetData = nodes
-            .filter(node => node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target')
+            .filter(node => {
+                if (node.type === 'target' && node.data?.data) {
+                    return true;
+                }
+                if (node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target') {
+                    return true;
+                }
+                return false;
+            })
             .flatMap(node => node.data?.data || []);
         
         console.log('Updated source data:', allSourceData);
