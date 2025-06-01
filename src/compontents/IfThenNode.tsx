@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitBranch, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface IfThenNodeData {
@@ -23,14 +22,13 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
   // Auto-sync state changes with React Flow's central state
   useNodeDataSync(id, { operator, compareValue, thenValue, elseValue }, [operator, compareValue, thenValue, elseValue]);
 
-  const handleSave = () => {
-    // State is already synced via useNodeDataSync, just close the sheet
-    console.log('IF THEN node saved:', { operator, compareValue, thenValue, elseValue });
+  const getConditionSummary = () => {
+    if (!operator || !compareValue) return 'Configure condition';
+    return `IF input ${operator} "${compareValue}"`;
   };
 
   return (
-    <div className="relative border-2 border-purple-300 bg-purple-50 rounded-lg shadow-sm min-w-48">
-      {/* Input Handle */}
+    <div className="relative border-2 rounded-lg shadow-sm min-w-48 border-purple-300 bg-purple-50">
       <Handle
         type="target"
         position={Position.Left}
@@ -56,86 +54,82 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
             </SheetTrigger>
             <SheetContent className="w-[400px]">
               <SheetHeader>
-                <SheetTitle>Configure IF THEN Node</SheetTitle>
+                <SheetTitle>Configure IF THEN Logic</SheetTitle>
               </SheetHeader>
               
               <div className="space-y-4 mt-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Operator:</label>
-                  <Select value={operator} onValueChange={setOperator}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select operator" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="=">=</SelectItem>
-                      <SelectItem value="!=">!=</SelectItem>
-                      <SelectItem value=">">&gt;</SelectItem>
-                      <SelectItem value="<">&lt;</SelectItem>
-                      <SelectItem value=">=">&gt;=</SelectItem>
-                      <SelectItem value="<=">&lt;=</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="block text-sm font-medium mb-2">Condition:</label>
+                  <div className="flex gap-2">
+                    <span className="flex items-center px-3 py-2 bg-gray-100 rounded text-sm">Input</span>
+                    <select
+                      value={operator}
+                      onChange={(e) => setOperator(e.target.value)}
+                      className="border rounded px-3 py-2 text-sm"
+                    >
+                      <option value="=">=</option>
+                      <option value="!=">!=</option>
+                      <option value=">">&gt;</option>
+                      <option value="<">&lt;</option>
+                      <option value=">=">&gt;=</option>
+                      <option value="<=">&lt;=</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={compareValue}
+                      onChange={(e) => setCompareValue(e.target.value)}
+                      className="flex-1 border rounded px-3 py-2 text-sm"
+                      placeholder="Compare value"
+                    />
+                  </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Compare Value:</label>
-                  <input
-                    type="text"
-                    value={compareValue}
-                    onChange={(e) => setCompareValue(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="Value to compare against input"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Input value will be compared with this value using the operator above
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Then Value:</label>
+                  <label className="block text-sm font-medium mb-2">THEN (if true):</label>
                   <input
                     type="text"
                     value={thenValue}
                     onChange={(e) => setThenValue(e.target.value)}
                     className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="Value if condition is true"
+                    placeholder="Value when condition is true"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Else Value:</label>
+                  <label className="block text-sm font-medium mb-2">ELSE (if false):</label>
                   <input
                     type="text"
                     value={elseValue}
                     onChange={(e) => setElseValue(e.target.value)}
                     className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="Value if condition is false"
+                    placeholder="Value when condition is false"
                   />
                 </div>
                 
-                <button
-                  onClick={handleSave}
-                  className="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600"
-                >
-                  Save Configuration
-                </button>
+                <div className="mt-6 p-3 bg-gray-50 rounded">
+                  <h4 className="font-medium mb-2">Preview:</h4>
+                  <div className="text-sm text-gray-600">
+                    {getConditionSummary()}
+                    <br />
+                    THEN: "{thenValue || 'not set'}"
+                    <br />
+                    ELSE: "{elseValue || 'not set'}"
+                  </div>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
         </div>
         
         <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
-          IF THEN Logic
+          Conditional Logic
         </div>
         
-        {operator && compareValue && (
-          <div className="text-xs text-purple-600 mt-1 font-medium">
-            IF input {operator} {compareValue}
-          </div>
-        )}
+        <div className="text-xs text-purple-600 mt-1 font-medium">
+          {getConditionSummary()}
+        </div>
       </div>
       
-      {/* Output Handle */}
       <Handle
         type="source"
         position={Position.Right}

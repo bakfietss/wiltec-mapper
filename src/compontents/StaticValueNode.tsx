@@ -18,11 +18,6 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
   // Auto-sync state changes with React Flow's central state
   useNodeDataSync(id, { value, valueType }, [value, valueType]);
 
-  const handleSave = () => {
-    // State is already synced via useNodeDataSync, just close the sheet
-    console.log('Static value saved:', { value, valueType });
-  };
-
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'string': return 'text-green-600 bg-green-50';
@@ -32,8 +27,13 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
     }
   };
 
+  const getValueSummary = () => {
+    if (!value) return 'No value set';
+    return `${valueType}: ${value}`;
+  };
+
   return (
-    <div className="relative border-2 border-indigo-300 bg-indigo-50 rounded-lg shadow-sm min-w-48">
+    <div className="relative border-2 rounded-lg shadow-sm min-w-48 border-indigo-300 bg-indigo-50">
       <div className="p-3">
         <div className="flex items-center gap-2 mb-2">
           <div className="p-1.5 bg-white rounded-md shadow-sm">
@@ -92,12 +92,12 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
                   )}
                 </div>
                 
-                <button
-                  onClick={handleSave}
-                  className="w-full bg-indigo-500 text-white py-2 rounded hover:bg-indigo-600"
-                >
-                  Save Value
-                </button>
+                <div className="mt-6 p-3 bg-gray-50 rounded">
+                  <h4 className="font-medium mb-2">Preview:</h4>
+                  <div className="text-sm text-gray-600">
+                    {getValueSummary()}
+                  </div>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -117,6 +117,10 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
             </span>
           </div>
         )}
+        
+        <div className="text-xs text-indigo-600 mt-1 font-medium">
+          {getValueSummary()}
+        </div>
       </div>
       
       {/* Output Handle */}

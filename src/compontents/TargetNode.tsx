@@ -110,9 +110,11 @@ const TargetField: React.FC<{
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
     const [showAllFields, setShowAllFields] = useState(false);
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
+    const [nodeData, setNodeData] = useState<any[]>(data.data || []);
+    const [jsonInput, setJsonInput] = useState('');
     
     // Sync local state changes back to React Flow
-    useNodeDataSync(id, { fields }, [fields]);
+    useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
@@ -140,6 +142,29 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
         setFields(updatedFields);
     };
 
+    const handleJsonImport = () => {
+        try {
+            const parsed = JSON.parse(jsonInput);
+            const dataArray = Array.isArray(parsed) ? parsed : [parsed];
+            setNodeData(dataArray);
+            setJsonInput('');
+            
+            // Auto-generate fields from first object
+            if (dataArray.length > 0 && typeof dataArray[0] === 'object') {
+                const generatedFields: SchemaField[] = Object.keys(dataArray[0]).map((key, index) => ({
+                    id: `field-${Date.now()}-${index}`,
+                    name: key,
+                    type: typeof dataArray[0][key] === 'number' ? 'number' : 
+                          typeof dataArray[0][key] === 'boolean' ? 'boolean' : 'string'
+                }));
+                setFields(generatedFields);
+            }
+        } catch (error) {
+            console.error('Invalid JSON:', error);
+            alert('Invalid JSON format');
+        }
+    };
+
     const MAX_VISIBLE_FIELDS = 8;
     const visibleFields = showAllFields ? fields : fields.slice(0, MAX_VISIBLE_FIELDS);
     const hasMoreFields = fields.length > MAX_VISIBLE_FIELDS;
@@ -165,6 +190,40 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                         </SheetHeader>
                         
                         <div className="flex-1 flex flex-col space-y-4 mt-6">
+                            {/* JSON Data Import */}
+                            <div className="flex-shrink-0">
+                                <h4 className="font-medium mb-2">Import JSON Data:</h4>
+                                <textarea
+                                    value={jsonInput}
+                                    onChange={(e) => setJsonInput(e.target.value)}
+                                    className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono resize-none"
+                                    placeholder='{"field1": "value1", "field2": 123}'
+                                />
+                                <button
+                                    onClick={handleJsonImport}
+                                    className="mt-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                >
+                                    Import Data
+                                </button>
+                            </div>
+
+                            {/* Current Data Preview */}
+                            <div className="flex-shrink-0">
+                                <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
+                                <div className="h-32 border rounded p-2 bg-gray-50">
+                                    <ScrollArea className="h-full">
+                                        {nodeData.length > 0 ? (
+                                            <pre className="text-xs">
+                                                {JSON.stringify(nodeData.slice(0, 3), null, 2)}
+                                                {nodeData.length > 3 && '\n... and more'}
+                                            </pre>
+                                        ) : (
+                                            <p className="text-gray-500 text-sm">No data available</p>
+                                        )}
+                                    </ScrollArea>
+                                </div>
+                            </div>
+
                             {/* Schema Fields */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <div className="flex items-center justify-between mb-2">
