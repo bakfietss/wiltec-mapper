@@ -221,7 +221,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
           Static Value
         </div>
 
-        {/* Display configured values */}
+        {/* Display configured values with source handles */}
         <div className="space-y-1">
           {currentValues.map((value, index) => (
             <div key={value.id} className="relative flex items-center justify-between py-1 px-2 hover:bg-white/50 rounded text-xs group">
@@ -232,6 +232,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
                 </div>
               </div>
               
+              {/* Source handle for each value */}
               <Handle
                 type="source"
                 position={Position.Right}
@@ -241,6 +242,9 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
                   right: '-6px',
                   top: '50%',
                   transform: 'translateY(-50%)',
+                }}
+                onConnect={(params) => {
+                  console.log('Source handle connected:', value.id, params);
                 }}
               />
             </div>

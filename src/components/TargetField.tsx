@@ -33,7 +33,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
         displayValue = field.value;
     }
 
-    console.log('Target field rendering:', field.name, 'Field ID:', field.id, 'Display value:', displayValue, 'Field value:', field.value, 'Example value:', field.exampleValue, 'Node data:', nodeData);
+    console.log('Target field rendering:', field.name, 'Field ID:', field.id, 'Display value:', displayValue, 'Field value:', field.value, 'Example value:', field.exampleValue, 'Node data:', nodeData, 'Has children:', hasChildren);
 
     return (
         <div className="relative">
@@ -60,6 +60,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
                     </span>
                 )}
 
+                {/* Always render target handle for leaf nodes (no children) */}
                 {!hasChildren && (
                     <Handle
                         type="target"
@@ -70,6 +71,9 @@ const TargetField: React.FC<TargetFieldProps> = ({
                             left: '-6px',
                             top: '50%',
                             transform: 'translateY(-50%)',
+                        }}
+                        onConnect={(params) => {
+                            console.log('Target handle connected:', field.id, params);
                         }}
                     />
                 )}
