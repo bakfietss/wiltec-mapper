@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText, ChevronUp } from 'lucide-react';
+import { useTargetNodeValues } from '../hooks/useTargetNodeValues';
 
 interface SchemaField {
     id: string;
@@ -83,22 +84,12 @@ const TargetField: React.FC<{
 };
 
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
-    const { getEdges } = useReactFlow();
     const [showAllFields, setShowAllFields] = useState(false);
-    const edges = getEdges();
+    
+    // Use the centralized hook for value resolution
+    const handleValueMap = useTargetNodeValues(id, data.fields, data.data || []);
 
-    // Build a map of field name → value from the processed data
-    const firstRecord = data.data?.[0] ?? {};
-    const handleValueMap: Record<string, any> = {};
-
-    // Map field names to their values from the processed data
-    data.fields.forEach(field => {
-        if (firstRecord[field.name] !== undefined) {
-            handleValueMap[field.id] = firstRecord[field.name];
-        }
-    });
-
-    console.log('Target node data:', firstRecord);
+    console.log('Target node data:', data.data?.[0]);
     console.log('Handle value map:', handleValueMap);
 
     const MAX_VISIBLE_FIELDS = 8;
