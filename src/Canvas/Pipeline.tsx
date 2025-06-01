@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -6,6 +7,8 @@ import {
     useEdgesState,
     Background,
     Controls,
+    Connection,
+    addEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -25,14 +28,15 @@ import MappingManager from '../compontents/MappingManager';
 import IfThenNode from '../compontents/IfThenNode';
 import StaticValueNode from '../compontents/StaticValueNode';
 
-import { useEdgeHandlers } from './EdgeHandlers';
 import { useNodeFactories } from './NodeFactories';
-import { processDataMapping } from './DataMappingProcessor';
 import { exportMappingConfiguration, importMappingConfiguration, MappingConfiguration } from './MappingExporter';
+
+// Create wrapper components that receive nodes and edges as props
+const TargetNodeWrapper = (props: any) => <TargetNode {...props} allNodes={props.allNodes} allEdges={props.allEdges} />;
 
 const nodeTypes = {
     source: SourceNode,
-    target: TargetNode,
+    target: TargetNodeWrapper,
     conversionMapping: ConversionMappingNode,
     transform: TransformNode,
     editableSchema: EditableSchemaNode,
@@ -59,11 +63,44 @@ export default function Pipeline() {
     const [currentMappingName, setCurrentMappingName] = useState('Untitled Mapping');
     const canvasRef = useRef(null);
 
-    // Use custom edge handlers
-    const { onConnect, handleEdgesChange } = useEdgeHandlers(edges, setEdges, setNodes);
-
     // Use node factories
     const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
+
+    // Simple connection handler
+    const onConnect = useCallback((connection: Connection) => {
+        console.log('Connection made:', connection);
+        const newEdge = {
+            ...connection,
+            type: 'smoothstep',
+            animated: true,
+        };
+        setEdges(edges => addEdge(newEdge, edges));
+    }, [setEdges]);
+
+    // Simple edge change handler
+    const handleEdgesChange = useCallback((changes: any) => {
+        console.log('Edge changes:', changes);
+        onEdgesChange(changes);
+    }, [onEdgesChange]);
+
+    // Simple node change handler
+    const handleNodesChange = useCallback((changes: any) => {
+        console.log('Node changes:', changes);
+        
+        // Check if any nodes are being removed and clean up their edges
+        const removedNodes = changes.filter((change: any) => change.type === 'remove');
+        if (removedNodes.length > 0) {
+            const removedNodeIds = removedNodes.map((change: any) => change.id);
+            setEdges(currentEdges => 
+                currentEdges.filter(edge => 
+                    !removedNodeIds.includes(edge.source) && 
+                    !removedNodeIds.includes(edge.target)
+                )
+            );
+        }
+        
+        onNodesChange(changes);
+    }, [onNodesChange, setEdges]);
 
     // Update sidebar data whenever nodes change
     useEffect(() => {
@@ -86,63 +123,22 @@ export default function Pipeline() {
         setTargetData(allTargetData);
     }, [nodes]);
 
-    // Handle node changes and deletions
-    const handleNodesChange = useCallback((changes: any) => {
-        console.log('Node changes:', changes);
-        
-        // Check if any nodes are being removed
-        const removedNodes = changes.filter((change: any) => change.type === 'remove');
-        if (removedNodes.length > 0) {
-            console.log('Nodes being removed:', removedNodes);
-            
-            // Remove edges connected to deleted nodes
-            setEdges((currentEdges) => {
-                const removedNodeIds = removedNodes.map((change: any) => change.id);
-                return currentEdges.filter(edge => 
-                    !removedNodeIds.includes(edge.source) && 
-                    !removedNodeIds.includes(edge.target)
-                );
-            });
-        }
-        
-        onNodesChange(changes);
-        
-        // Re-process mapping after node changes if it's a data update
-        const hasDataChanges = changes.some((change: any) => 
-            change.type === 'replace' || 
-            (change.type === 'add' && change.item?.data)
-        );
-        
-        if (hasDataChanges) {
-            setTimeout(() => {
-                setNodes(currentNodes => {
-                    const updatedNodes = processDataMapping(edges, currentNodes);
-                    const hasChanges = updatedNodes.some((node, index) => node !== currentNodes[index]);
-                    return hasChanges ? updatedNodes : currentNodes;
-                });
-            }, 50);
-        }
-    }, [onNodesChange, edges, setEdges, setNodes]);
-
-    const handleEdgesChangeWrapper = useCallback((changes: any) => {
-        onEdgesChange(changes);
-        handleEdgesChange(changes);
-        
-        // Trigger data processing immediately when edges are added or removed
-        const hasEdgeChanges = changes.some((change: any) => 
-            change.type === 'add' || change.type === 'remove'
-        );
-        
-        if (hasEdgeChanges) {
-            setTimeout(() => {
-                setNodes(currentNodes => {
-                    const updatedNodes = processDataMapping(edges, currentNodes);
-                    const hasChanges = updatedNodes.some((node, index) => node !== currentNodes[index]);
-                    return hasChanges ? updatedNodes : currentNodes;
-                });
-            }, 100);
-        }
-    }, [onEdgesChange, handleEdgesChange, edges, setNodes]);
+    // Enhanced nodes with props injection for target nodes
+    const enhancedNodes = useMemo(() => {
+        return nodes.map(node => {
+            if (node.type === 'target') {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        allNodes: nodes,
+                        allEdges: edges,
+                    }
+                };
+            }
+            return node;
+        });
+    }, [nodes, edges]);
 
     // Handle canvas clicks to close toolbars
     const handleCanvasClick = useCallback((event: React.MouseEvent) => {
@@ -276,10 +272,10 @@ export default function Pipeline() {
                 
                 <div className="relative w-full h-full overflow-hidden">
                     <ReactFlow
-                        nodes={nodes}
+                        nodes={enhancedNodes}
                         onNodesChange={handleNodesChange}
                         edges={edges}
-                        onEdgesChange={handleEdgesChangeWrapper}
+                        onEdgesChange={handleEdgesChange}
                         onConnect={onConnect}
                         fitView
                         style={style}

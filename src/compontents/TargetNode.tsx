@@ -1,8 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, FileText, ChevronUp } from 'lucide-react';
-import { useTargetNodeValues } from '../hooks/useTargetNodeValues';
 
 interface SchemaField {
     id: string;
@@ -14,7 +13,9 @@ interface SchemaField {
 interface TargetNodeData {
     label: string;
     fields: SchemaField[];
-    data?: any[]; // Contains processed output data
+    data?: any[];
+    allNodes?: any[];
+    allEdges?: any[];
 }
 
 const getTypeColor = (type: string) => {
@@ -26,6 +27,83 @@ const getTypeColor = (type: string) => {
         case 'object': return 'text-gray-600 bg-gray-50';
         case 'array': return 'text-red-600 bg-red-50';
         default: return 'text-gray-600 bg-gray-50';
+    }
+};
+
+// Pure function to calculate field values based on current connections
+const calculateFieldValues = (targetNodeId: string, fields: SchemaField[], allNodes: any[], allEdges: any[]) => {
+    const valueMap: Record<string, any> = {};
+    
+    // Find incoming edges to this target node
+    const incomingEdges = allEdges.filter(edge => edge.target === targetNodeId);
+    
+    incomingEdges.forEach(edge => {
+        const sourceNode = allNodes.find(n => n.id === edge.source);
+        const targetField = fields.find(f => f.id === edge.targetHandle);
+        
+        if (sourceNode && targetField) {
+            let value: any = undefined;
+            
+            // Handle different source node types
+            if (sourceNode.type === 'staticValue' && sourceNode.data?.value) {
+                value = sourceNode.data.value;
+            } else if (sourceNode.type === 'ifThen') {
+                // For IF THEN nodes, evaluate the condition
+                const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
+                
+                // Find input to the IF THEN node
+                const ifThenInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+                let inputValue: any = null;
+                
+                ifThenInputEdges.forEach(inputEdge => {
+                    const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                    if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.fields && inputSourceNode.data?.data) {
+                        const sourceField = inputSourceNode.data.fields.find((f: any) => f.id === inputEdge.sourceHandle);
+                        if (sourceField) {
+                            inputValue = inputSourceNode.data.data.length > 0 
+                                ? inputSourceNode.data.data[0][sourceField.name] 
+                                : sourceField.exampleValue;
+                        }
+                    }
+                });
+                
+                // Evaluate condition
+                if (inputValue !== null && operator && compareValue) {
+                    const conditionResult = evaluateCondition(inputValue, operator, compareValue);
+                    value = conditionResult ? thenValue : elseValue;
+                }
+            } else if (sourceNode.type === 'editableSchema' && sourceNode.data?.fields && sourceNode.data?.data) {
+                // Direct schema connection
+                const sourceField = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
+                if (sourceField) {
+                    value = sourceNode.data.data.length > 0 
+                        ? sourceNode.data.data[0][sourceField.name] 
+                        : sourceField.exampleValue;
+                }
+            }
+            
+            if (value !== undefined) {
+                valueMap[targetField.id] = value;
+            }
+        }
+    });
+    
+    return valueMap;
+};
+
+// Helper function to evaluate conditions
+const evaluateCondition = (inputValue: any, operator: string, compareValue: string): boolean => {
+    const leftValue = String(inputValue).trim();
+    const rightValue = String(compareValue).trim();
+    
+    switch (operator) {
+        case '=': return leftValue === rightValue;
+        case '!=': return leftValue !== rightValue;
+        case '>': return Number(leftValue) > Number(rightValue);
+        case '<': return Number(leftValue) < Number(rightValue);
+        case '>=': return Number(leftValue) >= Number(rightValue);
+        case '<=': return Number(leftValue) <= Number(rightValue);
+        default: return false;
     }
 };
 
@@ -86,11 +164,15 @@ const TargetField: React.FC<{
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
     const [showAllFields, setShowAllFields] = useState(false);
     
-    // Use the centralized hook for value resolution
-    const handleValueMap = useTargetNodeValues(id, data.fields, data.data || []);
+    // Calculate field values based on current connections - this will automatically re-render when nodes/edges change
+    const fieldValues = useMemo(() => {
+        if (!data.allNodes || !data.allEdges) {
+            return {};
+        }
+        return calculateFieldValues(id, data.fields, data.allNodes, data.allEdges);
+    }, [id, data.fields, data.allNodes, data.allEdges]);
 
-    console.log('Target node data:', data.data?.[0]);
-    console.log('Handle value map:', handleValueMap);
+    console.log('Target node field values:', fieldValues);
 
     const MAX_VISIBLE_FIELDS = 8;
     const visibleFields = showAllFields ? data.fields : data.fields.slice(0, MAX_VISIBLE_FIELDS);
@@ -112,7 +194,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                         key={field.id}
                         field={field}
                         level={0}
-                        value={handleValueMap[field.id]}
+                        value={fieldValues[field.id]}
                     />
                 ))}
                 
