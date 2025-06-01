@@ -31,13 +31,13 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
   const updateNodeData = useCallback((newConfig: StaticValueConfig) => {
     console.log('Updating static value node config:', newConfig);
     
-    // Convert static values to data format expected by the mapping system
+    // Create data object exactly like source nodes do
     const dataObject: Record<string, any> = {};
     (newConfig.values || []).forEach(value => {
       dataObject[value.id] = value.value;
     });
     
-    console.log('Static value data object:', dataObject);
+    console.log('Static value data object (source-like):', dataObject);
     
     setNodes((nodes) =>
       nodes.map((node) =>
@@ -47,7 +47,7 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
               data: {
                 ...node.data,
                 config: newConfig,
-                data: [dataObject], // Ensure data is in array format
+                data: [dataObject], // Match source node data structure exactly
               },
             }
           : node
