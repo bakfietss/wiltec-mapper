@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -43,9 +42,22 @@ const nodeTypes = {
     staticValue: StaticValueNode,
 };
 
-// Helper function to check if node data has schema properties
-const isSchemaNodeData = (data: any): data is { schemaType: 'source' | 'target'; fields: any[]; data: any[] } => {
-    return data && typeof data === 'object' && 'schemaType' in data && 'fields' in data;
+// Helper function to check if a node is a source-type node
+const isSourceNode = (node: any): boolean => {
+    console.log('Checking if source node:', node.id, node.type, node.data?.schemaType);
+    return (
+        (node.type === 'source') ||
+        (node.type === 'editableSchema' && node.data?.schemaType === 'source')
+    );
+};
+
+// Helper function to check if a node is a target-type node
+const isTargetNode = (node: any): boolean => {
+    console.log('Checking if target node:', node.id, node.type, node.data?.schemaType);
+    return (
+        (node.type === 'target') ||
+        (node.type === 'editableSchema' && node.data?.schemaType === 'target')
+    );
 };
 
 // Helper function to evaluate conditions for IF THEN nodes
@@ -68,9 +80,27 @@ const evaluateCondition = (inputValue: any, operator: string, compareValue: stri
 const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
     console.log('=== CALCULATING VALUES FOR TARGET ===');
     console.log('Target node ID:', targetNodeId);
-    console.log('Target fields:', targetFields);
-    console.log('All nodes:', allNodes.map(n => ({ id: n.id, type: n.type, hasData: !!n.data?.data })));
-    console.log('All edges:', allEdges);
+    console.log('Target fields:', targetFields?.map(f => ({ id: f.id, name: f.name })));
+    console.log('All nodes:', allNodes.map(n => ({ 
+        id: n.id, 
+        type: n.type, 
+        schemaType: n.data?.schemaType,
+        hasFields: !!n.data?.fields,
+        hasData: !!n.data?.data,
+        dataLength: n.data?.data?.length || 0
+    })));
+    console.log('All edges:', allEdges.map(e => ({ 
+        id: e.id, 
+        source: e.source, 
+        target: e.target, 
+        sourceHandle: e.sourceHandle, 
+        targetHandle: e.targetHandle 
+    })));
+    
+    if (!targetFields || !Array.isArray(targetFields)) {
+        console.log('No target fields provided');
+        return {};
+    }
     
     const valueMap: Record<string, any> = {};
     
@@ -78,131 +108,125 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
     const incomingEdges = allEdges.filter(edge => edge.target === targetNodeId);
     console.log('Incoming edges to target:', incomingEdges);
     
+    if (incomingEdges.length === 0) {
+        console.log('No incoming edges found for target node');
+        return {};
+    }
+    
     incomingEdges.forEach(edge => {
-        console.log('Processing edge:', edge);
+        console.log('Processing edge:', { 
+            id: edge.id, 
+            source: edge.source, 
+            sourceHandle: edge.sourceHandle, 
+            targetHandle: edge.targetHandle 
+        });
+        
         const sourceNode = allNodes.find(n => n.id === edge.source);
         const targetField = targetFields.find(f => f.id === edge.targetHandle);
         
-        console.log('Source node found:', sourceNode?.type);
-        console.log('Target field found:', targetField?.name);
+        console.log('Source node found:', sourceNode ? {
+            id: sourceNode.id,
+            type: sourceNode.type,
+            schemaType: sourceNode.data?.schemaType,
+            hasFields: !!sourceNode.data?.fields,
+            hasData: !!sourceNode.data?.data
+        } : 'NOT FOUND');
+        console.log('Target field found:', targetField ? { id: targetField.id, name: targetField.name } : 'NOT FOUND');
         
-        if (sourceNode && targetField) {
-            let value: any = undefined;
+        if (!sourceNode || !targetField) {
+            console.log('Missing source node or target field, skipping edge');
+            return;
+        }
+        
+        let value: any = undefined;
+        
+        // Handle different source node types
+        if (isSourceNode(sourceNode)) {
+            console.log('Processing SOURCE-TYPE node');
+            const sourceFields = sourceNode.data?.fields;
+            const sourceData = sourceNode.data?.data;
             
-            // Handle different source node types
-            if (sourceNode.type === 'source' && sourceNode.data?.fields && sourceNode.data?.data) {
-                console.log('Processing SOURCE node');
-                const sourceField = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
-                console.log('Source field:', sourceField);
-                console.log('Source data:', sourceNode.data.data);
+            console.log('Source fields:', sourceFields?.map(f => ({ id: f.id, name: f.name })));
+            console.log('Source data:', sourceData);
+            
+            if (sourceFields && Array.isArray(sourceFields)) {
+                const sourceField = sourceFields.find((f: any) => f.id === edge.sourceHandle);
+                console.log('Source field matched:', sourceField ? { id: sourceField.id, name: sourceField.name } : 'NOT FOUND');
                 
-                if (sourceField && sourceNode.data.data.length > 0) {
-                    value = sourceNode.data.data[0][sourceField.name];
-                    console.log('Got value from source data:', value);
-                } else if (sourceField) {
-                    value = sourceField.exampleValue || 'No data';
-                    console.log('Using example value:', value);
+                if (sourceField) {
+                    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
+                        value = sourceData[0][sourceField.name];
+                        console.log('Got value from source data:', value);
+                    } else {
+                        value = sourceField.exampleValue || 'No data';
+                        console.log('Using example value:', value);
+                    }
                 }
-            } else if (sourceNode.type === 'editableSchema' && sourceNode.data?.fields && sourceNode.data?.data) {
-                console.log('Processing EDITABLE SCHEMA node');
-                const sourceField = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
-                console.log('Schema field:', sourceField);
-                console.log('Schema data:', sourceNode.data.data);
-                
-                if (sourceField && sourceNode.data.data.length > 0) {
-                    value = sourceNode.data.data[0][sourceField.name];
-                    console.log('Got value from schema data:', value);
-                } else if (sourceField) {
-                    value = sourceField.exampleValue || 'No data';
-                    console.log('Using schema example value:', value);
-                }
-            } else if (sourceNode.type === 'staticValue' && sourceNode.data?.value) {
-                value = sourceNode.data.value;
-                console.log('Static value:', value);
-            } else if (sourceNode.type === 'conversionMapping') {
-                console.log('Processing CONVERSION MAPPING node');
-                // Handle conversion mapping nodes
-                const conversionIncomingEdges = allEdges.filter(e => e.target === sourceNode.id && e.targetHandle === 'input');
-                console.log('Conversion incoming edges:', conversionIncomingEdges);
-                
-                conversionIncomingEdges.forEach(conversionEdge => {
-                    const originalSourceNode = allNodes.find(n => n.id === conversionEdge.source);
-                    console.log('Original source for conversion:', originalSourceNode?.type);
+            }
+        } else if (sourceNode.type === 'staticValue') {
+            value = sourceNode.data?.value || '';
+            console.log('Static value:', value);
+        } else if (sourceNode.type === 'conversionMapping') {
+            console.log('Processing CONVERSION MAPPING node');
+            // Handle conversion mapping logic...
+            const conversionIncomingEdges = allEdges.filter(e => e.target === sourceNode.id);
+            console.log('Conversion incoming edges:', conversionIncomingEdges);
+            
+            conversionIncomingEdges.forEach(conversionEdge => {
+                const originalSourceNode = allNodes.find(n => n.id === conversionEdge.source);
+                if (originalSourceNode && isSourceNode(originalSourceNode)) {
+                    const sourceField = originalSourceNode.data?.fields?.find((f: any) => f.id === conversionEdge.sourceHandle);
                     
-                    if (originalSourceNode && originalSourceNode.data?.fields && originalSourceNode.data?.data) {
-                        const sourceField = originalSourceNode.data.fields.find((f: any) => f.id === conversionEdge.sourceHandle);
+                    if (sourceField) {
+                        let sourceValue = originalSourceNode.data?.data?.length > 0 
+                            ? originalSourceNode.data.data[0][sourceField.name] 
+                            : sourceField.exampleValue;
                         
-                        if (sourceField) {
-                            let sourceValue = originalSourceNode.data.data.length > 0 
-                                ? originalSourceNode.data.data[0][sourceField.name] 
-                                : sourceField.exampleValue;
+                        const mappings = sourceNode.data?.mappings;
+                        if (Array.isArray(mappings) && mappings.length > 0) {
+                            const sourceValueStr = String(sourceValue).trim();
+                            const mappingRule = mappings.find((mapping: any) => 
+                                String(mapping.from).trim() === sourceValueStr
+                            );
                             
-                            console.log('Source value for conversion:', sourceValue);
-                            
-                            const mappings = sourceNode.data?.mappings;
-                            console.log('Available mappings:', mappings);
-                            
-                            if (Array.isArray(mappings) && mappings.length > 0) {
-                                const sourceValueStr = String(sourceValue).trim();
-                                const mappingRule = mappings.find((mapping: any) => {
-                                    const fromValueStr = String(mapping.from).trim();
-                                    return fromValueStr === sourceValueStr;
-                                });
-                                
-                                if (mappingRule) {
-                                    value = mappingRule.to;
-                                    console.log('Applied conversion rule:', mappingRule.from, '->', mappingRule.to);
-                                } else {
-                                    value = 'NotMapped';
-                                    console.log('No mapping rule found for:', sourceValueStr);
-                                }
-                            } else {
-                                value = 'NotMapped';
-                                console.log('No mappings available');
-                            }
+                            value = mappingRule ? mappingRule.to : 'NotMapped';
+                            console.log('Conversion result:', sourceValueStr, '->', value);
                         }
                     }
-                });
-            } else if (sourceNode.type === 'ifThen') {
-                console.log('Processing IF THEN node');
-                // For IF THEN nodes, evaluate the condition
-                const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
-                console.log('IF THEN config:', { operator, compareValue, thenValue, elseValue });
-                
-                // Find input to the IF THEN node
-                const ifThenInputEdges = allEdges.filter(e => e.target === sourceNode.id);
-                let inputValue: any = null;
-                
-                ifThenInputEdges.forEach(inputEdge => {
-                    const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
-                    if (inputSourceNode?.data?.fields && inputSourceNode.data?.data) {
-                        const sourceField = inputSourceNode.data.fields.find((f: any) => f.id === inputEdge.sourceHandle);
-                        if (sourceField) {
-                            inputValue = inputSourceNode.data.data.length > 0 
-                                ? inputSourceNode.data.data[0][sourceField.name] 
-                                : sourceField.exampleValue;
-                        }
-                    }
-                });
-                
-                console.log('IF THEN input value:', inputValue);
-                
-                // Evaluate condition
-                if (inputValue !== null && operator && compareValue) {
-                    const conditionResult = evaluateCondition(inputValue, operator, compareValue);
-                    value = conditionResult ? thenValue : elseValue;
-                    console.log('IF THEN result:', conditionResult, '->', value);
                 }
-            }
+            });
+        } else if (sourceNode.type === 'ifThen') {
+            console.log('Processing IF THEN node');
+            const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
             
-            if (value !== undefined) {
-                valueMap[targetField.id] = value;
-                console.log('SET VALUE:', targetField.name, '=', value);
-            } else {
-                console.log('NO VALUE SET for field:', targetField.name);
+            // Find input to the IF THEN node
+            const ifThenInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+            let inputValue: any = null;
+            
+            ifThenInputEdges.forEach(inputEdge => {
+                const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                    const sourceField = inputSourceNode.data?.fields?.find((f: any) => f.id === inputEdge.sourceHandle);
+                    if (sourceField) {
+                        inputValue = inputSourceNode.data?.data?.length > 0 
+                            ? inputSourceNode.data.data[0][sourceField.name] 
+                            : sourceField.exampleValue;
+                    }
+                }
+            });
+            
+            if (inputValue !== null && operator && compareValue) {
+                const conditionResult = evaluateCondition(inputValue, operator, compareValue);
+                value = conditionResult ? thenValue : elseValue;
+                console.log('IF THEN result:', conditionResult, '->', value);
             }
+        }
+        
+        if (value !== undefined) {
+            valueMap[targetField.id] = value;
+            console.log('SET VALUE:', targetField.name, '=', value);
         } else {
-            console.log('Missing source node or target field');
+            console.log('NO VALUE SET for field:', targetField.name);
         }
     });
     
@@ -264,36 +288,31 @@ export default function Pipeline() {
 
     // Update sidebar data whenever nodes change
     useEffect(() => {
-        console.log('Nodes changed, updating sidebar data');
+        console.log('=== UPDATING SIDEBAR DATA ===');
+        console.log('Total nodes:', nodes.length);
         
-        // Update source data from all source-type nodes (both 'source' and 'editableSchema' with schemaType source)
-        const allSourceData = nodes
-            .filter(node => {
-                if (node.type === 'source' && node.data?.data) {
-                    return true;
-                }
-                if (node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'source') {
-                    return true;
-                }
-                return false;
-            })
-            .flatMap(node => node.data?.data || []);
+        // Update source data from all source-type nodes
+        const sourceNodes = nodes.filter(isSourceNode);
+        console.log('Source nodes found:', sourceNodes.map(n => ({ id: n.id, type: n.type, schemaType: n.data?.schemaType })));
         
-        // Update target data from all target-type nodes (both 'target' and 'editableSchema' with schemaType target)
-        const allTargetData = nodes
-            .filter(node => {
-                if (node.type === 'target' && node.data?.data) {
-                    return true;
-                }
-                if (node.type === 'editableSchema' && isSchemaNodeData(node.data) && node.data.schemaType === 'target') {
-                    return true;
-                }
-                return false;
-            })
-            .flatMap(node => node.data?.data || []);
+        const allSourceData = sourceNodes.flatMap(node => {
+            const data = node.data?.data || [];
+            console.log(`Source node ${node.id} data:`, data);
+            return data;
+        });
         
-        console.log('Updated source data:', allSourceData);
-        console.log('Updated target data:', allTargetData);
+        // Update target data from all target-type nodes
+        const targetNodes = nodes.filter(isTargetNode);
+        console.log('Target nodes found:', targetNodes.map(n => ({ id: n.id, type: n.type, schemaType: n.data?.schemaType })));
+        
+        const allTargetData = targetNodes.flatMap(node => {
+            const data = node.data?.data || [];
+            console.log(`Target node ${node.id} data:`, data);
+            return data;
+        });
+        
+        console.log('Final source data for sidebar:', allSourceData);
+        console.log('Final target data for sidebar:', allTargetData);
         
         setSourceData(allSourceData);
         setTargetData(allTargetData);
@@ -301,9 +320,13 @@ export default function Pipeline() {
 
     // Enhanced nodes with calculated field values for target nodes
     const enhancedNodes = useMemo(() => {
-        console.log('Computing enhanced nodes...');
+        console.log('=== COMPUTING ENHANCED NODES ===');
+        console.log('Total nodes to enhance:', nodes.length);
+        console.log('Total edges:', edges.length);
+        
         return nodes.map(node => {
-            if (node.type === 'target' && node.data?.fields) {
+            if (isTargetNode(node) && node.data?.fields) {
+                console.log(`Enhancing target node: ${node.id}`);
                 const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
                 console.log(`Target node ${node.id} enhanced with values:`, fieldValues);
                 
