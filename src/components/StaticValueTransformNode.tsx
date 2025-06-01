@@ -231,24 +231,23 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
                     {value.valueType}: {String(value.value || 'Not set')}
                   </div>
                 </div>
+                
+                {/* Source handle positioned inside the row */}
+                <Handle
+                  type="source"
+                  position={Position.Right}
+                  id={value.id}
+                  className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
+                  style={{
+                    right: '-6px',
+                    position: 'relative',
+                    transform: 'none'
+                  }}
+                  onConnect={(params) => {
+                    console.log('Source handle connected:', value.id, params);
+                  }}
+                />
               </div>
-              
-              {/* Source handle positioned on the right edge */}
-              <Handle
-                type="source"
-                position={Position.Right}
-                id={value.id}
-                className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
-                style={{
-                  right: '-6px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  position: 'absolute'
-                }}
-                onConnect={(params) => {
-                  console.log('Source handle connected:', value.id, params);
-                }}
-              />
             </div>
           ))}
         </div>

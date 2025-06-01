@@ -59,23 +59,25 @@ const TargetField: React.FC<TargetFieldProps> = ({
                         {String(displayValue)}
                     </span>
                 )}
-            </div>
 
-            {/* Always render target handle for leaf nodes (no children) - positioned outside the content div */}
-            {!hasChildren && (
-                <Handle
-                    type="target"
-                    position={Position.Left}
-                    id={field.id}
-                    className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
-                    style={{
-                        left: `${level * 16 - 6}px`,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        position: 'absolute'
-                    }}
-                />
-            )}
+                {/* Render target handle for leaf nodes directly in the row */}
+                {!hasChildren && (
+                    <Handle
+                        type="target"
+                        position={Position.Left}
+                        id={field.id}
+                        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
+                        style={{
+                            left: '-6px',
+                            position: 'relative',
+                            transform: 'none'
+                        }}
+                        onConnect={(params) => {
+                            console.log('Target handle connected:', field.id, params);
+                        }}
+                    />
+                )}
+            </div>
 
             {hasChildren && isExpanded && (
                 <div>
