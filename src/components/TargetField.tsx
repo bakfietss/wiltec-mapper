@@ -28,7 +28,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
         displayValue = nodeData[0][field.id];
     }
     
-    // Check if there's a manual value set (assuming it might be stored as 'value' property)
+    // Check if there's a manual value set
     if (field.value !== undefined && field.value !== null && field.value !== '') {
         displayValue = field.value;
     }
@@ -38,7 +38,7 @@ const TargetField: React.FC<TargetFieldProps> = ({
     return (
         <div className="relative">
             <div
-                className="flex items-center justify-between gap-2 py-2 px-2 hover:bg-gray-50 rounded text-sm group"
+                className="flex items-center justify-between gap-2 py-2 px-2 hover:bg-gray-50 rounded text-sm group relative"
                 style={{ marginLeft: `${level * 16}px` }}
             >
                 {hasChildren ? (
@@ -60,19 +60,13 @@ const TargetField: React.FC<TargetFieldProps> = ({
                     </span>
                 )}
 
-                {/* Render target handle for leaf nodes directly in the row */}
+                {/* Render target handle for leaf nodes */}
                 {!hasChildren && (
                     <Handle
                         type="target"
                         position={Position.Left}
                         id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
-                        style={{
-                            position: 'absolute',
-                            left: '-6px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                        }}
+                        className="!absolute !w-3 !h-3 !bg-blue-500 !border-2 !border-white hover:!bg-blue-600 !-left-6 !top-1/2 !-translate-y-1/2"
                         onConnect={(params) => {
                             console.log('Target handle connected:', field.id, params);
                         }}

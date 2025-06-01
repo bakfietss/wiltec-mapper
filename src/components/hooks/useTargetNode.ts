@@ -5,8 +5,6 @@ import { TargetNodeData } from '../types/TargetNodeTypes';
 
 export const useTargetNode = (data: TargetNodeData, id?: string) => {
     const { getEdges, getNodes, setNodes } = useReactFlow();
-    const edges = getEdges();
-    const nodes = getNodes();
     const [expandedStates] = useState(() => new Map<string, boolean>());
     const [, forceUpdate] = useState({});
 
@@ -14,59 +12,64 @@ export const useTargetNode = (data: TargetNodeData, id?: string) => {
         forceUpdate({});
     };
 
+    // Get current node more reliably
+    const nodes = getNodes();
+    const edges = getEdges();
+    
     const currentNode = nodes.find(node => {
         if (id) return node.id === id;
         return (node.type === 'target' || (node.type === 'editableSchema' && node.data?.schemaType === 'target')) &&
                node.data?.label === data.label;
     });
 
-    console.log('Current target node:', currentNode?.id, 'Available nodes:', nodes.map(n => ({ id: n.id, type: n.type })));
+    console.log('Current target node:', currentNode?.id, 'Label:', data.label);
 
-    const targetNodeData = data.data?.[0] ?? {};
-    const handleValueMap: Record<string, any> = { ...targetNodeData };
+    // Process connections and update target data
+    useEffect(() => {
+        if (!currentNode) return;
 
-    let hasNewConnectionData = false;
-    
-    // Process all edges connecting to this target node
-    const connectedEdges = edges.filter(edge => edge.target === currentNode?.id);
-    console.log('Connected edges to target:', connectedEdges);
-
-    for (const edge of connectedEdges) {
-        const targetHandle = edge.targetHandle;
-        const sourceHandle = edge.sourceHandle;
+        const targetNodeData = currentNode.data?.data?.[0] ?? {};
+        const handleValueMap: Record<string, any> = { ...targetNodeData };
+        let hasNewConnectionData = false;
         
-        console.log('Processing edge:', edge.id, 'Target handle:', targetHandle, 'Source handle:', sourceHandle);
-        
-        if (targetHandle && sourceHandle) {
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            console.log('Source node found:', sourceNode?.id, 'Type:', sourceNode?.type);
+        // Process all edges connecting to this target node
+        const connectedEdges = edges.filter(edge => edge.target === currentNode.id);
+        console.log('Connected edges to target node:', currentNode.id, connectedEdges.length);
+
+        for (const edge of connectedEdges) {
+            const targetHandle = edge.targetHandle;
+            const sourceHandle = edge.sourceHandle;
             
-            if (sourceNode && sourceNode.data?.data?.[0]) {
-                console.log('Source node data:', sourceNode.data.data[0]);
-                console.log('Looking for source handle:', sourceHandle);
+            console.log('Processing edge:', edge.id, 'Target handle:', targetHandle, 'Source handle:', sourceHandle);
+            
+            if (targetHandle && sourceHandle) {
+                const sourceNode = nodes.find(n => n.id === edge.source);
+                console.log('Source node found:', sourceNode?.id, 'Type:', sourceNode?.type);
                 
-                const sourceValue = sourceNode.data.data[0][sourceHandle];
-                if (sourceValue !== undefined) {
-                    console.log('Found source value:', sourceValue, 'for handle:', sourceHandle, 'mapping to target handle:', targetHandle);
-                    handleValueMap[targetHandle] = sourceValue;
-                    if (targetNodeData[targetHandle] !== sourceValue) {
-                        hasNewConnectionData = true;
+                if (sourceNode && sourceNode.data?.data?.[0]) {
+                    console.log('Source node data:', sourceNode.data.data[0]);
+                    console.log('Looking for source handle:', sourceHandle);
+                    
+                    const sourceValue = sourceNode.data.data[0][sourceHandle];
+                    if (sourceValue !== undefined) {
+                        console.log('Found source value:', sourceValue, 'for handle:', sourceHandle, 'mapping to target handle:', targetHandle);
+                        handleValueMap[targetHandle] = sourceValue;
+                        if (targetNodeData[targetHandle] !== sourceValue) {
+                            hasNewConnectionData = true;
+                        }
+                    } else {
+                        console.log('No source value found for handle:', sourceHandle, 'in data:', sourceNode.data.data[0]);
                     }
                 } else {
-                    console.log('No source value found for handle:', sourceHandle, 'in data:', sourceNode.data.data[0]);
+                    console.log('Source node has no data or invalid structure');
                 }
             } else {
-                console.log('Source node has no data or invalid structure');
+                console.log('Missing handle IDs - Target handle:', targetHandle, 'Source handle:', sourceHandle);
             }
-        } else {
-            console.log('Missing handle IDs - Target handle:', targetHandle, 'Source handle:', sourceHandle);
         }
-    }
 
-    useEffect(() => {
-        if (hasNewConnectionData && currentNode) {
-            const updatedData = { ...handleValueMap };
-            console.log('Updating target node data with:', updatedData);
+        if (hasNewConnectionData) {
+            console.log('Updating target node data with:', handleValueMap);
             
             setNodes(nodes => nodes.map(node => {
                 if (node.id === currentNode.id) {
@@ -74,14 +77,14 @@ export const useTargetNode = (data: TargetNodeData, id?: string) => {
                         ...node,
                         data: {
                             ...node.data,
-                            data: [updatedData]
+                            data: [handleValueMap]
                         }
                     };
                 }
                 return node;
             }));
         }
-    }, [hasNewConnectionData, currentNode?.id, JSON.stringify(handleValueMap), setNodes]);
+    }, [edges, nodes, currentNode?.id, setNodes]);
 
     const nodeData = Array.isArray(currentNode?.data?.data) ? currentNode.data.data : 
                      Array.isArray(data.data) ? data.data : [];
