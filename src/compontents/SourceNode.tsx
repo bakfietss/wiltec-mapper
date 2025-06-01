@@ -328,7 +328,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </Sheet>
             </div>
 
-            <div className="p-2 max-h-96 overflow-y-auto">
+            <ScrollArea className="p-2 max-h-96">
                 {fields.map((field) => (
                     <SourceField
                         key={field.id}
@@ -343,7 +343,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                         No fields defined. Click edit to add schema fields.
                     </div>
                 )}
-            </div>
+            </ScrollArea>
         </div>
     );
 };

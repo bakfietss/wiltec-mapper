@@ -278,7 +278,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                 </Sheet>
             </div>
 
-            <div className="p-2">
+            <ScrollArea className="p-2 max-h-96">
                 {visibleFields.map((field) => (
                     <TargetField
                         key={field.id}
@@ -312,7 +312,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                         No fields defined. Click edit to add schema fields.
                     </div>
                 )}
-            </div>
+            </ScrollArea>
         </div>
     );
 };
