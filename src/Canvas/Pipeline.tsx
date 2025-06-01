@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -8,6 +9,7 @@ import {
     Controls,
     Connection,
     addEdge,
+    Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -419,22 +421,6 @@ export default function Pipeline() {
         };
         reader.readAsText(file);
     }, [setNodes, setEdges]);
-
-    // Add node factory to create source nodes
-    const addSchemaNode = useCallback((type: 'source' | 'target') => {
-        const newNode: Node = {
-            id: `${type}-${Date.now()}`,
-            type: type, // Use 'source' or 'target' instead of 'editableSchema'
-            position: { x: type === 'source' ? 100 : 800, y: 100 + nodes.length * 50 },
-            data: {
-                label: type === 'source' ? 'Source Schema' : 'Target Schema',
-                fields: [],
-                data: [],
-            },
-        };
-
-        setNodes((nds) => [...nds, newNode]);
-    }, [nodes.length, setNodes]);
 
     const style = useMemo(
         () => ({
