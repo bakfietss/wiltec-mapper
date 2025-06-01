@@ -23,7 +23,15 @@ export const useNodeFactories = (
     }, [nodes.length, setNodes]);
 
     const addTransformNode = useCallback((transformType: string) => {
-        const nodeType = transformType === 'Text Splitter' ? 'splitterTransform' : 'editableTransform';
+        let nodeType = 'editableTransform';
+        
+        if (transformType === 'Text Splitter') {
+            nodeType = 'splitterTransform';
+        } else if (transformType === 'Static Value') {
+            nodeType = 'staticValueTransform';
+        } else if (transformType === 'IF-THEN') {
+            nodeType = 'conditionalTransform';
+        }
         
         const newNode: Node = {
             id: `transform-${Date.now()}`,

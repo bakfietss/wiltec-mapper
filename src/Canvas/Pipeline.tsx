@@ -19,6 +19,8 @@ import TransformNode from '../components/TransformNode';
 import EditableSchemaNode from '../components/EditableSchemaNode';
 import EditableTransformNode from '../components/EditableTransformNode';
 import SplitterTransformNode from '../components/SplitterTransformNode';
+import StaticValueTransformNode from '../components/StaticValueTransformNode';
+import ConditionalTransformNode from '../components/ConditionalTransformNode';
 import MappingToolbar from '../components/MappingToolbar';
 import DataSidebar from '../components/DataSidebar';
 import MappingManager from '../components/MappingManager';
@@ -36,6 +38,8 @@ const nodeTypes = {
     editableSchema: EditableSchemaNode,
     editableTransform: EditableTransformNode,
     splitterTransform: SplitterTransformNode,
+    staticValueTransform: StaticValueTransformNode,
+    conditionalTransform: ConditionalTransformNode,
 };
 
 // Helper function to check if node data has schema properties
