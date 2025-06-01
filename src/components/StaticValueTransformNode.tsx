@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
@@ -20,6 +19,7 @@ interface StaticValueTransformNodeData {
   transformType: string;
   description?: string;
   config?: StaticValueConfig;
+  data?: any[];
 }
 
 const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; id: string }> = ({ data, id }) => {
@@ -29,6 +29,13 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
   
   const updateNodeData = useCallback((newConfig: StaticValueConfig) => {
     console.log('Updating static value node config:', newConfig);
+    
+    // Convert static values to data format expected by the mapping system
+    const dataObject: Record<string, any> = {};
+    (newConfig.values || []).forEach(value => {
+      dataObject[value.id] = value.value;
+    });
+    
     setNodes((nodes) =>
       nodes.map((node) =>
         node.id === id
@@ -37,17 +44,22 @@ const StaticValueTransformNode: React.FC<{ data: StaticValueTransformNodeData; i
               data: {
                 ...node.data,
                 config: newConfig,
+                data: [dataObject], // Add data in the format expected by mapping system
               },
             }
           : node
       )
     );
   }, [id, setNodes]);
+
+  // Update node data whenever config changes
+  useEffect(() => {
+    updateNodeData(config);
+  }, [config, updateNodeData]);
   
   const updateConfig = (updates: Partial<StaticValueConfig>) => {
     const newConfig = { ...config, ...updates };
     setConfig(newConfig);
-    updateNodeData(newConfig);
   };
 
   const addValue = () => {

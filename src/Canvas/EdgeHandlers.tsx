@@ -16,6 +16,10 @@ export const useEdgeHandlers = (
             ...connection,
             type: 'smoothstep',
             animated: true,
+            style: { 
+                strokeWidth: 2,
+                stroke: '#3b82f6'
+            }
         };
         
         const newEdges = addEdge(newEdge, edges);
