@@ -261,7 +261,7 @@ export default function Pipeline() {
             type: 'smoothstep',
             animated: true,
             style: { 
-                strokeWidth: 0.5,
+                strokeWidth: 0.75,
                 stroke: '#3b82f6'
             }
         };
@@ -494,7 +494,7 @@ export default function Pipeline() {
                             type: 'smoothstep',
                             animated: true,
                             style: { 
-                                strokeWidth: 0.5,
+                                strokeWidth: 0.75,
                                 stroke: '#3b82f6'
                             }
                         }}
