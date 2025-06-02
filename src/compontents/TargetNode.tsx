@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { FileText, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -42,24 +43,23 @@ const TargetField: React.FC<{
     console.log(`Found value for ${field.name}:`, fieldValue);
 
     return (
-        <div className="relative">
-            <div className="flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group">
+        <div className="relative pl-4">
+            <div className="flex items-center gap-2 py-2 pr-2 hover:bg-gray-50 rounded text-sm group min-h-[40px]">
                 <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
                 
-                {/* Value display */}
-                <div className="text-xs min-w-[80px] text-center">
+                {/* Value display - moved to separate line for better spacing */}
+                <div className="flex flex-col items-end gap-1 min-w-[120px]">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
+                        {field.type}
+                    </span>
                     {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium max-w-[100px] truncate">
                             {String(fieldValue)}
                         </span>
                     ) : (
-                        <span className="text-gray-400 italic">no value</span>
+                        <span className="text-gray-400 italic text-xs">no value</span>
                     )}
                 </div>
-                
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
-                    {field.type}
-                </span>
 
                 <Handle
                     type="target"
