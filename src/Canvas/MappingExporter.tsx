@@ -430,6 +430,172 @@ export const exportMappingConfiguration = (
   return config;
 };
 
+export const exportExecutionMapping = (
+  nodes: Node[],
+  edges: Edge[],
+  name: string = 'Untitled Mapping'
+): ExecutionMappingConfig => {
+  const mappings: ExecutionMapping[] = [];
+  
+  console.log('=== GENERATING EXECUTION MAPPINGS ===');
+  console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
+
+  // Get source and target nodes
+  const sourceNodes = nodes.filter(node => node.type === 'source');
+  const targetNodes = nodes.filter(node => node.type === 'target');
+  
+  console.log('Source nodes:', sourceNodes.length, 'Target nodes:', targetNodes.length);
+
+  // Process each target node to find its incoming mappings
+  targetNodes.forEach(targetNode => {
+    const targetFields = targetNode.data?.fields || [];
+    console.log(`Processing target node: ${targetNode.id} with ${targetFields.length} fields`);
+    
+    targetFields.forEach(targetField => {
+      // Find edges that connect to this target field
+      const incomingEdges = edges.filter(edge => 
+        edge.target === targetNode.id && edge.targetHandle === targetField.id
+      );
+      
+      console.log(`Target field ${targetField.name} has ${incomingEdges.length} incoming edges`);
+      
+      incomingEdges.forEach(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        if (!sourceNode) return;
+        
+        console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
+        
+        let mapping: ExecutionMapping;
+        
+        if (sourceNode.type === 'source') {
+          // Direct mapping from source to target
+          const sourceField = sourceNode.data?.fields?.find((f: any) => f.id === edge.sourceHandle);
+          
+          mapping = {
+            from: sourceField?.name || edge.sourceHandle || '',
+            to: targetField.name,
+            type: 'direct'
+          };
+          
+        } else if (sourceNode.type === 'staticValue') {
+          // Static value mapping
+          const staticValues = sourceNode.data?.values || [];
+          const staticValue = staticValues.find((v: any) => v.id === edge.sourceHandle);
+          
+          mapping = {
+            from: null,
+            to: targetField.name,
+            type: 'static',
+            value: staticValue?.value || ''
+          };
+          
+        } else if (sourceNode.type === 'ifThen') {
+          // IF THEN conditional mapping
+          const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
+          
+          // Find the input to the IF THEN node
+          const ifThenInputEdge = edges.find(e => e.target === sourceNode.id);
+          const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
+          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === ifThenInputEdge?.sourceHandle);
+          
+          mapping = {
+            from: inputField?.name || '',
+            to: targetField.name,
+            type: 'ifThen',
+            if: {
+              operator: operator || '=',
+              value: compareValue || ''
+            },
+            then: thenValue || '',
+            else: elseValue || ''
+          };
+          
+        } else if (sourceNode.type === 'conversionMapping') {
+          // Conversion mapping
+          const conversionMappings = sourceNode.data?.mappings || [];
+          const mapObject: Record<string, string> = {};
+          
+          conversionMappings.forEach((mapping: any) => {
+            mapObject[mapping.from] = mapping.to;
+          });
+          
+          // Find the input to the conversion mapping node
+          const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
+          const inputSourceNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
+          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === conversionInputEdge?.sourceHandle);
+          
+          mapping = {
+            from: inputField?.name || '',
+            to: targetField.name,
+            type: 'map',
+            map: mapObject
+          };
+          
+        } else if (sourceNode.type === 'splitterTransform') {
+          // Text splitter mapping
+          const { delimiter, splitIndex } = sourceNode.data || {};
+          
+          // Find the input to the splitter node
+          const splitterInputEdge = edges.find(e => e.target === sourceNode.id);
+          const inputSourceNode = splitterInputEdge ? nodes.find(n => n.id === splitterInputEdge.source) : null;
+          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === splitterInputEdge?.sourceHandle);
+          
+          mapping = {
+            from: inputField?.name || '',
+            to: targetField.name,
+            type: 'split',
+            split: {
+              delimiter: delimiter || ',',
+              index: splitIndex || 0
+            }
+          };
+          
+        } else if (sourceNode.type === 'transform') {
+          // Generic transform mapping
+          const transformConfig = sourceNode.data?.config || {};
+          
+          // Find the input to the transform node
+          const transformInputEdge = edges.find(e => e.target === sourceNode.id);
+          const inputSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
+          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === transformInputEdge?.sourceHandle);
+          
+          mapping = {
+            from: inputField?.name || '',
+            to: targetField.name,
+            type: 'transform',
+            transform: {
+              operation: transformConfig.operation || 'unknown',
+              parameters: transformConfig.parameters || {}
+            }
+          };
+        } else {
+          // Fallback for unknown node types
+          return;
+        }
+        
+        console.log('Generated mapping:', mapping);
+        mappings.push(mapping);
+      });
+    });
+  });
+
+  const config: ExecutionMappingConfig = {
+    name,
+    version: '1.0.0',
+    mappings,
+    metadata: {
+      description: 'Simplified execution mapping configuration',
+      tags: ['data-mapping', 'etl', 'transformation'],
+      author: 'Lovable Mapping Tool'
+    }
+  };
+
+  console.log('=== FINAL EXECUTION CONFIG ===');
+  console.log(config);
+  
+  return config;
+};
+
 export const importMappingConfiguration = (
   config: MappingConfiguration
 ): { nodes: Node[], edges: Edge[] } => {
