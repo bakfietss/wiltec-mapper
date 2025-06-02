@@ -285,7 +285,7 @@ export const exportMappingConfiguration = (
     }
   };
 
-  // Extract source nodes - now checking for type 'source'
+  // Extract source nodes
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
       config.nodes.sources.push({
@@ -300,7 +300,7 @@ export const exportMappingConfiguration = (
       });
     });
 
-  // Extract target nodes - now checking for type 'target'
+  // Extract target nodes
   nodes.filter(node => node.type === 'target')
     .forEach(node => {
       config.nodes.targets.push({
@@ -315,19 +315,58 @@ export const exportMappingConfiguration = (
       });
     });
 
-  // Extract transform nodes - updated to include all transform types
+  // Extract transform nodes - preserve ALL data for each transform type
   nodes.filter(node => 
     node.type === 'transform' || node.type === 'splitterTransform' || 
     node.type === 'ifThen' || node.type === 'staticValue'
   ).forEach(node => {
-    config.nodes.transforms.push({
+    let transformConfig: any = {
       id: node.id,
-      type: node.type as 'transform' | 'splitterTransform',
+      type: node.type as any,
       label: String(node.data?.label || 'Transform Node'),
       position: node.position,
       transformType: String(node.data?.transformType || node.type || 'unknown'),
-      config: node.data?.config || node.data || {}
-    });
+      config: {}
+    };
+
+    // Preserve complete node data based on type
+    if (node.type === 'ifThen') {
+      // Store IF THEN specific data
+      transformConfig.config = {
+        operation: 'conditional',
+        parameters: {
+          operator: node.data?.operator || '=',
+          compareValue: node.data?.compareValue || '',
+          thenValue: node.data?.thenValue || '',
+          elseValue: node.data?.elseValue || ''
+        }
+      };
+    } else if (node.type === 'staticValue') {
+      // Store Static Value specific data
+      transformConfig.config = {
+        operation: 'static',
+        parameters: {
+          value: node.data?.value || '',
+          valueType: node.data?.valueType || 'string',
+          values: node.data?.values || []
+        }
+      };
+    } else if (node.type === 'splitterTransform') {
+      // Store Splitter Transform specific data
+      transformConfig.config = {
+        operation: 'split',
+        parameters: {
+          delimiter: node.data?.delimiter || ',',
+          splitIndex: node.data?.splitIndex || 0,
+          ...node.data?.config
+        }
+      };
+    } else {
+      // Generic transform node
+      transformConfig.config = node.data?.config || node.data || {};
+    }
+
+    config.nodes.transforms.push(transformConfig);
   });
 
   // Extract mapping nodes
@@ -342,7 +381,7 @@ export const exportMappingConfiguration = (
       });
     });
 
-  // Extract connections
+  // Extract connections with complete edge information
   edges.forEach(edge => {
     const sourceNode = nodes.find(n => n.id === edge.source);
     const targetNode = nodes.find(n => n.id === edge.target);
@@ -375,7 +414,7 @@ export const importMappingConfiguration = (
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  // Import source nodes
+  // Import source nodes with complete data preservation
   config.nodes.sources.forEach(sourceConfig => {
     nodes.push({
       id: sourceConfig.id,
@@ -384,12 +423,13 @@ export const importMappingConfiguration = (
       data: {
         label: sourceConfig.label,
         fields: sourceConfig.schema.fields,
-        data: sourceConfig.sampleData
+        data: sourceConfig.sampleData,
+        schemaType: 'source' // Ensure schema type is preserved
       }
     });
   });
 
-  // Import target nodes
+  // Import target nodes with complete data preservation
   config.nodes.targets.forEach(targetConfig => {
     nodes.push({
       id: targetConfig.id,
@@ -398,47 +438,56 @@ export const importMappingConfiguration = (
       data: {
         label: targetConfig.label,
         fields: targetConfig.schema.fields,
-        data: targetConfig.outputData || []
+        data: targetConfig.outputData || [],
+        schemaType: 'target' // Ensure schema type is preserved
       }
     });
   });
 
-  // Import transform nodes - handle all transform types
+  // Import transform nodes with complete data preservation
   config.nodes.transforms.forEach(transformConfig => {
     let nodeType = transformConfig.type;
     let nodeData: any = {
       label: transformConfig.label,
-      transformType: transformConfig.transformType,
-      config: transformConfig.config
+      transformType: transformConfig.transformType
     };
 
-    // Handle different transform types based on transformType
-    if (transformConfig.transformType === 'Text Splitter') {
-      nodeType = 'splitterTransform';
-    } else if (transformConfig.transformType === 'IF THEN') {
+    // Restore node data based on transform type
+    if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
       nodeType = 'ifThen';
-      // For ifThen nodes, the properties are stored in the config.parameters or directly in config
-      const config = transformConfig.config;
+      const params = transformConfig.config?.parameters || {};
       nodeData = {
         label: transformConfig.label,
-        condition: config.parameters?.condition || '',
-        operator: config.parameters?.operator || '=',
-        compareValue: config.parameters?.compareValue || '',
-        thenValue: config.parameters?.thenValue || '',
-        elseValue: config.parameters?.elseValue || ''
+        operator: params.operator || '=',
+        compareValue: params.compareValue || '',
+        thenValue: params.thenValue || '',
+        elseValue: params.elseValue || ''
       };
-    } else if (transformConfig.transformType === 'Static Value') {
+    } else if (transformConfig.transformType === 'Static Value' || transformConfig.type === 'staticValue') {
       nodeType = 'staticValue';
-      // For staticValue nodes, the properties are stored in the config.parameters or directly in config
-      const config = transformConfig.config;
+      const params = transformConfig.config?.parameters || {};
       nodeData = {
         label: transformConfig.label,
-        value: config.parameters?.value || '',
-        valueType: config.parameters?.valueType || 'string',
-        values: config.parameters?.values || []
+        value: params.value || '',
+        valueType: params.valueType || 'string',
+        values: params.values || []
+      };
+    } else if (transformConfig.transformType === 'Text Splitter' || transformConfig.type === 'splitterTransform') {
+      nodeType = 'splitterTransform';
+      const params = transformConfig.config?.parameters || {};
+      nodeData = {
+        label: transformConfig.label,
+        delimiter: params.delimiter || ',',
+        splitIndex: params.splitIndex || 0,
+        config: transformConfig.config
       };
     } else {
       nodeType = 'transform';
+      nodeData = {
+        label: transformConfig.label,
+        transformType: transformConfig.transformType,
+        config: transformConfig.config
+      };
     }
 
     nodes.push({
@@ -449,7 +498,7 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import mapping nodes
+  // Import mapping nodes with complete data preservation
   config.nodes.mappings.forEach(mappingConfig => {
     nodes.push({
       id: mappingConfig.id,
@@ -463,7 +512,7 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import connections - only add if both nodes exist
+  // Import connections with complete edge styling
   config.connections.forEach(connectionConfig => {
     const sourceExists = nodes.some(n => n.id === connectionConfig.sourceNodeId);
     const targetExists = nodes.some(n => n.id === connectionConfig.targetNodeId);
@@ -473,12 +522,12 @@ export const importMappingConfiguration = (
         id: connectionConfig.id,
         source: connectionConfig.sourceNodeId,
         target: connectionConfig.targetNodeId,
-        sourceHandle: connectionConfig.sourceHandle,
-        targetHandle: connectionConfig.targetHandle,
+        sourceHandle: connectionConfig.sourceHandle || undefined,
+        targetHandle: connectionConfig.targetHandle || undefined,
         type: 'smoothstep',
         animated: true,
         style: { 
-          strokeWidth: 3,
+          strokeWidth: 2.0,
           stroke: '#3b82f6'
         }
       });
@@ -491,6 +540,10 @@ export const importMappingConfiguration = (
       });
     }
   });
+
+  console.log('Import completed - Nodes:', nodes.length, 'Edges:', edges.length);
+  console.log('Imported nodes:', nodes.map(n => ({ id: n.id, type: n.type, hasData: !!n.data })));
+  console.log('Imported edges:', edges.map(e => ({ id: e.id, source: e.source, target: e.target })));
 
   return { nodes, edges };
 };
