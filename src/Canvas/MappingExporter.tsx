@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -352,13 +351,14 @@ export const exportMappingConfiguration = (
         }
       };
     } else if (node.type === 'splitterTransform') {
-      // Store Splitter Transform specific data
+      // Store Splitter Transform specific data - fix the spread operator issue
+      const nodeConfig = node.data?.config || {};
       transformConfig.config = {
         operation: 'split',
         parameters: {
           delimiter: node.data?.delimiter || ',',
           splitIndex: node.data?.splitIndex || 0,
-          ...node.data?.config
+          ...nodeConfig
         }
       };
     } else {
