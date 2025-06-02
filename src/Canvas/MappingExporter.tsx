@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -1126,6 +1125,7 @@ export const exampleMappingConfiguration: MappingConfiguration = {
         to: "full_name",
         type: "transform",
         transform: {
+          type: "uppercase",
           operation: "uppercase",
           parameters: {}
         }
@@ -1135,6 +1135,7 @@ export const exampleMappingConfiguration: MappingConfiguration = {
         to: "formatted_date",
         type: "transform",
         transform: {
+          type: "format",
           operation: "format",
           parameters: {
             inputFormat: "YYYY-MM-DD",
