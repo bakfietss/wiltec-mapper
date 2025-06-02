@@ -15,6 +15,50 @@ export interface MappingConfiguration {
   execution: {
     steps: ExecutionStep[];
   };
+  // NEW: Add execution-focused format alongside the UI format
+  executionMapping: {
+    name: string;
+    version: string;
+    mappings: ExecutionMapping[];
+    metadata?: {
+      description?: string;
+      tags?: string[];
+      author?: string;
+    };
+  };
+  metadata?: {
+    description?: string;
+    tags?: string[];
+    author?: string;
+  };
+}
+
+export interface ExecutionMapping {
+  from: string | null;
+  to: string;
+  type: 'direct' | 'static' | 'ifThen' | 'map' | 'split' | 'transform';
+  value?: any;
+  if?: {
+    operator: string;
+    value: string;
+  };
+  then?: string;
+  else?: string;
+  map?: Record<string, string>;
+  split?: {
+    delimiter: string;
+    index: number;
+  };
+  transform?: {
+    operation: string;
+    parameters: Record<string, any>;
+  };
+}
+
+export interface ExecutionMappingConfig {
+  name: string;
+  version: string;
+  mappings: ExecutionMapping[];
   metadata?: {
     description?: string;
     tags?: string[];
@@ -277,6 +321,8 @@ export const exportMappingConfiguration = (
     execution: {
       steps: buildExecutionSteps(nodes, edges)
     },
+    // NEW: Add execution mapping format
+    executionMapping: exportExecutionMapping(nodes, edges, name),
     metadata: {
       description: 'Auto-generated mapping configuration with execution steps',
       tags: ['data-mapping', 'etl', 'transformation'],
@@ -451,132 +497,147 @@ export const exportExecutionMapping = (
     const targetFields = targetNode.data?.fields || [];
     console.log(`Processing target node: ${targetNode.id} with ${targetFields.length} fields`);
     
-    targetFields.forEach(targetField => {
-      // Find edges that connect to this target field
-      const incomingEdges = edges.filter(edge => 
-        edge.target === targetNode.id && edge.targetHandle === targetField.id
-      );
-      
-      console.log(`Target field ${targetField.name} has ${incomingEdges.length} incoming edges`);
-      
-      incomingEdges.forEach(edge => {
-        const sourceNode = nodes.find(n => n.id === edge.source);
-        if (!sourceNode) return;
+    if (Array.isArray(targetFields)) {
+      targetFields.forEach(targetField => {
+        // Find edges that connect to this target field
+        const incomingEdges = edges.filter(edge => 
+          edge.target === targetNode.id && edge.targetHandle === targetField.id
+        );
         
-        console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
+        console.log(`Target field ${targetField.name} has ${incomingEdges.length} incoming edges`);
         
-        let mapping: ExecutionMapping;
-        
-        if (sourceNode.type === 'source') {
-          // Direct mapping from source to target
-          const sourceField = sourceNode.data?.fields?.find((f: any) => f.id === edge.sourceHandle);
+        incomingEdges.forEach(edge => {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          if (!sourceNode) return;
           
-          mapping = {
-            from: sourceField?.name || edge.sourceHandle || '',
-            to: targetField.name,
-            type: 'direct'
-          };
+          console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
           
-        } else if (sourceNode.type === 'staticValue') {
-          // Static value mapping
-          const staticValues = sourceNode.data?.values || [];
-          const staticValue = staticValues.find((v: any) => v.id === edge.sourceHandle);
+          let mapping: ExecutionMapping;
           
-          mapping = {
-            from: null,
-            to: targetField.name,
-            type: 'static',
-            value: staticValue?.value || ''
-          };
-          
-        } else if (sourceNode.type === 'ifThen') {
-          // IF THEN conditional mapping
-          const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
-          
-          // Find the input to the IF THEN node
-          const ifThenInputEdge = edges.find(e => e.target === sourceNode.id);
-          const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
-          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === ifThenInputEdge?.sourceHandle);
-          
-          mapping = {
-            from: inputField?.name || '',
-            to: targetField.name,
-            type: 'ifThen',
-            if: {
-              operator: operator || '=',
-              value: compareValue || ''
-            },
-            then: thenValue || '',
-            else: elseValue || ''
-          };
-          
-        } else if (sourceNode.type === 'conversionMapping') {
-          // Conversion mapping
-          const conversionMappings = sourceNode.data?.mappings || [];
-          const mapObject: Record<string, string> = {};
-          
-          conversionMappings.forEach((mapping: any) => {
-            mapObject[mapping.from] = mapping.to;
-          });
-          
-          // Find the input to the conversion mapping node
-          const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
-          const inputSourceNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
-          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === conversionInputEdge?.sourceHandle);
-          
-          mapping = {
-            from: inputField?.name || '',
-            to: targetField.name,
-            type: 'map',
-            map: mapObject
-          };
-          
-        } else if (sourceNode.type === 'splitterTransform') {
-          // Text splitter mapping
-          const { delimiter, splitIndex } = sourceNode.data || {};
-          
-          // Find the input to the splitter node
-          const splitterInputEdge = edges.find(e => e.target === sourceNode.id);
-          const inputSourceNode = splitterInputEdge ? nodes.find(n => n.id === splitterInputEdge.source) : null;
-          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === splitterInputEdge?.sourceHandle);
-          
-          mapping = {
-            from: inputField?.name || '',
-            to: targetField.name,
-            type: 'split',
-            split: {
-              delimiter: delimiter || ',',
-              index: splitIndex || 0
+          if (sourceNode.type === 'source') {
+            // Direct mapping from source to target
+            const sourceFields = sourceNode.data?.fields;
+            const sourceField = Array.isArray(sourceFields) ? 
+              sourceFields.find((f: any) => f.id === edge.sourceHandle) : null;
+            
+            mapping = {
+              from: sourceField?.name || edge.sourceHandle || '',
+              to: targetField.name,
+              type: 'direct'
+            };
+            
+          } else if (sourceNode.type === 'staticValue') {
+            // Static value mapping
+            const staticValues = sourceNode.data?.values;
+            const staticValue = Array.isArray(staticValues) ? 
+              staticValues.find((v: any) => v.id === edge.sourceHandle) : null;
+            
+            mapping = {
+              from: null,
+              to: targetField.name,
+              type: 'static',
+              value: staticValue?.value || ''
+            };
+            
+          } else if (sourceNode.type === 'ifThen') {
+            // IF THEN conditional mapping
+            const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
+            
+            // Find the input to the IF THEN node
+            const ifThenInputEdge = edges.find(e => e.target === sourceNode.id);
+            const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
+            const inputFields = inputSourceNode?.data?.fields;
+            const inputField = Array.isArray(inputFields) ? 
+              inputFields.find((f: any) => f.id === ifThenInputEdge?.sourceHandle) : null;
+            
+            mapping = {
+              from: inputField?.name || '',
+              to: targetField.name,
+              type: 'ifThen',
+              if: {
+                operator: operator || '=',
+                value: compareValue || ''
+              },
+              then: thenValue || '',
+              else: elseValue || ''
+            };
+            
+          } else if (sourceNode.type === 'conversionMapping') {
+            // Conversion mapping
+            const conversionMappings = sourceNode.data?.mappings;
+            const mapObject: Record<string, string> = {};
+            
+            if (Array.isArray(conversionMappings)) {
+              conversionMappings.forEach((mapping: any) => {
+                mapObject[mapping.from] = mapping.to;
+              });
             }
-          };
+            
+            // Find the input to the conversion mapping node
+            const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
+            const inputSourceNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
+            const inputFields = inputSourceNode?.data?.fields;
+            const inputField = Array.isArray(inputFields) ? 
+              inputFields.find((f: any) => f.id === conversionInputEdge?.sourceHandle) : null;
+            
+            mapping = {
+              from: inputField?.name || '',
+              to: targetField.name,
+              type: 'map',
+              map: mapObject
+            };
+            
+          } else if (sourceNode.type === 'splitterTransform') {
+            // Text splitter mapping
+            const { delimiter, splitIndex } = sourceNode.data || {};
+            
+            // Find the input to the splitter node
+            const splitterInputEdge = edges.find(e => e.target === sourceNode.id);
+            const inputSourceNode = splitterInputEdge ? nodes.find(n => n.id === splitterInputEdge.source) : null;
+            const inputFields = inputSourceNode?.data?.fields;
+            const inputField = Array.isArray(inputFields) ? 
+              inputFields.find((f: any) => f.id === splitterInputEdge?.sourceHandle) : null;
+            
+            mapping = {
+              from: inputField?.name || '',
+              to: targetField.name,
+              type: 'split',
+              split: {
+                delimiter: delimiter || ',',
+                index: splitIndex || 0
+              }
+            };
+            
+          } else if (sourceNode.type === 'transform') {
+            // Generic transform mapping
+            const transformConfig = sourceNode.data?.config || {};
+            
+            // Find the input to the transform node
+            const transformInputEdge = edges.find(e => e.target === sourceNode.id);
+            const inputSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
+            const inputFields = inputSourceNode?.data?.fields;
+            const inputField = Array.isArray(inputFields) ? 
+              inputFields.find((f: any) => f.id === transformInputEdge?.sourceHandle) : null;
+            
+            mapping = {
+              from: inputField?.name || '',
+              to: targetField.name,
+              type: 'transform',
+              transform: {
+                operation: transformConfig.operation || 'unknown',
+                parameters: transformConfig.parameters || {}
+              }
+            };
+          } else {
+            // Fallback for unknown node types
+            return;
+          }
           
-        } else if (sourceNode.type === 'transform') {
-          // Generic transform mapping
-          const transformConfig = sourceNode.data?.config || {};
-          
-          // Find the input to the transform node
-          const transformInputEdge = edges.find(e => e.target === sourceNode.id);
-          const inputSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
-          const inputField = inputSourceNode?.data?.fields?.find((f: any) => f.id === transformInputEdge?.sourceHandle);
-          
-          mapping = {
-            from: inputField?.name || '',
-            to: targetField.name,
-            type: 'transform',
-            transform: {
-              operation: transformConfig.operation || 'unknown',
-              parameters: transformConfig.parameters || {}
-            }
-          };
-        } else {
-          // Fallback for unknown node types
-          return;
-        }
-        
-        console.log('Generated mapping:', mapping);
-        mappings.push(mapping);
+          console.log('Generated mapping:', mapping);
+          mappings.push(mapping);
+        });
       });
-    });
+    }
   });
 
   const config: ExecutionMappingConfig = {
@@ -953,6 +1014,43 @@ export const exampleMappingConfiguration: MappingConfiguration = {
         }
       }
     ]
+  },
+  executionMapping: {
+    name: "Customer Data Transform",
+    version: "1.0.0",
+    mappings: [
+      {
+        from: "customer_name",
+        to: "full_name",
+        type: "transform",
+        transform: {
+          operation: "uppercase",
+          parameters: {}
+        }
+      },
+      {
+        from: "birth_date",
+        to: "formatted_date",
+        type: "transform",
+        transform: {
+          operation: "format",
+          parameters: {
+            inputFormat: "YYYY-MM-DD",
+            outputFormat: "DD/MM/YYYY"
+          }
+        }
+      },
+      {
+        from: "email",
+        to: "contact_email",
+        type: "direct"
+      }
+    ],
+    metadata: {
+      description: "Simplified execution mapping configuration",
+      tags: ["customer", "data-transform", "api-integration"],
+      author: "Data Team"
+    }
   },
   metadata: {
     description: "Transform customer data from API format to CRM format",
