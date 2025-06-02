@@ -53,12 +53,22 @@ const isTargetNode = (node: any): boolean => {
 
 // Helper function to evaluate conditions for IF THEN nodes
 const evaluateCondition = (inputValue: any, operator: string, compareValue: string): boolean => {
+    console.log('=== EVALUATING CONDITION ===');
+    console.log('Input value:', inputValue, 'Type:', typeof inputValue);
+    console.log('Operator:', operator);
+    console.log('Compare value:', compareValue);
+    
     const leftValue = String(inputValue).trim();
     const rightValue = String(compareValue).trim();
     
+    console.log('Left value (string):', leftValue);
+    console.log('Right value (string):', rightValue);
+    
     // Handle date operators
     if (operator.startsWith('date_')) {
+        console.log('Processing date operator:', operator);
         const inputDate = parseDate(leftValue);
+        console.log('Parsed input date:', inputDate);
         
         if (!inputDate) {
             console.warn('Invalid input date for comparison:', leftValue);
@@ -67,29 +77,62 @@ const evaluateCondition = (inputValue: any, operator: string, compareValue: stri
         
         switch (operator) {
             case 'date_before_today':
-                return inputDate < new Date();
+                const today = new Date();
+                console.log('Comparing with today:', today);
+                const result = inputDate < today;
+                console.log('Result (date_before_today):', result);
+                return result;
             case 'date_after_today':
-                return inputDate > new Date();
+                const todayAfter = new Date();
+                const resultAfter = inputDate > todayAfter;
+                console.log('Result (date_after_today):', resultAfter);
+                return resultAfter;
             case 'date_before': {
                 const compareDate = parseDate(rightValue);
-                return compareDate ? inputDate < compareDate : false;
+                console.log('Parsed compare date:', compareDate);
+                const resultBefore = compareDate ? inputDate < compareDate : false;
+                console.log('Result (date_before):', resultBefore);
+                return resultBefore;
             }
             case 'date_after': {
                 const compareDate = parseDate(rightValue);
-                return compareDate ? inputDate > compareDate : false;
+                console.log('Parsed compare date:', compareDate);
+                const resultAfterDate = compareDate ? inputDate > compareDate : false;
+                console.log('Result (date_after):', resultAfterDate);
+                return resultAfterDate;
             }
         }
     }
     
     // Handle regular operators
     switch (operator) {
-        case '=': return leftValue === rightValue;
-        case '!=': return leftValue !== rightValue;
-        case '>': return Number(leftValue) > Number(rightValue);
-        case '<': return Number(leftValue) < Number(rightValue);
-        case '>=': return Number(leftValue) >= Number(rightValue);
-        case '<=': return Number(leftValue) <= Number(rightValue);
-        default: return false;
+        case '=': 
+            const equalResult = leftValue === rightValue;
+            console.log('Result (=):', equalResult);
+            return equalResult;
+        case '!=': 
+            const notEqualResult = leftValue !== rightValue;
+            console.log('Result (!=):', notEqualResult);
+            return notEqualResult;
+        case '>': 
+            const greaterResult = Number(leftValue) > Number(rightValue);
+            console.log('Result (>):', greaterResult);
+            return greaterResult;
+        case '<': 
+            const lessResult = Number(leftValue) < Number(rightValue);
+            console.log('Result (<):', lessResult);
+            return lessResult;
+        case '>=': 
+            const greaterEqualResult = Number(leftValue) >= Number(rightValue);
+            console.log('Result (>=):', greaterEqualResult);
+            return greaterEqualResult;
+        case '<=': 
+            const lessEqualResult = Number(leftValue) <= Number(rightValue);
+            console.log('Result (<=):', lessEqualResult);
+            return lessEqualResult;
+        default: 
+            console.log('Unknown operator, returning false');
+            return false;
     }
 };
 
@@ -246,29 +289,56 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 }
             });
         } else if (sourceNode.type === 'ifThen') {
-            console.log('Processing IF THEN node');
+            console.log('=== PROCESSING IF THEN NODE ===');
+            console.log('IF THEN node data:', sourceNode.data);
+            
             const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
+            console.log('Operator:', operator);
+            console.log('Compare value:', compareValue);
+            console.log('Then value:', thenValue);
+            console.log('Else value:', elseValue);
             
             // Find input to the IF THEN node
             const ifThenInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+            console.log('IF THEN input edges:', ifThenInputEdges);
+            
             let inputValue: any = null;
             
             ifThenInputEdges.forEach(inputEdge => {
+                console.log('Processing IF THEN input edge:', inputEdge);
                 const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                console.log('Input source node:', inputSourceNode ? {
+                    id: inputSourceNode.id,
+                    type: inputSourceNode.type,
+                    hasData: !!inputSourceNode.data?.data
+                } : 'NOT FOUND');
+                
                 if (inputSourceNode && isSourceNode(inputSourceNode)) {
                     const sourceField = inputSourceNode.data?.fields?.find((f: any) => f.id === inputEdge.sourceHandle);
+                    console.log('Input source field:', sourceField);
+                    
                     if (sourceField) {
                         inputValue = inputSourceNode.data?.data?.length > 0 
                             ? inputSourceNode.data.data[0][sourceField.name] 
                             : sourceField.exampleValue;
+                        console.log('Got input value for IF THEN:', inputValue);
                     }
                 }
             });
             
-            if (inputValue !== null && operator && compareValue) {
-                const conditionResult = evaluateCondition(inputValue, operator, compareValue);
+            console.log('Final input value for condition:', inputValue);
+            
+            if (inputValue !== null && operator) {
+                console.log('Evaluating condition...');
+                const conditionResult = evaluateCondition(inputValue, operator, compareValue || '');
+                console.log('Condition result:', conditionResult);
+                
                 value = conditionResult ? thenValue : elseValue;
-                console.log('IF THEN result:', conditionResult, '->', value);
+                console.log('Final IF THEN output value:', value);
+            } else {
+                console.log('Cannot evaluate condition - missing input value or operator');
+                console.log('Input value:', inputValue);
+                console.log('Operator:', operator);
             }
         }
         
