@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -416,21 +417,25 @@ export const importMappingConfiguration = (
       nodeType = 'splitterTransform';
     } else if (transformConfig.transformType === 'IF THEN') {
       nodeType = 'ifThen';
+      // For ifThen nodes, the properties are stored in the config.parameters or directly in config
+      const config = transformConfig.config;
       nodeData = {
         label: transformConfig.label,
-        condition: transformConfig.config.condition || '',
-        operator: transformConfig.config.operator || '=',
-        compareValue: transformConfig.config.compareValue || '',
-        thenValue: transformConfig.config.thenValue || '',
-        elseValue: transformConfig.config.elseValue || ''
+        condition: config.parameters?.condition || '',
+        operator: config.parameters?.operator || '=',
+        compareValue: config.parameters?.compareValue || '',
+        thenValue: config.parameters?.thenValue || '',
+        elseValue: config.parameters?.elseValue || ''
       };
     } else if (transformConfig.transformType === 'Static Value') {
       nodeType = 'staticValue';
+      // For staticValue nodes, the properties are stored in the config.parameters or directly in config
+      const config = transformConfig.config;
       nodeData = {
         label: transformConfig.label,
-        value: transformConfig.config.value || '',
-        valueType: transformConfig.config.valueType || 'string',
-        values: transformConfig.config.values || []
+        value: config.parameters?.value || '',
+        valueType: config.parameters?.valueType || 'string',
+        values: config.parameters?.values || []
       };
     } else {
       nodeType = 'transform';
