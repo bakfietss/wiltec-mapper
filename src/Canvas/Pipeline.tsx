@@ -41,98 +41,49 @@ const nodeTypes = {
 
 // Helper function to check if a node is a source-type node
 const isSourceNode = (node: any): boolean => {
-    console.log('Checking if source node:', node.id, node.type);
     return node.type === 'source';
 };
 
 // Helper function to check if a node is a target-type node
 const isTargetNode = (node: any): boolean => {
-    console.log('Checking if target node:', node.id, node.type);
     return node.type === 'target';
 };
 
 // Helper function to evaluate conditions for IF THEN nodes
 const evaluateCondition = (inputValue: any, operator: string, compareValue: string): boolean => {
-    console.log('=== EVALUATING CONDITION ===');
-    console.log('Input value:', inputValue, 'Type:', typeof inputValue);
-    console.log('Operator:', operator);
-    console.log('Compare value:', compareValue);
-    
     const leftValue = String(inputValue).trim();
     const rightValue = String(compareValue).trim();
     
-    console.log('Left value (string):', leftValue);
-    console.log('Right value (string):', rightValue);
-    
     // Handle date operators
     if (operator.startsWith('date_')) {
-        console.log('Processing date operator:', operator);
         const inputDate = parseDate(leftValue);
-        console.log('Parsed input date:', inputDate);
-        
-        if (!inputDate) {
-            console.warn('Invalid input date for comparison:', leftValue);
-            return false;
-        }
+        if (!inputDate) return false;
         
         switch (operator) {
             case 'date_before_today':
-                const today = new Date();
-                console.log('Comparing with today:', today);
-                const result = inputDate < today;
-                console.log('Result (date_before_today):', result);
-                return result;
+                return inputDate < new Date();
             case 'date_after_today':
-                const todayAfter = new Date();
-                const resultAfter = inputDate > todayAfter;
-                console.log('Result (date_after_today):', resultAfter);
-                return resultAfter;
+                return inputDate > new Date();
             case 'date_before': {
                 const compareDate = parseDate(rightValue);
-                console.log('Parsed compare date:', compareDate);
-                const resultBefore = compareDate ? inputDate < compareDate : false;
-                console.log('Result (date_before):', resultBefore);
-                return resultBefore;
+                return compareDate ? inputDate < compareDate : false;
             }
             case 'date_after': {
                 const compareDate = parseDate(rightValue);
-                console.log('Parsed compare date:', compareDate);
-                const resultAfterDate = compareDate ? inputDate > compareDate : false;
-                console.log('Result (date_after):', resultAfterDate);
-                return resultAfterDate;
+                return compareDate ? inputDate > compareDate : false;
             }
         }
     }
     
     // Handle regular operators
     switch (operator) {
-        case '=': 
-            const equalResult = leftValue === rightValue;
-            console.log('Result (=):', equalResult);
-            return equalResult;
-        case '!=': 
-            const notEqualResult = leftValue !== rightValue;
-            console.log('Result (!=):', notEqualResult);
-            return notEqualResult;
-        case '>': 
-            const greaterResult = Number(leftValue) > Number(rightValue);
-            console.log('Result (>):', greaterResult);
-            return greaterResult;
-        case '<': 
-            const lessResult = Number(leftValue) < Number(rightValue);
-            console.log('Result (<):', lessResult);
-            return lessResult;
-        case '>=': 
-            const greaterEqualResult = Number(leftValue) >= Number(rightValue);
-            console.log('Result (>=):', greaterEqualResult);
-            return greaterEqualResult;
-        case '<=': 
-            const lessEqualResult = Number(leftValue) <= Number(rightValue);
-            console.log('Result (<=):', lessEqualResult);
-            return lessEqualResult;
-        default: 
-            console.log('Unknown operator, returning false');
-            return false;
+        case '=': return leftValue === rightValue;
+        case '!=': return leftValue !== rightValue;
+        case '>': return Number(leftValue) > Number(rightValue);
+        case '<': return Number(leftValue) < Number(rightValue);
+        case '>=': return Number(leftValue) >= Number(rightValue);
+        case '<=': return Number(leftValue) <= Number(rightValue);
+        default: return false;
     }
 };
 
@@ -158,29 +109,82 @@ const parseDate = (dateString: string): Date | null => {
     return null;
 };
 
+// Apply string transformations
+const applyStringTransform = (inputValue: any, config: any, transformType: string): any => {
+    if (transformType === 'String Transform' && config.stringOperation) {
+        const stringValue = String(inputValue);
+        
+        switch (config.stringOperation) {
+            case 'uppercase':
+                return stringValue.toUpperCase();
+            case 'lowercase':
+                return stringValue.toLowerCase();
+            case 'trim':
+                return stringValue.trim();
+            case 'prefix':
+                return (config.prefix || '') + stringValue;
+            case 'suffix':
+                return stringValue + (config.suffix || '');
+            case 'substring':
+                const start = config.substringStart || 0;
+                const end = config.substringEnd;
+                return end !== undefined ? stringValue.substring(start, end) : stringValue.substring(start);
+            case 'replace':
+                if (config.regex && config.replacement !== undefined) {
+                    try {
+                        const regex = new RegExp(config.regex, 'g');
+                        return stringValue.replace(regex, config.replacement);
+                    } catch (e) {
+                        return stringValue.replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
+                    }
+                }
+                return stringValue;
+            default:
+                return stringValue;
+        }
+    }
+    
+    // Handle legacy transform types
+    if (transformType === 'uppercase') {
+        return String(inputValue).toUpperCase();
+    } else if (transformType === 'lowercase') {
+        return String(inputValue).toLowerCase();
+    } else if (transformType === 'trim') {
+        return String(inputValue).trim();
+    } else if (transformType === 'replace' && config.regex && config.replacement !== undefined) {
+        try {
+            const regex = new RegExp(config.regex, 'g');
+            return String(inputValue).replace(regex, config.replacement);
+        } catch (e) {
+            return String(inputValue).replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
+        }
+    }
+    
+    return inputValue;
+};
+
+// Get source value from a node
+const getSourceValue = (node: any, handleId: string): any => {
+    if (!isSourceNode(node)) return null;
+    
+    const sourceFields = node.data?.fields;
+    const sourceData = node.data?.data;
+    
+    if (!sourceFields || !Array.isArray(sourceFields)) return null;
+    
+    const sourceField = sourceFields.find((f: any) => f.id === handleId);
+    if (!sourceField) return null;
+    
+    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
+        return sourceData[0][sourceField.name];
+    }
+    
+    return sourceField.exampleValue || 'No data';
+};
+
 // Calculate field values for target nodes based on connections
 const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
-    console.log('=== CALCULATING VALUES FOR TARGET ===');
-    console.log('Target node ID:', targetNodeId);
-    console.log('Target fields:', targetFields?.map(f => ({ id: f.id, name: f.name })));
-    console.log('All nodes:', allNodes.map(n => ({ 
-        id: n.id, 
-        type: n.type, 
-        schemaType: n.data?.schemaType,
-        hasFields: !!n.data?.fields,
-        hasData: !!n.data?.data,
-        dataLength: n.data?.data?.length || 0
-    })));
-    console.log('All edges:', allEdges.map(e => ({ 
-        id: e.id, 
-        source: e.source, 
-        target: e.target, 
-        sourceHandle: e.sourceHandle, 
-        targetHandle: e.targetHandle 
-    })));
-    
     if (!targetFields || !Array.isArray(targetFields)) {
-        console.log('No target fields provided');
         return {};
     }
     
@@ -188,164 +192,40 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
     
     // Find incoming edges to this target node
     const incomingEdges = allEdges.filter(edge => edge.target === targetNodeId);
-    console.log('Incoming edges to target:', incomingEdges);
     
     if (incomingEdges.length === 0) {
-        console.log('No incoming edges found for target node');
         return {};
     }
     
     incomingEdges.forEach(edge => {
-        console.log('Processing edge:', { 
-            id: edge.id, 
-            source: edge.source, 
-            sourceHandle: edge.sourceHandle, 
-            targetHandle: edge.targetHandle 
-        });
-        
         const sourceNode = allNodes.find(n => n.id === edge.source);
         const targetField = targetFields.find(f => f.id === edge.targetHandle);
         
-        console.log('Source node found:', sourceNode ? {
-            id: sourceNode.id,
-            type: sourceNode.type,
-            schemaType: sourceNode.data?.schemaType,
-            hasFields: !!sourceNode.data?.fields,
-            hasData: !!sourceNode.data?.data
-        } : 'NOT FOUND');
-        console.log('Target field found:', targetField ? { id: targetField.id, name: targetField.name } : 'NOT FOUND');
-        
-        if (!sourceNode || !targetField) {
-            console.log('Missing source node or target field, skipping edge');
-            return;
-        }
+        if (!sourceNode || !targetField) return;
         
         let value: any = undefined;
         
         // Handle different source node types
         if (isSourceNode(sourceNode)) {
-            console.log('Processing SOURCE-TYPE node');
-            const sourceFields = sourceNode.data?.fields;
-            const sourceData = sourceNode.data?.data;
-            
-            console.log('Source fields:', sourceFields?.map(f => ({ id: f.id, name: f.name })));
-            console.log('Source data:', sourceData);
-            
-            if (sourceFields && Array.isArray(sourceFields)) {
-                const sourceField = sourceFields.find((f: any) => f.id === edge.sourceHandle);
-                console.log('Source field matched:', sourceField ? { id: sourceField.id, name: sourceField.name } : 'NOT FOUND');
-                
-                if (sourceField) {
-                    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
-                        value = sourceData[0][sourceField.name];
-                        console.log('Got value from source data:', value);
-                    } else {
-                        value = sourceField.exampleValue || 'No data';
-                        console.log('Using example value:', value);
-                    }
-                }
-            }
+            value = getSourceValue(sourceNode, edge.sourceHandle);
         } else if (sourceNode.type === 'transform') {
-            console.log('Processing TRANSFORM node');
             // Find input to the transform node
             const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
-            console.log('Transform input edges:', transformInputEdges);
             
             let inputValue: any = null;
             
             transformInputEdges.forEach(inputEdge => {
-                console.log('Processing transform input edge:', inputEdge);
                 const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
-                console.log('Input source node:', inputSourceNode ? {
-                    id: inputSourceNode.id,
-                    type: inputSourceNode.type,
-                    hasData: !!inputSourceNode.data?.data
-                } : 'NOT FOUND');
                 
                 if (inputSourceNode && isSourceNode(inputSourceNode)) {
-                    const sourceField = inputSourceNode.data?.fields?.find((f: any) => f.id === inputEdge.sourceHandle);
-                    console.log('Input source field:', sourceField);
-                    
-                    if (sourceField) {
-                        inputValue = inputSourceNode.data?.data?.length > 0 
-                            ? inputSourceNode.data.data[0][sourceField.name] 
-                            : sourceField.exampleValue;
-                        console.log('Got input value for transform:', inputValue);
-                    }
+                    inputValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
                 }
             });
             
             if (inputValue !== null) {
-                console.log('Applying transform to input value:', inputValue);
                 const config = sourceNode.data?.config || {};
                 const transformType = sourceNode.data?.transformType;
-                
-                console.log('Transform config:', config);
-                console.log('Transform type:', transformType);
-                
-                // Apply string transformations
-                if (transformType === 'String Transform' && config.stringOperation) {
-                    const stringValue = String(inputValue);
-                    
-                    switch (config.stringOperation) {
-                        case 'uppercase':
-                            value = stringValue.toUpperCase();
-                            break;
-                        case 'lowercase':
-                            value = stringValue.toLowerCase();
-                            break;
-                        case 'trim':
-                            value = stringValue.trim();
-                            break;
-                        case 'prefix':
-                            value = (config.prefix || '') + stringValue;
-                            break;
-                        case 'suffix':
-                            value = stringValue + (config.suffix || '');
-                            break;
-                        case 'substring':
-                            const start = config.substringStart || 0;
-                            const end = config.substringEnd;
-                            value = end !== undefined ? stringValue.substring(start, end) : stringValue.substring(start);
-                            break;
-                        case 'replace':
-                            if (config.regex && config.replacement !== undefined) {
-                                try {
-                                    const regex = new RegExp(config.regex, 'g');
-                                    value = stringValue.replace(regex, config.replacement);
-                                } catch (e) {
-                                    // If regex is invalid, treat as literal string
-                                    value = stringValue.replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
-                                }
-                            } else {
-                                value = stringValue;
-                            }
-                            break;
-                        default:
-                            value = stringValue;
-                    }
-                } else if (transformType === 'uppercase') {
-                    value = String(inputValue).toUpperCase();
-                } else if (transformType === 'lowercase') {
-                    value = String(inputValue).toLowerCase();
-                } else if (transformType === 'trim') {
-                    value = String(inputValue).trim();
-                } else if (transformType === 'replace' && config.regex && config.replacement !== undefined) {
-                    try {
-                        const regex = new RegExp(config.regex, 'g');
-                        value = String(inputValue).replace(regex, config.replacement);
-                    } catch (e) {
-                        // If regex is invalid, treat as literal string
-                        value = String(inputValue).replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
-                    }
-                } else {
-                    // Default: pass through the value unchanged
-                    value = inputValue;
-                }
-                
-                console.log('Transform result:', value);
-            } else {
-                console.log('Cannot apply transform - no input value');
+                value = applyStringTransform(inputValue, config, transformType);
             }
         } else if (sourceNode.type === 'staticValue') {
             // Handle new multi-value static value nodes
@@ -354,123 +234,37 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 const staticValue = staticValues.find((v: any) => v.id === edge.sourceHandle);
                 if (staticValue) {
                     value = staticValue.value || '';
-                    console.log('Static value from multi-value node:', value);
                 }
             } else {
                 // Fallback for old single-value static nodes
                 value = sourceNode.data?.value || '';
-                console.log('Static value (legacy):', value);
             }
         } else if (sourceNode.type === 'conversionMapping') {
-            console.log('Processing CONVERSION MAPPING node');
             // Handle conversion mapping logic...
             const conversionIncomingEdges = allEdges.filter(e => e.target === sourceNode.id);
-            console.log('Conversion incoming edges:', conversionIncomingEdges);
             
             let sourceValueForMapping: any = null;
             
             conversionIncomingEdges.forEach(conversionEdge => {
-                console.log('Processing conversion input edge:', conversionEdge);
                 const originalSourceNode = allNodes.find(n => n.id === conversionEdge.source);
-                console.log('Original source node for conversion:', originalSourceNode ? {
-                    id: originalSourceNode.id,
-                    type: originalSourceNode.type
-                } : 'NOT FOUND');
                 
                 if (originalSourceNode && isSourceNode(originalSourceNode)) {
                     // Direct source node connection
-                    const sourceField = originalSourceNode.data?.fields?.find((f: any) => f.id === conversionEdge.sourceHandle);
-                    
-                    if (sourceField) {
-                        sourceValueForMapping = originalSourceNode.data?.data?.length > 0 
-                            ? originalSourceNode.data.data[0][sourceField.name] 
-                            : sourceField.exampleValue;
-                        console.log('Got source value from direct source:', sourceValueForMapping);
-                    }
+                    sourceValueForMapping = getSourceValue(originalSourceNode, conversionEdge.sourceHandle);
                 } else if (originalSourceNode && originalSourceNode.type === 'transform') {
                     // Transform node connection - we need to calculate the transform output
-                    console.log('Processing transform input to conversion mapping');
-                    
                     const transformInputEdges = allEdges.filter(e => e.target === originalSourceNode.id);
-                    console.log('Transform input edges for conversion mapping:', transformInputEdges);
                     
                     transformInputEdges.forEach(transformInputEdge => {
                         const transformSourceNode = allNodes.find(n => n.id === transformInputEdge.source);
                         
                         if (transformSourceNode && isSourceNode(transformSourceNode)) {
-                            const sourceField = transformSourceNode.data?.fields?.find((f: any) => f.id === transformInputEdge.sourceHandle);
+                            let rawValue = getSourceValue(transformSourceNode, transformInputEdge.sourceHandle);
                             
-                            if (sourceField) {
-                                let rawValue = transformSourceNode.data?.data?.length > 0 
-                                    ? transformSourceNode.data.data[0][sourceField.name] 
-                                    : sourceField.exampleValue;
-                                
-                                console.log('Raw value from source for transform:', rawValue);
-                                
-                                // Apply the transform
+                            if (rawValue !== null) {
                                 const config = originalSourceNode.data?.config || {};
                                 const transformType = originalSourceNode.data?.transformType;
-                                
-                                if (transformType === 'String Transform' && config.stringOperation) {
-                                    const stringValue = String(rawValue);
-                                    
-                                    switch (config.stringOperation) {
-                                        case 'uppercase':
-                                            sourceValueForMapping = stringValue.toUpperCase();
-                                            break;
-                                        case 'lowercase':
-                                            sourceValueForMapping = stringValue.toLowerCase();
-                                            break;
-                                        case 'trim':
-                                            sourceValueForMapping = stringValue.trim();
-                                            break;
-                                        case 'prefix':
-                                            sourceValueForMapping = (config.prefix || '') + stringValue;
-                                            break;
-                                        case 'suffix':
-                                            sourceValueForMapping = stringValue + (config.suffix || '');
-                                            break;
-                                        case 'substring':
-                                            const start = config.substringStart || 0;
-                                            const end = config.substringEnd;
-                                            sourceValueForMapping = end !== undefined ? stringValue.substring(start, end) : stringValue.substring(start);
-                                            break;
-                                        case 'replace':
-                                            if (config.regex && config.replacement !== undefined) {
-                                                try {
-                                                    const regex = new RegExp(config.regex, 'g');
-                                                    sourceValueForMapping = stringValue.replace(regex, config.replacement);
-                                                } catch (e) {
-                                                    sourceValueForMapping = stringValue.replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
-                                                }
-                                            } else {
-                                                sourceValueForMapping = stringValue;
-                                            }
-                                            break;
-                                        default:
-                                            sourceValueForMapping = stringValue;
-                                    }
-                                } else {
-                                    // Apply legacy transform types
-                                    if (transformType === 'uppercase') {
-                                        sourceValueForMapping = String(rawValue).toUpperCase();
-                                    } else if (transformType === 'lowercase') {
-                                        sourceValueForMapping = String(rawValue).toLowerCase();
-                                    } else if (transformType === 'trim') {
-                                        sourceValueForMapping = String(rawValue).trim();
-                                    } else if (transformType === 'replace' && config.regex && config.replacement !== undefined) {
-                                        try {
-                                            const regex = new RegExp(config.regex, 'g');
-                                            sourceValueForMapping = String(rawValue).replace(regex, config.replacement);
-                                        } catch (e) {
-                                            sourceValueForMapping = String(rawValue).replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
-                                        }
-                                    } else {
-                                        sourceValueForMapping = rawValue;
-                                    }
-                                }
-                                
-                                console.log('Transform result for conversion mapping:', sourceValueForMapping);
+                                sourceValueForMapping = applyStringTransform(rawValue, config, transformType);
                             }
                         }
                     });
@@ -487,79 +281,39 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                     );
                     
                     value = mappingRule ? mappingRule.to : 'NotMapped';
-                    console.log('Conversion mapping result:', sourceValueStr, '->', value);
                 } else {
-                    console.log('No mappings defined in conversion mapping node');
                     value = 'NoMappings';
                 }
             } else {
-                console.log('No source value found for conversion mapping');
                 value = 'NoInput';
             }
         } else if (sourceNode.type === 'ifThen') {
-            console.log('=== PROCESSING IF THEN NODE ===');
-            console.log('IF THEN node data:', sourceNode.data);
-            
             const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
-            console.log('Operator:', operator);
-            console.log('Compare value:', compareValue);
-            console.log('Then value:', thenValue);
-            console.log('Else value:', elseValue);
             
             // Find input to the IF THEN node
             const ifThenInputEdges = allEdges.filter(e => e.target === sourceNode.id);
-            console.log('IF THEN input edges:', ifThenInputEdges);
             
             let inputValue: any = null;
             
             ifThenInputEdges.forEach(inputEdge => {
-                console.log('Processing IF THEN input edge:', inputEdge);
                 const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
-                console.log('Input source node:', inputSourceNode ? {
-                    id: inputSourceNode.id,
-                    type: inputSourceNode.type,
-                    hasData: !!inputSourceNode.data?.data
-                } : 'NOT FOUND');
                 
                 if (inputSourceNode && isSourceNode(inputSourceNode)) {
-                    const sourceField = inputSourceNode.data?.fields?.find((f: any) => f.id === inputEdge.sourceHandle);
-                    console.log('Input source field:', sourceField);
-                    
-                    if (sourceField) {
-                        inputValue = inputSourceNode.data?.data?.length > 0 
-                            ? inputSourceNode.data.data[0][sourceField.name] 
-                            : sourceField.exampleValue;
-                        console.log('Got input value for IF THEN:', inputValue);
-                    }
+                    inputValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
                 }
             });
             
-            console.log('Final input value for condition:', inputValue);
-            
             if (inputValue !== null && operator) {
-                console.log('Evaluating condition...');
                 const conditionResult = evaluateCondition(inputValue, operator, compareValue || '');
-                console.log('Condition result:', conditionResult);
-                
                 value = conditionResult ? thenValue : elseValue;
-                console.log('Final IF THEN output value:', value);
-            } else {
-                console.log('Cannot evaluate condition - missing input value or operator');
-                console.log('Input value:', inputValue);
-                console.log('Operator:', operator);
             }
         }
         
         if (value !== undefined) {
             valueMap[targetField.id] = value;
-            console.log('SET VALUE:', targetField.name, '=', value);
-        } else {
-            console.log('NO VALUE SET for field:', targetField.name);
         }
     });
     
-    console.log('=== FINAL VALUE MAP ===');
-    console.log(valueMap);
     return valueMap;
 };
 
@@ -580,7 +334,6 @@ export default function Pipeline() {
 
     // Simple connection handler with proper style inheritance
     const onConnect = useCallback((connection: Connection) => {
-        console.log('Connection made:', connection);
         const newEdge = {
             ...connection,
             type: 'smoothstep',
@@ -595,14 +348,11 @@ export default function Pipeline() {
 
     // Simple edge change handler
     const handleEdgesChange = useCallback((changes: any) => {
-        console.log('Edge changes:', changes);
         onEdgesChange(changes);
     }, [onEdgesChange]);
 
     // Simple node change handler
     const handleNodesChange = useCallback((changes: any) => {
-        console.log('Node changes:', changes);
-        
         // Check if any nodes are being removed and clean up their edges
         const removedNodes = changes.filter((change: any) => change.type === 'remove');
         if (removedNodes.length > 0) {
@@ -620,31 +370,13 @@ export default function Pipeline() {
 
     // Update sidebar data whenever nodes change
     useEffect(() => {
-        console.log('=== UPDATING SIDEBAR DATA ===');
-        console.log('Total nodes:', nodes.length);
-        
         // Update source data from all source-type nodes
         const sourceNodes = nodes.filter(isSourceNode);
-        console.log('Source nodes found:', sourceNodes.map(n => ({ id: n.id, type: n.type, schemaType: n.data?.schemaType })));
-        
-        const allSourceData = sourceNodes.flatMap(node => {
-            const data = node.data?.data || [];
-            console.log(`Source node ${node.id} data:`, data);
-            return data;
-        });
+        const allSourceData = sourceNodes.flatMap(node => node.data?.data || []);
         
         // Update target data from all target-type nodes
         const targetNodes = nodes.filter(isTargetNode);
-        console.log('Target nodes found:', targetNodes.map(n => ({ id: n.id, type: n.type, schemaType: n.data?.schemaType })));
-        
-        const allTargetData = targetNodes.flatMap(node => {
-            const data = node.data?.data || [];
-            console.log(`Target node ${node.id} data:`, data);
-            return data;
-        });
-        
-        console.log('Final source data for sidebar:', allSourceData);
-        console.log('Final target data for sidebar:', allTargetData);
+        const allTargetData = targetNodes.flatMap(node => node.data?.data || []);
         
         setSourceData(allSourceData);
         setTargetData(allTargetData);
@@ -652,15 +384,9 @@ export default function Pipeline() {
 
     // Enhanced nodes with calculated field values for target nodes
     const enhancedNodes = useMemo(() => {
-        console.log('=== COMPUTING ENHANCED NODES ===');
-        console.log('Total nodes to enhance:', nodes.length);
-        console.log('Total edges:', edges.length);
-        
         return nodes.map(node => {
             if (isTargetNode(node) && node.data?.fields) {
-                console.log(`Enhancing target node: ${node.id}`);
                 const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
-                console.log(`Target node ${node.id} enhanced with values:`, fieldValues);
                 
                 return {
                     ...node,
@@ -697,14 +423,12 @@ export default function Pipeline() {
         setNodes([]);
         setEdges([]);
         setCurrentMappingName(name);
-        console.log('Created new mapping:', name);
     }, [setNodes, setEdges]);
 
     // Add save mapping functionality
     const handleSaveMapping = useCallback((name: string) => {
         setCurrentMappingName(name);
         // Here you could also save to a database or local storage
-        console.log('Saved mapping as:', name);
         
         // Optionally export the file with the new name
         const config = exportMappingConfiguration(nodes, edges, name);
@@ -737,8 +461,6 @@ export default function Pipeline() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
-        console.log('Exported mapping configuration:', config);
     }, [nodes, edges, currentMappingName]);
 
     // Add import functionality
@@ -752,8 +474,6 @@ export default function Pipeline() {
                 setNodes(importedNodes);
                 setEdges(importedEdges);
                 setCurrentMappingName(config.name || 'Imported Mapping');
-                
-                console.log('Imported mapping configuration:', config);
             } catch (error) {
                 console.error('Failed to import mapping configuration:', error);
                 alert('Invalid mapping configuration file');
