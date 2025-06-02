@@ -458,23 +458,21 @@ export const importMappingConfiguration = (
       };
     } else if (transformConfig.transformType === 'IF THEN') {
       nodeType = 'ifThen';
-      const config = transformConfig.config;
       nodeData = {
         label: transformConfig.label,
-        condition: config.parameters?.condition || '',
-        operator: config.parameters?.operator || '=',
-        compareValue: config.parameters?.compareValue || '',
-        thenValue: config.parameters?.thenValue || '',
-        elseValue: config.parameters?.elseValue || ''
+        condition: transformConfig.config.parameters?.condition || '',
+        operator: transformConfig.config.parameters?.operator || '=',
+        compareValue: transformConfig.config.parameters?.compareValue || '',
+        thenValue: transformConfig.config.parameters?.thenValue || '',
+        elseValue: transformConfig.config.parameters?.elseValue || ''
       };
     } else if (transformConfig.transformType === 'Static Value') {
       nodeType = 'staticValue';
-      const config = transformConfig.config;
       nodeData = {
         label: transformConfig.label,
-        value: config.parameters?.value || '',
-        valueType: config.parameters?.valueType || 'string',
-        values: config.parameters?.values || []
+        value: transformConfig.config.parameters?.value || '',
+        valueType: transformConfig.config.parameters?.valueType || 'string',
+        values: transformConfig.config.parameters?.values || []
       };
     } else {
       nodeType = 'transform';
