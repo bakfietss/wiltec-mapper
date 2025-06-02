@@ -122,13 +122,9 @@ const buildExecutionSteps = (
   const steps: ExecutionStep[] = [];
   let stepCounter = 1;
 
-  // Get source and target nodes for reference
-  const sourceNodes = nodes.filter(node => 
-    node.type === 'editableSchema' && (node.data as any)?.schemaType === 'source'
-  );
-  const targetNodes = nodes.filter(node => 
-    node.type === 'editableSchema' && (node.data as any)?.schemaType === 'target'
-  );
+  // Get source and target nodes for reference - updated to use new types
+  const sourceNodes = nodes.filter(node => node.type === 'source');
+  const targetNodes = nodes.filter(node => node.type === 'target');
   const transformNodes = nodes.filter(node => 
     node.type === 'editableTransform' || node.type === 'splitterTransform'
   );
@@ -167,11 +163,8 @@ const buildExecutionSteps = (
       return undefined;
     };
 
-    // Direct mapping (source to target)
-    const sourceData = sourceNode.data as any;
-    const targetData = targetNode.data as any;
-    
-    if (sourceData?.schemaType === 'source' && targetData?.schemaType === 'target') {
+    // Direct mapping (source to target) - updated to use new types
+    if (sourceNode.type === 'source' && targetNode.type === 'target') {
       steps.push({
         stepId: `step_${stepCounter++}`,
         type: 'direct_mapping',
@@ -189,8 +182,8 @@ const buildExecutionSteps = (
       });
     }
 
-    // Transform step (source to transform, then transform to target)
-    if (sourceData?.schemaType === 'source' && 
+    // Transform step (source to transform, then transform to target) - updated check
+    if (sourceNode.type === 'source' && 
         (targetNode.type === 'editableTransform' || targetNode.type === 'splitterTransform')) {
       
       // Find the edge from this transform to a target
@@ -198,7 +191,7 @@ const buildExecutionSteps = (
       const finalTargetNode = transformToTargetEdge ? 
         nodes.find(n => n.id === transformToTargetEdge.target) : null;
 
-      if (finalTargetNode && (finalTargetNode.data as any)?.schemaType === 'target') {
+      if (finalTargetNode && finalTargetNode.type === 'target') {
         const finalTargetField = getFieldInfo(finalTargetNode, transformToTargetEdge!.targetHandle || '');
         const transformData = targetNode.data as any;
         
@@ -226,14 +219,14 @@ const buildExecutionSteps = (
       }
     }
 
-    // Conversion mapping step
-    if (sourceData?.schemaType === 'source' && targetNode.type === 'conversionMapping') {
+    // Conversion mapping step - updated check
+    if (sourceNode.type === 'source' && targetNode.type === 'conversionMapping') {
       // Find the edge from this mapping to a target
       const mappingToTargetEdge = edges.find(e => e.source === targetNode.id);
       const finalTargetNode = mappingToTargetEdge ? 
         nodes.find(n => n.id === mappingToTargetEdge.target) : null;
 
-      if (finalTargetNode && (finalTargetNode.data as any)?.schemaType === 'target') {
+      if (finalTargetNode && finalTargetNode.type === 'target') {
         const finalTargetField = getFieldInfo(finalTargetNode, mappingToTargetEdge!.targetHandle || '');
         const mappingData = targetNode.data as any;
         
@@ -289,8 +282,8 @@ export const exportMappingConfiguration = (
     }
   };
 
-  // Extract source nodes
-  nodes.filter(node => node.type === 'editableSchema' && node.data?.schemaType === 'source')
+  // Extract source nodes - now checking for type 'source'
+  nodes.filter(node => node.type === 'source')
     .forEach(node => {
       config.nodes.sources.push({
         id: node.id,
@@ -304,8 +297,8 @@ export const exportMappingConfiguration = (
       });
     });
 
-  // Extract target nodes
-  nodes.filter(node => node.type === 'editableSchema' && node.data?.schemaType === 'target')
+  // Extract target nodes - now checking for type 'target'
+  nodes.filter(node => node.type === 'target')
     .forEach(node => {
       config.nodes.targets.push({
         id: node.id,
@@ -380,11 +373,10 @@ export const importMappingConfiguration = (
   config.nodes.sources.forEach(sourceConfig => {
     nodes.push({
       id: sourceConfig.id,
-      type: 'editableSchema',
+      type: 'source',
       position: sourceConfig.position,
       data: {
         label: sourceConfig.label,
-        schemaType: 'source',
         fields: sourceConfig.schema.fields,
         data: sourceConfig.sampleData
       }
@@ -395,11 +387,10 @@ export const importMappingConfiguration = (
   config.nodes.targets.forEach(targetConfig => {
     nodes.push({
       id: targetConfig.id,
-      type: 'editableSchema',
+      type: 'target',
       position: targetConfig.position,
       data: {
         label: targetConfig.label,
-        schemaType: 'target',
         fields: targetConfig.schema.fields,
         data: targetConfig.outputData || []
       }
