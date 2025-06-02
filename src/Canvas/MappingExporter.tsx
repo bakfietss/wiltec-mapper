@@ -495,7 +495,7 @@ export const exportExecutionMapping = (
   // Helper function to trace transformation chain backwards from target
   const traceTransformationChain = (targetNodeId: string, targetFieldId: string): any => {
     const visited = new Set<string>();
-    const chain: any[] = [];
+    const transformations: any[] = [];
     
     const traceBackwards = (nodeId: string, fieldId: string): any => {
       if (visited.has(nodeId)) return null;
@@ -507,7 +507,7 @@ export const exportExecutionMapping = (
       
       if (incomingEdges.length === 0) return null;
       
-      const edge = incomingEdges[0]; // Take first incoming edge
+      const edge = incomingEdges[0];
       const sourceNode = nodes.find(n => n.id === edge.source);
       if (!sourceNode) return null;
       
@@ -536,17 +536,18 @@ export const exportExecutionMapping = (
           nodeId: sourceNode.id
         };
       } else if (sourceNode.type === 'transform') {
-        // Transform node - add to chain and continue tracing
+        // Transform node - add to transformations and continue tracing
         const sourceData = sourceNode.data as any;
         const config = sourceData?.config || {};
         
-        chain.unshift({
+        // Add transform to the beginning of the chain (we're going backwards)
+        transformations.unshift({
           type: 'transform',
           operation: config?.stringOperation || config?.operation || 'unknown',
           parameters: {
-            ...config,
-            stringOperation: undefined, // Remove redundant field
-            operation: undefined // Remove redundant field
+            substringEnd: config?.substringEnd,
+            substringStart: config?.substringStart,
+            ...config
           }
         });
         
@@ -561,7 +562,7 @@ export const exportExecutionMapping = (
         const delimiter = typeof sourceData?.delimiter === 'string' ? sourceData.delimiter : ',';
         const splitIndex = typeof sourceData?.splitIndex === 'number' ? sourceData.splitIndex : 0;
         
-        chain.unshift({
+        transformations.unshift({
           type: 'split',
           delimiter,
           index: splitIndex
@@ -584,7 +585,7 @@ export const exportExecutionMapping = (
           });
         }
         
-        chain.unshift({
+        transformations.unshift({
           type: 'map',
           map: mapObject
         });
@@ -602,7 +603,7 @@ export const exportExecutionMapping = (
         const thenValue = typeof sourceData?.thenValue === 'string' ? sourceData.thenValue : '';
         const elseValue = typeof sourceData?.elseValue === 'string' ? sourceData.elseValue : '';
         
-        chain.unshift({
+        transformations.unshift({
           type: 'ifThen',
           if: {
             operator,
@@ -623,7 +624,7 @@ export const exportExecutionMapping = (
     };
     
     const source = traceBackwards(targetNodeId, targetFieldId);
-    return { source, chain };
+    return { source, transformations };
   };
 
   // Process each target node to find its transformation chains
@@ -639,7 +640,7 @@ export const exportExecutionMapping = (
         if (traceResult?.source) {
           let mapping: ExecutionMapping;
           
-          if (traceResult.chain.length === 0) {
+          if (traceResult.transformations.length === 0) {
             // Simple direct mapping or static value
             if (traceResult.source.type === 'static') {
               mapping = {
@@ -656,106 +657,77 @@ export const exportExecutionMapping = (
               };
             }
           } else {
-            // Complex transformation chain
-            const hasTransform = traceResult.chain.some((op: any) => op.type === 'transform' || op.type === 'split');
-            const hasMapping = traceResult.chain.some((op: any) => op.type === 'map');
-            const hasIfThen = traceResult.chain.some((op: any) => op.type === 'ifThen');
+            // Complex transformation chain - create clean combined format
+            const hasTransform = traceResult.transformations.some((op: any) => 
+              op.type === 'transform' || op.type === 'split'
+            );
+            const hasMapping = traceResult.transformations.some((op: any) => op.type === 'map');
+            const hasIfThen = traceResult.transformations.some((op: any) => op.type === 'ifThen');
+            
+            // Start with base mapping structure
+            mapping = {
+              from: traceResult.source.fieldName,
+              to: targetField.name,
+              type: 'direct' // Will be updated based on transformations
+            };
             
             if (hasIfThen) {
-              const ifThenOp = traceResult.chain.find((op: any) => op.type === 'ifThen');
-              mapping = {
-                from: traceResult.source.fieldName,
-                to: targetField.name,
-                type: 'ifThen',
-                if: ifThenOp.if,
-                then: ifThenOp.then,
-                else: ifThenOp.else
-              };
-            } else if (hasTransform && hasMapping) {
-              // Combined transform + mapping (like your example)
-              const transformOps = traceResult.chain.filter((op: any) => op.type === 'transform' || op.type === 'split');
-              const mapOp = traceResult.chain.find((op: any) => op.type === 'map');
+              const ifThenOp = traceResult.transformations.find((op: any) => op.type === 'ifThen');
+              mapping.type = 'ifThen';
+              mapping.if = ifThenOp.if;
+              mapping.then = ifThenOp.then;
+              mapping.else = ifThenOp.else;
+            } else if (hasMapping) {
+              // Has mapping - set type to map
+              mapping.type = 'map';
+              const mapOp = traceResult.transformations.find((op: any) => op.type === 'map');
+              mapping.map = mapOp?.map || {};
               
-              mapping = {
-                from: traceResult.source.fieldName,
-                to: targetField.name,
-                type: 'map',
-                map: mapOp?.map || {}
-              };
-              
-              // Add transform information
-              if (transformOps.length === 1) {
-                const transformOp = transformOps[0];
-                if (transformOp.type === 'transform') {
-                  mapping.transform = {
-                    operation: transformOp.operation,
-                    parameters: transformOp.parameters
-                  };
-                } else if (transformOp.type === 'split') {
-                  mapping.split = {
-                    delimiter: transformOp.delimiter,
-                    index: transformOp.index
-                  };
-                }
-              } else if (transformOps.length > 1) {
-                // Multiple transforms - create a transforms array
-                (mapping as any).transforms = transformOps.map((op: any) => {
-                  if (op.type === 'transform') {
-                    return {
-                      type: 'transform',
-                      operation: op.operation,
-                      parameters: op.parameters
+              // Add transform if present
+              if (hasTransform) {
+                const transformOps = traceResult.transformations.filter((op: any) => 
+                  op.type === 'transform' || op.type === 'split'
+                );
+                
+                if (transformOps.length === 1) {
+                  const transformOp = transformOps[0];
+                  if (transformOp.type === 'transform') {
+                    mapping.transform = {
+                      type: transformOp.operation,
+                      end: transformOp.parameters?.substringEnd,
+                      start: transformOp.parameters?.substringStart
                     };
-                  } else if (op.type === 'split') {
-                    return {
-                      type: 'split',
-                      delimiter: op.delimiter,
-                      index: op.index
+                    // Clean up undefined values
+                    if (mapping.transform.end === undefined) delete mapping.transform.end;
+                    if (mapping.transform.start === undefined) delete mapping.transform.start;
+                  } else if (transformOp.type === 'split') {
+                    mapping.split = {
+                      delimiter: transformOp.delimiter,
+                      index: transformOp.index
                     };
                   }
-                  return op;
-                });
+                }
               }
             } else if (hasTransform) {
               // Only transform operations
-              const transformOp = traceResult.chain[0];
+              const transformOp = traceResult.transformations[0];
               if (transformOp.type === 'split') {
-                mapping = {
-                  from: traceResult.source.fieldName,
-                  to: targetField.name,
-                  type: 'split',
-                  split: {
-                    delimiter: transformOp.delimiter,
-                    index: transformOp.index
-                  }
+                mapping.type = 'split';
+                mapping.split = {
+                  delimiter: transformOp.delimiter,
+                  index: transformOp.index
                 };
               } else {
-                mapping = {
-                  from: traceResult.source.fieldName,
-                  to: targetField.name,
-                  type: 'transform',
-                  transform: {
-                    operation: transformOp.operation,
-                    parameters: transformOp.parameters
-                  }
+                mapping.type = 'transform';
+                mapping.transform = {
+                  type: transformOp.operation,
+                  end: transformOp.parameters?.substringEnd,
+                  start: transformOp.parameters?.substringStart
                 };
+                // Clean up undefined values
+                if (mapping.transform.end === undefined) delete mapping.transform.end;
+                if (mapping.transform.start === undefined) delete mapping.transform.start;
               }
-            } else if (hasMapping) {
-              // Only mapping
-              const mapOp = traceResult.chain.find((op: any) => op.type === 'map');
-              mapping = {
-                from: traceResult.source.fieldName,
-                to: targetField.name,
-                type: 'map',
-                map: mapOp?.map || {}
-              };
-            } else {
-              // Fallback to direct mapping
-              mapping = {
-                from: traceResult.source.fieldName,
-                to: targetField.name,
-                type: 'direct'
-              };
             }
           }
           
