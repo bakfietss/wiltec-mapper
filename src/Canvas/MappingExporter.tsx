@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -437,6 +436,8 @@ export const importMappingConfiguration = (
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
+  console.log('Starting import with config:', config);
+
   // Import source nodes with complete data preservation
   config.nodes.sources.forEach(sourceConfig => {
     nodes.push({
@@ -482,6 +483,8 @@ export const importMappingConfiguration = (
       transformType: transformConfig.transformType
     };
 
+    console.log('Importing transform node:', transformConfig.id, 'type:', transformConfig.type, 'transformType:', transformConfig.transformType);
+
     // Restore node data based on transform type - use nodeData if available for direct mapping
     if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
       nodeType = 'ifThen';
@@ -502,13 +505,14 @@ export const importMappingConfiguration = (
           elseValue: params.elseValue || ''
         };
       }
+      console.log('Restored IF THEN node data:', nodeData);
     } else if (transformConfig.transformType === 'Static Value' || transformConfig.type === 'staticValue') {
       nodeType = 'staticValue';
-      if ((transformConfig as any).nodeData) {
-        // Use direct nodeData if available
+      if ((transformConfig as any).nodeData && (transformConfig as any).nodeData.values) {
+        // Use direct nodeData if available - this preserves the values array with IDs
         nodeData = {
           label: transformConfig.label,
-          ...((transformConfig as any).nodeData)
+          values: (transformConfig as any).nodeData.values
         };
       } else {
         // Fallback to extracting from config.parameters
@@ -518,6 +522,8 @@ export const importMappingConfiguration = (
           values: params.values || []
         };
       }
+      console.log('Restored Static Value node data:', nodeData);
+      console.log('Values array:', nodeData.values);
     } else if (transformConfig.transformType === 'Text Splitter' || transformConfig.type === 'splitterTransform') {
       nodeType = 'splitterTransform';
       if ((transformConfig as any).nodeData) {
@@ -572,6 +578,9 @@ export const importMappingConfiguration = (
     const sourceExists = nodes.some(n => n.id === connectionConfig.sourceNodeId);
     const targetExists = nodes.some(n => n.id === connectionConfig.targetNodeId);
     
+    console.log('Processing edge:', connectionConfig.id, 'from', connectionConfig.sourceNodeId, 'to', connectionConfig.targetNodeId);
+    console.log('Source handle:', connectionConfig.sourceHandle, 'Target handle:', connectionConfig.targetHandle);
+    
     if (sourceExists && targetExists) {
       edges.push({
         id: connectionConfig.id,
@@ -598,7 +607,7 @@ export const importMappingConfiguration = (
 
   console.log('Import completed - Nodes:', nodes.length, 'Edges:', edges.length);
   console.log('Imported nodes:', nodes.map(n => ({ id: n.id, type: n.type, hasData: !!n.data })));
-  console.log('Imported edges:', edges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+  console.log('Imported edges:', edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })));
 
   return { nodes, edges };
 };
