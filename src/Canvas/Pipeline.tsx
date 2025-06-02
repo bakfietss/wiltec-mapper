@@ -367,29 +367,135 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
             const conversionIncomingEdges = allEdges.filter(e => e.target === sourceNode.id);
             console.log('Conversion incoming edges:', conversionIncomingEdges);
             
+            let sourceValueForMapping: any = null;
+            
             conversionIncomingEdges.forEach(conversionEdge => {
+                console.log('Processing conversion input edge:', conversionEdge);
                 const originalSourceNode = allNodes.find(n => n.id === conversionEdge.source);
+                console.log('Original source node for conversion:', originalSourceNode ? {
+                    id: originalSourceNode.id,
+                    type: originalSourceNode.type
+                } : 'NOT FOUND');
+                
                 if (originalSourceNode && isSourceNode(originalSourceNode)) {
+                    // Direct source node connection
                     const sourceField = originalSourceNode.data?.fields?.find((f: any) => f.id === conversionEdge.sourceHandle);
                     
                     if (sourceField) {
-                        let sourceValue = originalSourceNode.data?.data?.length > 0 
+                        sourceValueForMapping = originalSourceNode.data?.data?.length > 0 
                             ? originalSourceNode.data.data[0][sourceField.name] 
                             : sourceField.exampleValue;
-                        
-                        const mappings = sourceNode.data?.mappings;
-                        if (Array.isArray(mappings) && mappings.length > 0) {
-                            const sourceValueStr = String(sourceValue).trim();
-                            const mappingRule = mappings.find((mapping: any) => 
-                                String(mapping.from).trim() === sourceValueStr
-                            );
-                            
-                            value = mappingRule ? mappingRule.to : 'NotMapped';
-                            console.log('Conversion result:', sourceValueStr, '->', value);
-                        }
+                        console.log('Got source value from direct source:', sourceValueForMapping);
                     }
+                } else if (originalSourceNode && originalSourceNode.type === 'transform') {
+                    // Transform node connection - we need to calculate the transform output
+                    console.log('Processing transform input to conversion mapping');
+                    
+                    const transformInputEdges = allEdges.filter(e => e.target === originalSourceNode.id);
+                    console.log('Transform input edges for conversion mapping:', transformInputEdges);
+                    
+                    transformInputEdges.forEach(transformInputEdge => {
+                        const transformSourceNode = allNodes.find(n => n.id === transformInputEdge.source);
+                        
+                        if (transformSourceNode && isSourceNode(transformSourceNode)) {
+                            const sourceField = transformSourceNode.data?.fields?.find((f: any) => f.id === transformInputEdge.sourceHandle);
+                            
+                            if (sourceField) {
+                                let rawValue = transformSourceNode.data?.data?.length > 0 
+                                    ? transformSourceNode.data.data[0][sourceField.name] 
+                                    : sourceField.exampleValue;
+                                
+                                console.log('Raw value from source for transform:', rawValue);
+                                
+                                // Apply the transform
+                                const config = originalSourceNode.data?.config || {};
+                                const transformType = originalSourceNode.data?.transformType;
+                                
+                                if (transformType === 'String Transform' && config.stringOperation) {
+                                    const stringValue = String(rawValue);
+                                    
+                                    switch (config.stringOperation) {
+                                        case 'uppercase':
+                                            sourceValueForMapping = stringValue.toUpperCase();
+                                            break;
+                                        case 'lowercase':
+                                            sourceValueForMapping = stringValue.toLowerCase();
+                                            break;
+                                        case 'trim':
+                                            sourceValueForMapping = stringValue.trim();
+                                            break;
+                                        case 'prefix':
+                                            sourceValueForMapping = (config.prefix || '') + stringValue;
+                                            break;
+                                        case 'suffix':
+                                            sourceValueForMapping = stringValue + (config.suffix || '');
+                                            break;
+                                        case 'substring':
+                                            const start = config.substringStart || 0;
+                                            const end = config.substringEnd;
+                                            sourceValueForMapping = end !== undefined ? stringValue.substring(start, end) : stringValue.substring(start);
+                                            break;
+                                        case 'replace':
+                                            if (config.regex && config.replacement !== undefined) {
+                                                try {
+                                                    const regex = new RegExp(config.regex, 'g');
+                                                    sourceValueForMapping = stringValue.replace(regex, config.replacement);
+                                                } catch (e) {
+                                                    sourceValueForMapping = stringValue.replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
+                                                }
+                                            } else {
+                                                sourceValueForMapping = stringValue;
+                                            }
+                                            break;
+                                        default:
+                                            sourceValueForMapping = stringValue;
+                                    }
+                                } else {
+                                    // Apply legacy transform types
+                                    if (transformType === 'uppercase') {
+                                        sourceValueForMapping = String(rawValue).toUpperCase();
+                                    } else if (transformType === 'lowercase') {
+                                        sourceValueForMapping = String(rawValue).toLowerCase();
+                                    } else if (transformType === 'trim') {
+                                        sourceValueForMapping = String(rawValue).trim();
+                                    } else if (transformType === 'replace' && config.regex && config.replacement !== undefined) {
+                                        try {
+                                            const regex = new RegExp(config.regex, 'g');
+                                            sourceValueForMapping = String(rawValue).replace(regex, config.replacement);
+                                        } catch (e) {
+                                            sourceValueForMapping = String(rawValue).replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
+                                        }
+                                    } else {
+                                        sourceValueForMapping = rawValue;
+                                    }
+                                }
+                                
+                                console.log('Transform result for conversion mapping:', sourceValueForMapping);
+                            }
+                        }
+                    });
                 }
             });
+            
+            // Now apply the conversion mapping
+            if (sourceValueForMapping !== null) {
+                const mappings = sourceNode.data?.mappings;
+                if (Array.isArray(mappings) && mappings.length > 0) {
+                    const sourceValueStr = String(sourceValueForMapping).trim();
+                    const mappingRule = mappings.find((mapping: any) => 
+                        String(mapping.from).trim() === sourceValueStr
+                    );
+                    
+                    value = mappingRule ? mappingRule.to : 'NotMapped';
+                    console.log('Conversion mapping result:', sourceValueStr, '->', value);
+                } else {
+                    console.log('No mappings defined in conversion mapping node');
+                    value = 'NoMappings';
+                }
+            } else {
+                console.log('No source value found for conversion mapping');
+                value = 'NoInput';
+            }
         } else if (sourceNode.type === 'ifThen') {
             console.log('=== PROCESSING IF THEN NODE ===');
             console.log('IF THEN node data:', sourceNode.data);
