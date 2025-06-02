@@ -75,7 +75,7 @@ export interface TargetNodeConfig {
 
 export interface TransformNodeConfig {
   id: string;
-  type: 'transform' | 'splitterTransform';
+  type: 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue';
   label: string;
   position: { x: number; y: number };
   transformType: string;
@@ -126,7 +126,8 @@ const buildExecutionSteps = (
   const sourceNodes = nodes.filter(node => node.type === 'source');
   const targetNodes = nodes.filter(node => node.type === 'target');
   const transformNodes = nodes.filter(node => 
-    node.type === 'editableTransform' || node.type === 'splitterTransform'
+    node.type === 'transform' || node.type === 'splitterTransform' || 
+    node.type === 'ifThen' || node.type === 'staticValue'
   );
   const mappingNodes = nodes.filter(node => node.type === 'conversionMapping');
 
@@ -184,7 +185,8 @@ const buildExecutionSteps = (
 
     // Transform step (source to transform, then transform to target) - updated check
     if (sourceNode.type === 'source' && 
-        (targetNode.type === 'editableTransform' || targetNode.type === 'splitterTransform')) {
+        (targetNode.type === 'transform' || targetNode.type === 'splitterTransform' || 
+         targetNode.type === 'ifThen' || targetNode.type === 'staticValue')) {
       
       // Find the edge from this transform to a target
       const transformToTargetEdge = edges.find(e => e.source === targetNode.id);
@@ -210,7 +212,7 @@ const buildExecutionSteps = (
             fieldName: finalTargetField.name
           },
           transform: {
-            type: transformData?.transformType || 'unknown',
+            type: transformData?.transformType || targetNode.type || 'unknown',
             operation: transformData?.config?.operation,
             parameters: transformData?.config?.parameters || {},
             expression: transformData?.config?.expression
@@ -312,18 +314,20 @@ export const exportMappingConfiguration = (
       });
     });
 
-  // Extract transform nodes
-  nodes.filter(node => node.type === 'editableTransform' || node.type === 'splitterTransform')
-    .forEach(node => {
-      config.nodes.transforms.push({
-        id: node.id,
-        type: node.type as 'transform' | 'splitterTransform',
-        label: String(node.data?.label || 'Transform Node'),
-        position: node.position,
-        transformType: String(node.data?.transformType || 'unknown'),
-        config: node.data?.config || {}
-      });
+  // Extract transform nodes - updated to include all transform types
+  nodes.filter(node => 
+    node.type === 'transform' || node.type === 'splitterTransform' || 
+    node.type === 'ifThen' || node.type === 'staticValue'
+  ).forEach(node => {
+    config.nodes.transforms.push({
+      id: node.id,
+      type: node.type as 'transform' | 'splitterTransform',
+      label: String(node.data?.label || 'Transform Node'),
+      position: node.position,
+      transformType: String(node.data?.transformType || node.type || 'unknown'),
+      config: node.data?.config || node.data || {}
     });
+  });
 
   // Extract mapping nodes
   nodes.filter(node => node.type === 'conversionMapping')
@@ -344,7 +348,8 @@ export const exportMappingConfiguration = (
     
     let connectionType: 'direct' | 'transform' | 'mapping' = 'direct';
     
-    if (sourceNode?.type === 'editableTransform' || sourceNode?.type === 'splitterTransform') {
+    if (sourceNode?.type === 'transform' || sourceNode?.type === 'splitterTransform' || 
+        sourceNode?.type === 'ifThen' || sourceNode?.type === 'staticValue') {
       connectionType = 'transform';
     } else if (sourceNode?.type === 'conversionMapping') {
       connectionType = 'mapping';
@@ -397,17 +402,45 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import transform nodes
+  // Import transform nodes - handle all transform types
   config.nodes.transforms.forEach(transformConfig => {
+    let nodeType = transformConfig.type;
+    let nodeData: any = {
+      label: transformConfig.label,
+      transformType: transformConfig.transformType,
+      config: transformConfig.config
+    };
+
+    // Handle different transform types based on transformType
+    if (transformConfig.transformType === 'Text Splitter') {
+      nodeType = 'splitterTransform';
+    } else if (transformConfig.transformType === 'IF THEN') {
+      nodeType = 'ifThen';
+      nodeData = {
+        label: transformConfig.label,
+        condition: transformConfig.config.condition || '',
+        operator: transformConfig.config.operator || '=',
+        compareValue: transformConfig.config.compareValue || '',
+        thenValue: transformConfig.config.thenValue || '',
+        elseValue: transformConfig.config.elseValue || ''
+      };
+    } else if (transformConfig.transformType === 'Static Value') {
+      nodeType = 'staticValue';
+      nodeData = {
+        label: transformConfig.label,
+        value: transformConfig.config.value || '',
+        valueType: transformConfig.config.valueType || 'string',
+        values: transformConfig.config.values || []
+      };
+    } else {
+      nodeType = 'transform';
+    }
+
     nodes.push({
       id: transformConfig.id,
-      type: transformConfig.type,
+      type: nodeType,
       position: transformConfig.position,
-      data: {
-        label: transformConfig.label,
-        transformType: transformConfig.transformType,
-        config: transformConfig.config
-      }
+      data: nodeData
     });
   });
 
@@ -425,21 +458,33 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import connections
+  // Import connections - only add if both nodes exist
   config.connections.forEach(connectionConfig => {
-    edges.push({
-      id: connectionConfig.id,
-      source: connectionConfig.sourceNodeId,
-      target: connectionConfig.targetNodeId,
-      sourceHandle: connectionConfig.sourceHandle,
-      targetHandle: connectionConfig.targetHandle,
-      type: 'smoothstep',
-      animated: true,
-      style: { 
-        strokeWidth: 3,
-        stroke: '#3b82f6'
-      }
-    });
+    const sourceExists = nodes.some(n => n.id === connectionConfig.sourceNodeId);
+    const targetExists = nodes.some(n => n.id === connectionConfig.targetNodeId);
+    
+    if (sourceExists && targetExists) {
+      edges.push({
+        id: connectionConfig.id,
+        source: connectionConfig.sourceNodeId,
+        target: connectionConfig.targetNodeId,
+        sourceHandle: connectionConfig.sourceHandle,
+        targetHandle: connectionConfig.targetHandle,
+        type: 'smoothstep',
+        animated: true,
+        style: { 
+          strokeWidth: 3,
+          stroke: '#3b82f6'
+        }
+      });
+    } else {
+      console.warn(`Skipping connection ${connectionConfig.id} - missing nodes:`, {
+        sourceExists,
+        targetExists,
+        sourceId: connectionConfig.sourceNodeId,
+        targetId: connectionConfig.targetNodeId
+      });
+    }
   });
 
   return { nodes, edges };
