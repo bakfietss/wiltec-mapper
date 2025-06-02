@@ -245,6 +245,108 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                     }
                 }
             }
+        } else if (sourceNode.type === 'transform') {
+            console.log('Processing TRANSFORM node');
+            // Find input to the transform node
+            const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+            console.log('Transform input edges:', transformInputEdges);
+            
+            let inputValue: any = null;
+            
+            transformInputEdges.forEach(inputEdge => {
+                console.log('Processing transform input edge:', inputEdge);
+                const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                console.log('Input source node:', inputSourceNode ? {
+                    id: inputSourceNode.id,
+                    type: inputSourceNode.type,
+                    hasData: !!inputSourceNode.data?.data
+                } : 'NOT FOUND');
+                
+                if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                    const sourceField = inputSourceNode.data?.fields?.find((f: any) => f.id === inputEdge.sourceHandle);
+                    console.log('Input source field:', sourceField);
+                    
+                    if (sourceField) {
+                        inputValue = inputSourceNode.data?.data?.length > 0 
+                            ? inputSourceNode.data.data[0][sourceField.name] 
+                            : sourceField.exampleValue;
+                        console.log('Got input value for transform:', inputValue);
+                    }
+                }
+            });
+            
+            if (inputValue !== null) {
+                console.log('Applying transform to input value:', inputValue);
+                const config = sourceNode.data?.config || {};
+                const transformType = sourceNode.data?.transformType;
+                
+                console.log('Transform config:', config);
+                console.log('Transform type:', transformType);
+                
+                // Apply string transformations
+                if (transformType === 'String Transform' && config.stringOperation) {
+                    const stringValue = String(inputValue);
+                    
+                    switch (config.stringOperation) {
+                        case 'uppercase':
+                            value = stringValue.toUpperCase();
+                            break;
+                        case 'lowercase':
+                            value = stringValue.toLowerCase();
+                            break;
+                        case 'trim':
+                            value = stringValue.trim();
+                            break;
+                        case 'prefix':
+                            value = (config.prefix || '') + stringValue;
+                            break;
+                        case 'suffix':
+                            value = stringValue + (config.suffix || '');
+                            break;
+                        case 'substring':
+                            const start = config.substringStart || 0;
+                            const end = config.substringEnd;
+                            value = end !== undefined ? stringValue.substring(start, end) : stringValue.substring(start);
+                            break;
+                        case 'replace':
+                            if (config.regex && config.replacement !== undefined) {
+                                try {
+                                    const regex = new RegExp(config.regex, 'g');
+                                    value = stringValue.replace(regex, config.replacement);
+                                } catch (e) {
+                                    // If regex is invalid, treat as literal string
+                                    value = stringValue.replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
+                                }
+                            } else {
+                                value = stringValue;
+                            }
+                            break;
+                        default:
+                            value = stringValue;
+                    }
+                } else if (transformType === 'uppercase') {
+                    value = String(inputValue).toUpperCase();
+                } else if (transformType === 'lowercase') {
+                    value = String(inputValue).toLowerCase();
+                } else if (transformType === 'trim') {
+                    value = String(inputValue).trim();
+                } else if (transformType === 'replace' && config.regex && config.replacement !== undefined) {
+                    try {
+                        const regex = new RegExp(config.regex, 'g');
+                        value = String(inputValue).replace(regex, config.replacement);
+                    } catch (e) {
+                        // If regex is invalid, treat as literal string
+                        value = String(inputValue).replace(new RegExp(config.regex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), config.replacement);
+                    }
+                } else {
+                    // Default: pass through the value unchanged
+                    value = inputValue;
+                }
+                
+                console.log('Transform result:', value);
+            } else {
+                console.log('Cannot apply transform - no input value');
+            }
         } else if (sourceNode.type === 'staticValue') {
             // Handle new multi-value static value nodes
             const staticValues = sourceNode.data?.values;
