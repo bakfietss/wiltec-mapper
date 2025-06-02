@@ -351,14 +351,14 @@ export const exportMappingConfiguration = (
         }
       };
     } else if (node.type === 'splitterTransform') {
-      // Store Splitter Transform specific data - fix the spread operator issue
-      const nodeConfig = node.data?.config || {};
+      // Store Splitter Transform specific data - ensure we have a valid object to spread
+      const additionalConfig = node.data?.config && typeof node.data.config === 'object' ? node.data.config : {};
       transformConfig.config = {
         operation: 'split',
         parameters: {
           delimiter: node.data?.delimiter || ',',
           splitIndex: node.data?.splitIndex || 0,
-          ...nodeConfig
+          ...additionalConfig
         }
       };
     } else {
