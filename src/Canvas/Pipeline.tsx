@@ -253,13 +253,17 @@ export default function Pipeline() {
     // Use node factories
     const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-    // Simple connection handler
+    // Simple connection handler with proper style inheritance
     const onConnect = useCallback((connection: Connection) => {
         console.log('Connection made:', connection);
         const newEdge = {
             ...connection,
             type: 'smoothstep',
             animated: true,
+            style: { 
+                strokeWidth: 0.5,
+                stroke: '#3b82f6'
+            }
         };
         setEdges(edges => addEdge(newEdge, edges));
     }, [setEdges]);
