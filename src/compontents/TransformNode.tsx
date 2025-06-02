@@ -9,6 +9,13 @@ interface TransformConfig {
   value?: string;
   regex?: string;
   replacement?: string;
+  stringOperation?: string;
+  prefix?: string;
+  suffix?: string;
+  splitDelimiter?: string;
+  joinDelimiter?: string;
+  substringStart?: number;
+  substringEnd?: number;
 }
 
 interface TransformNodeData {
@@ -47,6 +54,19 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
   };
   
   const getConfigSummary = () => {
+    if (transformType === 'String Transform') {
+      const op = config.stringOperation;
+      if (op === 'uppercase') return 'Convert to UPPERCASE';
+      if (op === 'lowercase') return 'Convert to lowercase';
+      if (op === 'trim') return 'Remove whitespace';
+      if (op === 'prefix' && config.prefix) return `Add prefix: "${config.prefix}"`;
+      if (op === 'suffix' && config.suffix) return `Add suffix: "${config.suffix}"`;
+      if (op === 'substring' && config.substringStart !== undefined) 
+        return `Substring from ${config.substringStart}${config.substringEnd !== undefined ? ` to ${config.substringEnd}` : ''}`;
+      if (op === 'replace' && config.regex && config.replacement) 
+        return `Replace "${config.regex}" → "${config.replacement}"`;
+      return op || 'String Transform';
+    }
     if (transformType === 'uppercase') return 'Convert to UPPERCASE';
     if (transformType === 'lowercase') return 'Convert to lowercase';
     if (transformType === 'trim') return 'Remove whitespace';
@@ -87,6 +107,107 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
               </SheetHeader>
               
               <div className="mt-6 space-y-4">
+                {transformType === 'String Transform' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">String Operation:</label>
+                      <select
+                        value={config.stringOperation || ''}
+                        onChange={(e) => updateConfig({ stringOperation: e.target.value })}
+                        className="w-full border rounded px-3 py-2"
+                      >
+                        <option value="">Select operation</option>
+                        <option value="uppercase">Convert to UPPERCASE</option>
+                        <option value="lowercase">Convert to lowercase</option>
+                        <option value="trim">Trim whitespace</option>
+                        <option value="prefix">Add prefix</option>
+                        <option value="suffix">Add suffix</option>
+                        <option value="substring">Extract substring</option>
+                        <option value="replace">Find and replace</option>
+                      </select>
+                    </div>
+
+                    {config.stringOperation === 'prefix' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Prefix text:</label>
+                        <input
+                          type="text"
+                          value={config.prefix || ''}
+                          onChange={(e) => updateConfig({ prefix: e.target.value })}
+                          className="w-full border rounded px-3 py-2"
+                          placeholder="Text to add at the beginning"
+                        />
+                      </div>
+                    )}
+
+                    {config.stringOperation === 'suffix' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Suffix text:</label>
+                        <input
+                          type="text"
+                          value={config.suffix || ''}
+                          onChange={(e) => updateConfig({ suffix: e.target.value })}
+                          className="w-full border rounded px-3 py-2"
+                          placeholder="Text to add at the end"
+                        />
+                      </div>
+                    )}
+
+                    {config.stringOperation === 'substring' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Start position:</label>
+                          <input
+                            type="number"
+                            value={config.substringStart || ''}
+                            onChange={(e) => updateConfig({ substringStart: parseInt(e.target.value) })}
+                            className="w-full border rounded px-3 py-2"
+                            placeholder="Starting character position (0-based)"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">End position (optional):</label>
+                          <input
+                            type="number"
+                            value={config.substringEnd || ''}
+                            onChange={(e) => updateConfig({ substringEnd: e.target.value ? parseInt(e.target.value) : undefined })}
+                            className="w-full border rounded px-3 py-2"
+                            placeholder="Ending character position (leave empty for end of string)"
+                            min="0"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {config.stringOperation === 'replace' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Find (regex):</label>
+                          <input
+                            type="text"
+                            value={config.regex || ''}
+                            onChange={(e) => updateConfig({ regex: e.target.value })}
+                            className="w-full border rounded px-3 py-2"
+                            placeholder="Enter regex pattern or text to find"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Replace with:</label>
+                          <input
+                            type="text"
+                            value={config.replacement || ''}
+                            onChange={(e) => updateConfig({ replacement: e.target.value })}
+                            className="w-full border rounded px-3 py-2"
+                            placeholder="Replacement text"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+                
                 {transformType === 'replace' && (
                   <>
                     <div>
