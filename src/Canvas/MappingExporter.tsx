@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -319,50 +320,13 @@ export const exportMappingConfiguration = (
     node.type === 'transform' || node.type === 'splitterTransform' || 
     node.type === 'ifThen' || node.type === 'staticValue'
   ).forEach(node => {
-    let transformType = node.type;
-    let config = node.data?.config || {};
-    
-    // Handle different node types and their specific data structures
-    if (node.type === 'ifThen') {
-      transformType = 'IF THEN';
-      config = {
-        parameters: {
-          condition: node.data?.condition || '',
-          operator: node.data?.operator || '=',
-          compareValue: node.data?.compareValue || '',
-          thenValue: node.data?.thenValue || '',
-          elseValue: node.data?.elseValue || ''
-        }
-      };
-    } else if (node.type === 'staticValue') {
-      transformType = 'Static Value';
-      config = {
-        parameters: {
-          value: node.data?.value || '',
-          valueType: node.data?.valueType || 'string',
-          values: node.data?.values || []
-        }
-      };
-    } else if (node.type === 'splitterTransform') {
-      transformType = 'Text Splitter';
-      config = {
-        parameters: {
-          delimiter: node.data?.delimiter || ',',
-          outputCount: node.data?.outputCount || 2
-        }
-      };
-    } else if (node.type === 'transform') {
-      transformType = node.data?.transformType || 'String Transform';
-      config = node.data?.config || {};
-    }
-
     config.nodes.transforms.push({
       id: node.id,
-      type: node.type as 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue',
+      type: node.type as 'transform' | 'splitterTransform',
       label: String(node.data?.label || 'Transform Node'),
       position: node.position,
-      transformType: transformType,
-      config: config
+      transformType: String(node.data?.transformType || node.type || 'unknown'),
+      config: node.data?.config || node.data || {}
     });
   });
 
@@ -451,13 +415,9 @@ export const importMappingConfiguration = (
     // Handle different transform types based on transformType
     if (transformConfig.transformType === 'Text Splitter') {
       nodeType = 'splitterTransform';
-      nodeData = {
-        label: transformConfig.label,
-        delimiter: transformConfig.config.parameters?.delimiter || ',',
-        outputCount: transformConfig.config.parameters?.outputCount || 2
-      };
     } else if (transformConfig.transformType === 'IF THEN') {
       nodeType = 'ifThen';
+      // For ifThen nodes, the properties are stored in the config.parameters or directly in config
       const config = transformConfig.config;
       nodeData = {
         label: transformConfig.label,
@@ -469,6 +429,7 @@ export const importMappingConfiguration = (
       };
     } else if (transformConfig.transformType === 'Static Value') {
       nodeType = 'staticValue';
+      // For staticValue nodes, the properties are stored in the config.parameters or directly in config
       const config = transformConfig.config;
       nodeData = {
         label: transformConfig.label,
