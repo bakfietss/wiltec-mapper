@@ -492,7 +492,141 @@ export const exportExecutionMapping = (
   
   console.log('Source nodes:', sourceNodes.length, 'Target nodes:', targetNodes.length);
 
-  // Process each target node to find its incoming mappings
+  // Helper function to trace transformation chain backwards from target
+  const traceTransformationChain = (targetNodeId: string, targetFieldId: string): any => {
+    const visited = new Set<string>();
+    const chain: any[] = [];
+    
+    const traceBackwards = (nodeId: string, fieldId: string): any => {
+      if (visited.has(nodeId)) return null;
+      visited.add(nodeId);
+      
+      const incomingEdges = edges.filter(edge => 
+        edge.target === nodeId && edge.targetHandle === fieldId
+      );
+      
+      if (incomingEdges.length === 0) return null;
+      
+      const edge = incomingEdges[0]; // Take first incoming edge
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      if (!sourceNode) return null;
+      
+      if (sourceNode.type === 'source') {
+        // Found the original source
+        const sourceData = sourceNode.data as any;
+        const sourceFields = sourceData?.fields;
+        const sourceField = Array.isArray(sourceFields) ? 
+          sourceFields.find((f: any) => f.id === edge.sourceHandle) : null;
+        
+        return {
+          type: 'source',
+          fieldName: sourceField?.name || edge.sourceHandle || '',
+          nodeId: sourceNode.id
+        };
+      } else if (sourceNode.type === 'staticValue') {
+        // Static value source
+        const sourceData = sourceNode.data as any;
+        const staticValues = sourceData?.values;
+        const staticValue = Array.isArray(staticValues) ? 
+          staticValues.find((v: any) => v.id === edge.sourceHandle) : null;
+        
+        return {
+          type: 'static',
+          value: staticValue?.value || '',
+          nodeId: sourceNode.id
+        };
+      } else if (sourceNode.type === 'transform') {
+        // Transform node - add to chain and continue tracing
+        const sourceData = sourceNode.data as any;
+        const config = sourceData?.config || {};
+        
+        chain.unshift({
+          type: 'transform',
+          operation: config?.stringOperation || config?.operation || 'unknown',
+          parameters: {
+            ...config,
+            stringOperation: undefined, // Remove redundant field
+            operation: undefined // Remove redundant field
+          }
+        });
+        
+        // Continue tracing backwards from this transform node
+        const transformInputEdges = edges.filter(e => e.target === sourceNode.id);
+        if (transformInputEdges.length > 0) {
+          return traceBackwards(transformInputEdges[0].source, transformInputEdges[0].sourceHandle || '');
+        }
+      } else if (sourceNode.type === 'splitterTransform') {
+        // Splitter transform
+        const sourceData = sourceNode.data as any;
+        const delimiter = typeof sourceData?.delimiter === 'string' ? sourceData.delimiter : ',';
+        const splitIndex = typeof sourceData?.splitIndex === 'number' ? sourceData.splitIndex : 0;
+        
+        chain.unshift({
+          type: 'split',
+          delimiter,
+          index: splitIndex
+        });
+        
+        // Continue tracing backwards
+        const transformInputEdges = edges.filter(e => e.target === sourceNode.id);
+        if (transformInputEdges.length > 0) {
+          return traceBackwards(transformInputEdges[0].source, transformInputEdges[0].sourceHandle || '');
+        }
+      } else if (sourceNode.type === 'conversionMapping') {
+        // Conversion mapping
+        const sourceData = sourceNode.data as any;
+        const conversionMappings = sourceData?.mappings;
+        const mapObject: Record<string, string> = {};
+        
+        if (Array.isArray(conversionMappings)) {
+          conversionMappings.forEach((mapping: any) => {
+            mapObject[mapping.from] = mapping.to;
+          });
+        }
+        
+        chain.unshift({
+          type: 'map',
+          map: mapObject
+        });
+        
+        // Continue tracing backwards
+        const mappingInputEdges = edges.filter(e => e.target === sourceNode.id);
+        if (mappingInputEdges.length > 0) {
+          return traceBackwards(mappingInputEdges[0].source, mappingInputEdges[0].sourceHandle || '');
+        }
+      } else if (sourceNode.type === 'ifThen') {
+        // IF THEN conditional
+        const sourceData = sourceNode.data as any;
+        const operator = typeof sourceData?.operator === 'string' ? sourceData.operator : '=';
+        const compareValue = typeof sourceData?.compareValue === 'string' ? sourceData.compareValue : '';
+        const thenValue = typeof sourceData?.thenValue === 'string' ? sourceData.thenValue : '';
+        const elseValue = typeof sourceData?.elseValue === 'string' ? sourceData.elseValue : '';
+        
+        chain.unshift({
+          type: 'ifThen',
+          if: {
+            operator,
+            value: compareValue
+          },
+          then: thenValue,
+          else: elseValue
+        });
+        
+        // Continue tracing backwards
+        const ifThenInputEdges = edges.filter(e => e.target === sourceNode.id);
+        if (ifThenInputEdges.length > 0) {
+          return traceBackwards(ifThenInputEdges[0].source, ifThenInputEdges[0].sourceHandle || '');
+        }
+      }
+      
+      return null;
+    };
+    
+    const source = traceBackwards(targetNodeId, targetFieldId);
+    return { source, chain };
+  };
+
+  // Process each target node to find its transformation chains
   targetNodes.forEach(targetNode => {
     const nodeData = targetNode.data as any;
     const targetFields = nodeData?.fields || [];
@@ -500,160 +634,134 @@ export const exportExecutionMapping = (
     
     if (Array.isArray(targetFields)) {
       targetFields.forEach(targetField => {
-        // Find edges that connect to this target field
-        const incomingEdges = edges.filter(edge => 
-          edge.target === targetNode.id && edge.targetHandle === targetField.id
-        );
+        const traceResult = traceTransformationChain(targetNode.id, targetField.id);
         
-        console.log(`Target field ${targetField.name} has ${incomingEdges.length} incoming edges`);
-        
-        incomingEdges.forEach(edge => {
-          const sourceNode = nodes.find(n => n.id === edge.source);
-          if (!sourceNode) return;
-          
-          console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
-          
+        if (traceResult?.source) {
           let mapping: ExecutionMapping;
           
-          if (sourceNode.type === 'source') {
-            // Direct mapping from source to target
-            const sourceData = sourceNode.data as any;
-            const sourceFields = sourceData?.fields;
-            const sourceField = Array.isArray(sourceFields) ? 
-              sourceFields.find((f: any) => f.id === edge.sourceHandle) : null;
-            
-            mapping = {
-              from: sourceField?.name || edge.sourceHandle || '',
-              to: targetField.name,
-              type: 'direct'
-            };
-            
-          } else if (sourceNode.type === 'staticValue') {
-            // Static value mapping
-            const sourceData = sourceNode.data as any;
-            const staticValues = sourceData?.values;
-            const staticValue = Array.isArray(staticValues) ? 
-              staticValues.find((v: any) => v.id === edge.sourceHandle) : null;
-            
-            mapping = {
-              from: null,
-              to: targetField.name,
-              type: 'static',
-              value: staticValue?.value || ''
-            };
-            
-          } else if (sourceNode.type === 'ifThen') {
-            // IF THEN conditional mapping
-            const sourceData = sourceNode.data as any;
-            const operator = typeof sourceData?.operator === 'string' ? sourceData.operator : '=';
-            const compareValue = typeof sourceData?.compareValue === 'string' ? sourceData.compareValue : '';
-            const thenValue = typeof sourceData?.thenValue === 'string' ? sourceData.thenValue : '';
-            const elseValue = typeof sourceData?.elseValue === 'string' ? sourceData.elseValue : '';
-            
-            // Find the input to the IF THEN node
-            const ifThenInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
-            const inputData = inputSourceNode?.data as any;
-            const inputFields = inputData?.fields;
-            const inputField = Array.isArray(inputFields) ? 
-              inputFields.find((f: any) => f.id === ifThenInputEdge?.sourceHandle) : null;
-            
-            mapping = {
-              from: inputField?.name || '',
-              to: targetField.name,
-              type: 'ifThen',
-              if: {
-                operator,
-                value: compareValue
-              },
-              then: thenValue,
-              else: elseValue
-            };
-            
-          } else if (sourceNode.type === 'conversionMapping') {
-            // Conversion mapping
-            const sourceData = sourceNode.data as any;
-            const conversionMappings = sourceData?.mappings;
-            const mapObject: Record<string, string> = {};
-            
-            if (Array.isArray(conversionMappings)) {
-              conversionMappings.forEach((mapping: any) => {
-                mapObject[mapping.from] = mapping.to;
-              });
+          if (traceResult.chain.length === 0) {
+            // Simple direct mapping or static value
+            if (traceResult.source.type === 'static') {
+              mapping = {
+                from: null,
+                to: targetField.name,
+                type: 'static',
+                value: traceResult.source.value
+              };
+            } else {
+              mapping = {
+                from: traceResult.source.fieldName,
+                to: targetField.name,
+                type: 'direct'
+              };
             }
-            
-            // Find the input to the conversion mapping node
-            const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputSourceNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
-            const inputData = inputSourceNode?.data as any;
-            const inputFields = inputData?.fields;
-            const inputField = Array.isArray(inputFields) ? 
-              inputFields.find((f: any) => f.id === conversionInputEdge?.sourceHandle) : null;
-            
-            mapping = {
-              from: inputField?.name || '',
-              to: targetField.name,
-              type: 'map',
-              map: mapObject
-            };
-            
-          } else if (sourceNode.type === 'splitterTransform') {
-            // Text splitter mapping
-            const sourceData = sourceNode.data as any;
-            const delimiter = typeof sourceData?.delimiter === 'string' ? sourceData.delimiter : ',';
-            const splitIndex = typeof sourceData?.splitIndex === 'number' ? sourceData.splitIndex : 0;
-            
-            // Find the input to the splitter node
-            const splitterInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputSourceNode = splitterInputEdge ? nodes.find(n => n.id === splitterInputEdge.source) : null;
-            const inputData = inputSourceNode?.data as any;
-            const inputFields = inputData?.fields;
-            const inputField = Array.isArray(inputFields) ? 
-              inputFields.find((f: any) => f.id === splitterInputEdge?.sourceHandle) : null;
-            
-            mapping = {
-              from: inputField?.name || '',
-              to: targetField.name,
-              type: 'split',
-              split: {
-                delimiter,
-                index: splitIndex
-              }
-            };
-            
-          } else if (sourceNode.type === 'transform') {
-            // Generic transform mapping
-            const sourceData = sourceNode.data as any;
-            const transformConfig = sourceData?.config || {};
-            
-            // Find the input to the transform node
-            const transformInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
-            const inputData = inputSourceNode?.data as any;
-            const inputFields = inputData?.fields;
-            const inputField = Array.isArray(inputFields) ? 
-              inputFields.find((f: any) => f.id === transformInputEdge?.sourceHandle) : null;
-            
-            const operation = transformConfig?.operation && typeof transformConfig.operation === 'string' ? transformConfig.operation : 'unknown';
-            const parameters = transformConfig?.parameters && typeof transformConfig.parameters === 'object' ? transformConfig.parameters : {};
-            
-            mapping = {
-              from: inputField?.name || '',
-              to: targetField.name,
-              type: 'transform',
-              transform: {
-                operation,
-                parameters
-              }
-            };
           } else {
-            // Fallback for unknown node types
-            return;
+            // Complex transformation chain
+            const hasTransform = traceResult.chain.some((op: any) => op.type === 'transform' || op.type === 'split');
+            const hasMapping = traceResult.chain.some((op: any) => op.type === 'map');
+            const hasIfThen = traceResult.chain.some((op: any) => op.type === 'ifThen');
+            
+            if (hasIfThen) {
+              const ifThenOp = traceResult.chain.find((op: any) => op.type === 'ifThen');
+              mapping = {
+                from: traceResult.source.fieldName,
+                to: targetField.name,
+                type: 'ifThen',
+                if: ifThenOp.if,
+                then: ifThenOp.then,
+                else: ifThenOp.else
+              };
+            } else if (hasTransform && hasMapping) {
+              // Combined transform + mapping (like your example)
+              const transformOps = traceResult.chain.filter((op: any) => op.type === 'transform' || op.type === 'split');
+              const mapOp = traceResult.chain.find((op: any) => op.type === 'map');
+              
+              mapping = {
+                from: traceResult.source.fieldName,
+                to: targetField.name,
+                type: 'map',
+                map: mapOp?.map || {}
+              };
+              
+              // Add transform information
+              if (transformOps.length === 1) {
+                const transformOp = transformOps[0];
+                if (transformOp.type === 'transform') {
+                  mapping.transform = {
+                    operation: transformOp.operation,
+                    parameters: transformOp.parameters
+                  };
+                } else if (transformOp.type === 'split') {
+                  mapping.split = {
+                    delimiter: transformOp.delimiter,
+                    index: transformOp.index
+                  };
+                }
+              } else if (transformOps.length > 1) {
+                // Multiple transforms - create a transforms array
+                (mapping as any).transforms = transformOps.map((op: any) => {
+                  if (op.type === 'transform') {
+                    return {
+                      type: 'transform',
+                      operation: op.operation,
+                      parameters: op.parameters
+                    };
+                  } else if (op.type === 'split') {
+                    return {
+                      type: 'split',
+                      delimiter: op.delimiter,
+                      index: op.index
+                    };
+                  }
+                  return op;
+                });
+              }
+            } else if (hasTransform) {
+              // Only transform operations
+              const transformOp = traceResult.chain[0];
+              if (transformOp.type === 'split') {
+                mapping = {
+                  from: traceResult.source.fieldName,
+                  to: targetField.name,
+                  type: 'split',
+                  split: {
+                    delimiter: transformOp.delimiter,
+                    index: transformOp.index
+                  }
+                };
+              } else {
+                mapping = {
+                  from: traceResult.source.fieldName,
+                  to: targetField.name,
+                  type: 'transform',
+                  transform: {
+                    operation: transformOp.operation,
+                    parameters: transformOp.parameters
+                  }
+                };
+              }
+            } else if (hasMapping) {
+              // Only mapping
+              const mapOp = traceResult.chain.find((op: any) => op.type === 'map');
+              mapping = {
+                from: traceResult.source.fieldName,
+                to: targetField.name,
+                type: 'map',
+                map: mapOp?.map || {}
+              };
+            } else {
+              // Fallback to direct mapping
+              mapping = {
+                from: traceResult.source.fieldName,
+                to: targetField.name,
+                type: 'direct'
+              };
+            }
           }
           
           console.log('Generated mapping:', mapping);
           mappings.push(mapping);
-        });
+        }
       });
     }
   });
@@ -663,7 +771,7 @@ export const exportExecutionMapping = (
     version: '1.0.0',
     mappings,
     metadata: {
-      description: 'Simplified execution mapping configuration',
+      description: 'Enhanced execution mapping configuration with transformation chains',
       tags: ['data-mapping', 'etl', 'transformation'],
       author: 'Lovable Mapping Tool'
     }
