@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
@@ -57,6 +56,32 @@ const evaluateCondition = (inputValue: any, operator: string, compareValue: stri
     const leftValue = String(inputValue).trim();
     const rightValue = String(compareValue).trim();
     
+    // Handle date operators
+    if (operator.startsWith('date_')) {
+        const inputDate = parseDate(leftValue);
+        
+        if (!inputDate) {
+            console.warn('Invalid input date for comparison:', leftValue);
+            return false;
+        }
+        
+        switch (operator) {
+            case 'date_before_today':
+                return inputDate < new Date();
+            case 'date_after_today':
+                return inputDate > new Date();
+            case 'date_before': {
+                const compareDate = parseDate(rightValue);
+                return compareDate ? inputDate < compareDate : false;
+            }
+            case 'date_after': {
+                const compareDate = parseDate(rightValue);
+                return compareDate ? inputDate > compareDate : false;
+            }
+        }
+    }
+    
+    // Handle regular operators
     switch (operator) {
         case '=': return leftValue === rightValue;
         case '!=': return leftValue !== rightValue;
@@ -66,6 +91,28 @@ const evaluateCondition = (inputValue: any, operator: string, compareValue: stri
         case '<=': return Number(leftValue) <= Number(rightValue);
         default: return false;
     }
+};
+
+// Helper function to parse various date formats
+const parseDate = (dateString: string): Date | null => {
+    if (!dateString) return null;
+    
+    // Try parsing as ISO string first
+    let date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+        return date;
+    }
+    
+    // Try parsing YYYY-MM-DD format
+    const dateParts = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateParts) {
+        date = new Date(parseInt(dateParts[1]), parseInt(dateParts[2]) - 1, parseInt(dateParts[3]));
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    }
+    
+    return null;
 };
 
 // Calculate field values for target nodes based on connections

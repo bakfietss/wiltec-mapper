@@ -23,8 +23,22 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
   useNodeDataSync(id, { operator, compareValue, thenValue, elseValue }, [operator, compareValue, thenValue, elseValue]);
 
   const getConditionSummary = () => {
-    if (!operator || !compareValue) return 'Configure condition';
+    if (!operator || (!compareValue && !operator.includes('today'))) return 'Configure condition';
+    
+    if (operator === 'date_before_today') return 'IF input date is before today';
+    if (operator === 'date_after_today') return 'IF input date is after today';
+    if (operator === 'date_before') return `IF input date is before "${compareValue}"`;
+    if (operator === 'date_after') return `IF input date is after "${compareValue}"`;
+    
     return `IF input ${operator} "${compareValue}"`;
+  };
+
+  const isDateOperator = (op: string) => {
+    return ['date_before', 'date_after', 'date_before_today', 'date_after_today'].includes(op);
+  };
+
+  const needsCompareValue = (op: string) => {
+    return !['date_before_today', 'date_after_today'].includes(op);
   };
 
   return (
@@ -67,21 +81,36 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
                       onChange={(e) => setOperator(e.target.value)}
                       className="border rounded px-3 py-2 text-sm"
                     >
-                      <option value="=">=</option>
-                      <option value="!=">!=</option>
-                      <option value=">">&gt;</option>
-                      <option value="<">&lt;</option>
-                      <option value=">=">&gt;=</option>
-                      <option value="<=">&lt;=</option>
+                      <optgroup label="Text/Number">
+                        <option value="=">=</option>
+                        <option value="!=">!=</option>
+                        <option value=">">&gt;</option>
+                        <option value="<">&lt;</option>
+                        <option value=">=">&gt;=</option>
+                        <option value="<=">&lt;=</option>
+                      </optgroup>
+                      <optgroup label="Date Comparisons">
+                        <option value="date_before">is before date</option>
+                        <option value="date_after">is after date</option>
+                        <option value="date_before_today">is before today</option>
+                        <option value="date_after_today">is after today</option>
+                      </optgroup>
                     </select>
-                    <input
-                      type="text"
-                      value={compareValue}
-                      onChange={(e) => setCompareValue(e.target.value)}
-                      className="flex-1 border rounded px-3 py-2 text-sm"
-                      placeholder="Compare value"
-                    />
+                    {needsCompareValue(operator) && (
+                      <input
+                        type="text"
+                        value={compareValue}
+                        onChange={(e) => setCompareValue(e.target.value)}
+                        className="flex-1 border rounded px-3 py-2 text-sm"
+                        placeholder={isDateOperator(operator) ? "YYYY-MM-DD or ISO date" : "Compare value"}
+                      />
+                    )}
                   </div>
+                  {isDateOperator(operator) && needsCompareValue(operator) && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Supports formats: 2025-01-02, 2025-01-02T00:00:00Z
+                    </div>
+                  )}
                 </div>
                 
                 <div>
