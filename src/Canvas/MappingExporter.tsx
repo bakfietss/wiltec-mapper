@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -50,8 +51,11 @@ export interface ExecutionMapping {
     index: number;
   };
   transform?: {
-    operation: string;
-    parameters: Record<string, any>;
+    type: string;
+    operation?: string;
+    parameters?: Record<string, any>;
+    end?: number;
+    start?: number;
   };
 }
 
