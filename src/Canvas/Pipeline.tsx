@@ -261,7 +261,7 @@ export default function Pipeline() {
             type: 'smoothstep',
             animated: true,
             style: { 
-                strokeWidth: 1,
+                strokeWidth: 2.0,
                 stroke: '#3b82f6'
             }
         };
