@@ -494,7 +494,8 @@ export const exportExecutionMapping = (
 
   // Process each target node to find its incoming mappings
   targetNodes.forEach(targetNode => {
-    const targetFields = targetNode.data?.fields || [];
+    const nodeData = targetNode.data as any;
+    const targetFields = nodeData?.fields || [];
     console.log(`Processing target node: ${targetNode.id} with ${targetFields.length} fields`);
     
     if (Array.isArray(targetFields)) {
@@ -516,7 +517,8 @@ export const exportExecutionMapping = (
           
           if (sourceNode.type === 'source') {
             // Direct mapping from source to target
-            const sourceFields = sourceNode.data?.fields;
+            const sourceData = sourceNode.data as any;
+            const sourceFields = sourceData?.fields;
             const sourceField = Array.isArray(sourceFields) ? 
               sourceFields.find((f: any) => f.id === edge.sourceHandle) : null;
             
@@ -528,7 +530,8 @@ export const exportExecutionMapping = (
             
           } else if (sourceNode.type === 'staticValue') {
             // Static value mapping
-            const staticValues = sourceNode.data?.values;
+            const sourceData = sourceNode.data as any;
+            const staticValues = sourceData?.values;
             const staticValue = Array.isArray(staticValues) ? 
               staticValues.find((v: any) => v.id === edge.sourceHandle) : null;
             
@@ -541,12 +544,17 @@ export const exportExecutionMapping = (
             
           } else if (sourceNode.type === 'ifThen') {
             // IF THEN conditional mapping
-            const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
+            const sourceData = sourceNode.data as any;
+            const operator = typeof sourceData?.operator === 'string' ? sourceData.operator : '=';
+            const compareValue = typeof sourceData?.compareValue === 'string' ? sourceData.compareValue : '';
+            const thenValue = typeof sourceData?.thenValue === 'string' ? sourceData.thenValue : '';
+            const elseValue = typeof sourceData?.elseValue === 'string' ? sourceData.elseValue : '';
             
             // Find the input to the IF THEN node
             const ifThenInputEdge = edges.find(e => e.target === sourceNode.id);
             const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
-            const inputFields = inputSourceNode?.data?.fields;
+            const inputData = inputSourceNode?.data as any;
+            const inputFields = inputData?.fields;
             const inputField = Array.isArray(inputFields) ? 
               inputFields.find((f: any) => f.id === ifThenInputEdge?.sourceHandle) : null;
             
@@ -555,16 +563,17 @@ export const exportExecutionMapping = (
               to: targetField.name,
               type: 'ifThen',
               if: {
-                operator: operator || '=',
-                value: compareValue || ''
+                operator,
+                value: compareValue
               },
-              then: thenValue || '',
-              else: elseValue || ''
+              then: thenValue,
+              else: elseValue
             };
             
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping
-            const conversionMappings = sourceNode.data?.mappings;
+            const sourceData = sourceNode.data as any;
+            const conversionMappings = sourceData?.mappings;
             const mapObject: Record<string, string> = {};
             
             if (Array.isArray(conversionMappings)) {
@@ -576,7 +585,8 @@ export const exportExecutionMapping = (
             // Find the input to the conversion mapping node
             const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
             const inputSourceNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
-            const inputFields = inputSourceNode?.data?.fields;
+            const inputData = inputSourceNode?.data as any;
+            const inputFields = inputData?.fields;
             const inputField = Array.isArray(inputFields) ? 
               inputFields.find((f: any) => f.id === conversionInputEdge?.sourceHandle) : null;
             
@@ -589,12 +599,15 @@ export const exportExecutionMapping = (
             
           } else if (sourceNode.type === 'splitterTransform') {
             // Text splitter mapping
-            const { delimiter, splitIndex } = sourceNode.data || {};
+            const sourceData = sourceNode.data as any;
+            const delimiter = typeof sourceData?.delimiter === 'string' ? sourceData.delimiter : ',';
+            const splitIndex = typeof sourceData?.splitIndex === 'number' ? sourceData.splitIndex : 0;
             
             // Find the input to the splitter node
             const splitterInputEdge = edges.find(e => e.target === sourceNode.id);
             const inputSourceNode = splitterInputEdge ? nodes.find(n => n.id === splitterInputEdge.source) : null;
-            const inputFields = inputSourceNode?.data?.fields;
+            const inputData = inputSourceNode?.data as any;
+            const inputFields = inputData?.fields;
             const inputField = Array.isArray(inputFields) ? 
               inputFields.find((f: any) => f.id === splitterInputEdge?.sourceHandle) : null;
             
@@ -603,29 +616,34 @@ export const exportExecutionMapping = (
               to: targetField.name,
               type: 'split',
               split: {
-                delimiter: delimiter || ',',
-                index: splitIndex || 0
+                delimiter,
+                index: splitIndex
               }
             };
             
           } else if (sourceNode.type === 'transform') {
             // Generic transform mapping
-            const transformConfig = sourceNode.data?.config || {};
+            const sourceData = sourceNode.data as any;
+            const transformConfig = sourceData?.config || {};
             
             // Find the input to the transform node
             const transformInputEdge = edges.find(e => e.target === sourceNode.id);
             const inputSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
-            const inputFields = inputSourceNode?.data?.fields;
+            const inputData = inputSourceNode?.data as any;
+            const inputFields = inputData?.fields;
             const inputField = Array.isArray(inputFields) ? 
               inputFields.find((f: any) => f.id === transformInputEdge?.sourceHandle) : null;
+            
+            const operation = transformConfig?.operation && typeof transformConfig.operation === 'string' ? transformConfig.operation : 'unknown';
+            const parameters = transformConfig?.parameters && typeof transformConfig.parameters === 'object' ? transformConfig.parameters : {};
             
             mapping = {
               from: inputField?.name || '',
               to: targetField.name,
               type: 'transform',
               transform: {
-                operation: transformConfig.operation || 'unknown',
-                parameters: transformConfig.parameters || {}
+                operation,
+                parameters
               }
             };
           } else {
