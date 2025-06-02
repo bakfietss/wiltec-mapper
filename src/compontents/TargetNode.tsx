@@ -43,7 +43,7 @@ const TargetField: React.FC<{
 
     return (
         <div className="relative">
-            <div className="flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group">
+            <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group">
                 <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
                 
                 {/* Value display */}
@@ -134,7 +134,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     };
 
     return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-80 max-w-96">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-green-50">
                 <FileText className="w-4 h-4 text-green-600" />
                 <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
