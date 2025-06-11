@@ -27,7 +27,7 @@ import IfThenNode from '../compontents/IfThenNode';
 import StaticValueNode from '../compontents/StaticValueNode';
 
 import { useNodeFactories } from './NodeFactories';
-import { exportMappingConfiguration, importMappingConfiguration, MappingConfiguration } from './MappingExporter';
+import { downloadBothMappingFiles, importMappingConfiguration, MappingConfiguration } from './MappingExporter';
 
 const nodeTypes = {
     source: SourceNode,
@@ -447,20 +447,7 @@ export default function Pipeline() {
 
     // Add export functionality
     const exportCurrentMapping = useCallback(() => {
-        const config = exportMappingConfiguration(nodes, edges, currentMappingName);
-        
-        // Create download link
-        const dataStr = JSON.stringify(config, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${currentMappingName.replace(/\s+/g, '_').toLowerCase()}-mapping.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        downloadBothMappingFiles(nodes, edges, currentMappingName);
     }, [nodes, edges, currentMappingName]);
 
     // Add import functionality
