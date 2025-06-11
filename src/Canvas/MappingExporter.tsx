@@ -563,7 +563,7 @@ export const exportExecutionMapping = (
             };
             
           } else if (sourceNode.type === 'conversionMapping') {
-            // Conversion mapping
+            // Conversion mapping - need to trace back through possible transform chain
             const sourceData = sourceNode.data as any;
             const conversionMappings = sourceData?.mappings;
             const mapObject: Record<string, string> = {};
@@ -576,18 +576,73 @@ export const exportExecutionMapping = (
             
             // Find the input to the conversion mapping node
             const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputSourceNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
-            const inputData = inputSourceNode?.data as any;
-            const inputFields = inputData?.fields;
-            const inputField = Array.isArray(inputFields) ? 
-              inputFields.find((f: any) => f.id === conversionInputEdge?.sourceHandle) : null;
+            const inputNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
+            
+            let originalSourceField: string = '';
+            let transformInfo: any = null;
+            
+            if (inputNode) {
+              if (inputNode.type === 'source') {
+                // Direct source to conversion mapping
+                const inputData = inputNode.data as any;
+                const inputFields = inputData?.fields;
+                const inputField = Array.isArray(inputFields) ? 
+                  inputFields.find((f: any) => f.id === conversionInputEdge?.sourceHandle) : null;
+                originalSourceField = inputField?.name || '';
+              } else if (inputNode.type === 'transform' || inputNode.type === 'splitterTransform') {
+                // Transform node feeding into conversion mapping
+                const transformData = inputNode.data as any;
+                
+                // Find the input to the transform node
+                const transformInputEdge = edges.find(e => e.target === inputNode.id);
+                const transformSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
+                
+                if (transformSourceNode && transformSourceNode.type === 'source') {
+                  const transformSourceData = transformSourceNode.data as any;
+                  const transformSourceFields = transformSourceData?.fields;
+                  const transformSourceField = Array.isArray(transformSourceFields) ? 
+                    transformSourceFields.find((f: any) => f.id === transformInputEdge?.sourceHandle) : null;
+                  originalSourceField = transformSourceField?.name || '';
+                  
+                  // Extract transform information
+                  if (inputNode.type === 'transform') {
+                    const config = transformData?.config || {};
+                    transformInfo = {
+                      type: transformData?.transformType || 'transform',
+                      operation: config.stringOperation || config.operation || 'unknown',
+                      parameters: config
+                    };
+                    
+                    // Handle substring operation specifically
+                    if (config.stringOperation === 'substring') {
+                      transformInfo = {
+                        type: 'substring',
+                        start: config.substringStart || 0,
+                        end: config.substringEnd
+                      };
+                    }
+                  } else if (inputNode.type === 'splitterTransform') {
+                    transformInfo = {
+                      type: 'split',
+                      delimiter: transformData?.delimiter || ',',
+                      index: transformData?.splitIndex || 0
+                    };
+                  }
+                }
+              }
+            }
             
             mapping = {
-              from: inputField?.name || '',
+              from: originalSourceField,
               to: targetField.name,
               type: 'map',
               map: mapObject
             };
+            
+            // Add transform information if present
+            if (transformInfo) {
+              mapping.transform = transformInfo;
+            }
             
           } else if (sourceNode.type === 'splitterTransform') {
             // Text splitter mapping
@@ -626,18 +681,29 @@ export const exportExecutionMapping = (
             const inputField = Array.isArray(inputFields) ? 
               inputFields.find((f: any) => f.id === transformInputEdge?.sourceHandle) : null;
             
-            const operation = transformConfig?.operation && typeof transformConfig.operation === 'string' ? transformConfig.operation : 'unknown';
-            const parameters = transformConfig?.parameters && typeof transformConfig.parameters === 'object' ? transformConfig.parameters : {};
+            const operation = transformConfig?.stringOperation || transformConfig?.operation || 'unknown';
+            let transformInfo: any = {
+              type: sourceData?.transformType || 'unknown',
+              operation,
+              parameters: transformConfig
+            };
+            
+            // Handle substring operation specifically for cleaner output
+            if (operation === 'substring') {
+              transformInfo = {
+                type: 'substring',
+                start: transformConfig.substringStart || 0
+              };
+              if (transformConfig.substringEnd !== undefined) {
+                transformInfo.end = transformConfig.substringEnd;
+              }
+            }
             
             mapping = {
               from: inputField?.name || '',
               to: targetField.name,
               type: 'transform',
-              transform: {
-                type: sourceData?.transformType || 'unknown',
-                operation,
-                parameters
-              }
+              transform: transformInfo
             };
           } else {
             // Fallback for unknown node types
@@ -1065,3 +1131,5 @@ export const exampleMappingConfiguration: MappingConfiguration = {
     author: "Data Team"
   }
 };
+
+}
