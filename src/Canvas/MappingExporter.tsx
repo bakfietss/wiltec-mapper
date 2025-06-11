@@ -1131,5 +1131,3 @@ export const exampleMappingConfiguration: MappingConfiguration = {
     author: "Data Team"
   }
 };
-
-}
