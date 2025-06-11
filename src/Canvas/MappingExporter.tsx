@@ -15,17 +15,6 @@ export interface MappingConfiguration {
   execution: {
     steps: ExecutionStep[];
   };
-  // NEW: Add execution-focused format alongside the UI format
-  executionMapping: {
-    name: string;
-    version: string;
-    mappings: ExecutionMapping[];
-    metadata?: {
-      description?: string;
-      tags?: string[];
-      author?: string;
-    };
-  };
   metadata?: {
     description?: string;
     tags?: string[];
@@ -50,8 +39,11 @@ export interface ExecutionMapping {
     index: number;
   };
   transform?: {
-    operation: string;
-    parameters: Record<string, any>;
+    type: string;
+    operation?: string;
+    parameters?: Record<string, any>;
+    end?: number;
+    start?: number;
   };
 }
 
@@ -301,7 +293,8 @@ const buildExecutionSteps = (
   return steps;
 };
 
-export const exportMappingConfiguration = (
+// UI-focused export for saving/loading canvas state
+export const exportUIMappingConfiguration = (
   nodes: Node[],
   edges: Edge[],
   name: string = 'Untitled Mapping'
@@ -321,11 +314,9 @@ export const exportMappingConfiguration = (
     execution: {
       steps: buildExecutionSteps(nodes, edges)
     },
-    // NEW: Add execution mapping format
-    executionMapping: exportExecutionMapping(nodes, edges, name),
     metadata: {
-      description: 'Auto-generated mapping configuration with execution steps',
-      tags: ['data-mapping', 'etl', 'transformation'],
+      description: 'UI mapping configuration for canvas restoration',
+      tags: ['ui-state', 'canvas-layout', 'visual-mapping'],
       author: 'Lovable Mapping Tool'
     }
   };
@@ -476,6 +467,7 @@ export const exportMappingConfiguration = (
   return config;
 };
 
+// Execution-focused export for integration tools
 export const exportExecutionMapping = (
   nodes: Node[],
   edges: Edge[],
@@ -642,6 +634,7 @@ export const exportExecutionMapping = (
               to: targetField.name,
               type: 'transform',
               transform: {
+                type: sourceData?.transformType || 'unknown',
                 operation,
                 parameters
               }
@@ -663,8 +656,8 @@ export const exportExecutionMapping = (
     version: '1.0.0',
     mappings,
     metadata: {
-      description: 'Simplified execution mapping configuration',
-      tags: ['data-mapping', 'etl', 'transformation'],
+      description: 'Simplified execution mapping configuration for integration tools',
+      tags: ['execution', 'integration', 'data-transformation'],
       author: 'Lovable Mapping Tool'
     }
   };
@@ -674,6 +667,41 @@ export const exportExecutionMapping = (
   
   return config;
 };
+
+// Helper function to download both files
+export const downloadBothMappingFiles = (
+  nodes: Node[],
+  edges: Edge[],
+  name: string = 'Untitled Mapping'
+) => {
+  const uiConfig = exportUIMappingConfiguration(nodes, edges, name);
+  const executionConfig = exportExecutionMapping(nodes, edges, name);
+  
+  // Download UI config file
+  const uiBlob = new Blob([JSON.stringify(uiConfig, null, 2)], { type: 'application/json' });
+  const uiUrl = URL.createObjectURL(uiBlob);
+  const uiLink = document.createElement('a');
+  uiLink.href = uiUrl;
+  uiLink.download = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_ui_config.json`;
+  document.body.appendChild(uiLink);
+  uiLink.click();
+  document.body.removeChild(uiLink);
+  URL.revokeObjectURL(uiUrl);
+  
+  // Download execution config file
+  const execBlob = new Blob([JSON.stringify(executionConfig, null, 2)], { type: 'application/json' });
+  const execUrl = URL.createObjectURL(execBlob);
+  const execLink = document.createElement('a');
+  execLink.href = execUrl;
+  execLink.download = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_execution_config.json`;
+  document.body.appendChild(execLink);
+  execLink.click();
+  document.body.removeChild(execLink);
+  URL.revokeObjectURL(execUrl);
+};
+
+// Keep the original export function for backward compatibility (now uses UI config)
+export const exportMappingConfiguration = exportUIMappingConfiguration;
 
 export const importMappingConfiguration = (
   config: MappingConfiguration
@@ -734,13 +762,11 @@ export const importMappingConfiguration = (
     if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
       nodeType = 'ifThen';
       if ((transformConfig as any).nodeData) {
-        // Use direct nodeData if available
         nodeData = {
           label: transformConfig.label,
           ...((transformConfig as any).nodeData)
         };
       } else {
-        // Fallback to extracting from config.parameters
         const params = transformConfig.config?.parameters || {};
         nodeData = {
           label: transformConfig.label,
@@ -1032,43 +1058,6 @@ export const exampleMappingConfiguration: MappingConfiguration = {
         }
       }
     ]
-  },
-  executionMapping: {
-    name: "Customer Data Transform",
-    version: "1.0.0",
-    mappings: [
-      {
-        from: "customer_name",
-        to: "full_name",
-        type: "transform",
-        transform: {
-          operation: "uppercase",
-          parameters: {}
-        }
-      },
-      {
-        from: "birth_date",
-        to: "formatted_date",
-        type: "transform",
-        transform: {
-          operation: "format",
-          parameters: {
-            inputFormat: "YYYY-MM-DD",
-            outputFormat: "DD/MM/YYYY"
-          }
-        }
-      },
-      {
-        from: "email",
-        to: "contact_email",
-        type: "direct"
-      }
-    ],
-    metadata: {
-      description: "Simplified execution mapping configuration",
-      tags: ["customer", "data-transform", "api-integration"],
-      author: "Data Team"
-    }
   },
   metadata: {
     description: "Transform customer data from API format to CRM format",

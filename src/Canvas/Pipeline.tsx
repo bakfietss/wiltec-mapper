@@ -27,7 +27,7 @@ import IfThenNode from '../compontents/IfThenNode';
 import StaticValueNode from '../compontents/StaticValueNode';
 
 import { useNodeFactories } from './NodeFactories';
-import { downloadBothMappingFiles, importMappingConfiguration, MappingConfiguration } from './MappingExporter';
+import { downloadBothMappingFiles, importMappingConfiguration, MappingConfiguration, exportUIMappingConfiguration } from './MappingExporter';
 
 const nodeTypes = {
     source: SourceNode,
@@ -431,7 +431,7 @@ export default function Pipeline() {
         // Here you could also save to a database or local storage
         
         // Optionally export the file with the new name
-        const config = exportMappingConfiguration(nodes, edges, name);
+        const config = exportUIMappingConfiguration(nodes, edges, name);
         const dataStr = JSON.stringify(config, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
