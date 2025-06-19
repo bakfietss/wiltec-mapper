@@ -13,7 +13,10 @@ export const exportUIMappingConfiguration = (
   
   // Add comprehensive debug for coalesce nodes
   nodes.forEach(node => {
-    if (node.type?.toLowerCase().includes('coalesce') || node.data?.transformType?.toLowerCase().includes('coalesce')) {
+    const nodeType = typeof node.type === 'string' ? node.type : '';
+    const transformType = typeof node.data?.transformType === 'string' ? node.data.transformType : '';
+    
+    if (nodeType.toLowerCase().includes('coalesce') || transformType.toLowerCase().includes('coalesce')) {
       console.log('FOUND COALESCE-ISH NODE:', {
         id: node.id,
         type: node.type,
