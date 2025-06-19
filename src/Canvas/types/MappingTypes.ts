@@ -113,7 +113,7 @@ export interface TargetNodeConfig {
 
 export interface TransformNodeConfig {
   id: string;
-  type: 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue';
+  type: 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue' | 'coalesceTransform';
   label: string;
   position: { x: number; y: number };
   transformType: string;
