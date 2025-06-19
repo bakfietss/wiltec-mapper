@@ -68,21 +68,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-none w-auto relative">
-      {/* Input Handles - aligned with each rule */}
-      {rules.map((rule, index) => (
-        <Handle
-          key={rule.id}
-          type="target"
-          position={Position.Left}
-          id={rule.id}
-          className="w-3 h-3 bg-orange-500 border-2 border-white"
-          style={{ 
-            top: `${88 + (index * 32)}px`,
-            transform: 'translate(-50%, -50%)'
-          }}
-        />
-      ))}
-
       <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-orange-50">
         <GitMerge className="w-4 h-4 text-orange-600" />
         <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
@@ -193,13 +178,28 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
         </Sheet>
       </div>
 
-      <div className="p-3">
+      <div className="p-1">
         <div className="space-y-1">
           {rules.length > 0 ? (
             <div className="space-y-1">
               {rules.map((rule) => (
-                <div key={rule.id} className="text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded flex items-center h-8">
-                  #{rule.priority}: {rule.label || 'Unnamed rule'}
+                <div key={rule.id} className="relative">
+                  <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group">
+                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                      #{rule.priority}: {rule.label || 'Unnamed rule'}
+                    </span>
+                    
+                    <Handle
+                      type="target"
+                      position={Position.Left}
+                      id={rule.id}
+                      className="w-3 h-3 bg-orange-500 border-2 border-white group-hover:bg-orange-600 !absolute !left-1"
+                      style={{
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
