@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitMerge, Plus, Trash2, Edit3 } from 'lucide-react';
@@ -16,6 +15,7 @@ interface CoalesceTransformData {
   label: string;
   rules: CoalesceRule[];
   defaultValue: string;
+  outputType?: string;
   inputValues?: Record<string, any>;
 }
 
@@ -23,9 +23,10 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
   const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
   const inputValues = data.inputValues || {};
+  const outputType = data.outputType || 'value';
 
-  // Sync local state changes back to React Flow
-  useNodeDataSync(id, { rules, defaultValue }, [rules, defaultValue]);
+  // Sync local state changes back to React Flow - INCLUDING outputType
+  useNodeDataSync(id, { rules, defaultValue, outputType }, [rules, defaultValue, outputType]);
 
   const addRule = () => {
     const newRule: CoalesceRule = {

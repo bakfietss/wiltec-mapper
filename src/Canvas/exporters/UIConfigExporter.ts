@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration, SourceNodeConfig, TargetNodeConfig } from '../types/MappingTypes';
 import { buildExecutionSteps } from '../utils/ExecutionStepBuilder';
@@ -154,6 +153,7 @@ export const exportUIMappingConfiguration = (
         config: additionalConfig
       };
     } else if (node.type === 'coalesceTransform') {
+      console.log('COALESCE EXPORT:', node);
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
       
@@ -161,12 +161,14 @@ export const exportUIMappingConfiguration = (
         operation: 'coalesce',
         parameters: {
           rules: node.data?.rules || [],
-          defaultValue: node.data?.defaultValue || ''
+          defaultValue: node.data?.defaultValue || '',
+          outputType: node.data?.outputType || 'value'
         }
       };
       transformConfig.nodeData = {
         rules: node.data?.rules || [],
         defaultValue: node.data?.defaultValue || '',
+        outputType: node.data?.outputType || 'value',
         inputValues: node.data?.inputValues || {}
       };
       
