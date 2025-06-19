@@ -1,11 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2, TreePine } from 'lucide-react';
+import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
-import TreeFieldSelector from './TreeFieldSelector';
 
 interface SchemaField {
     id: string;
@@ -33,70 +32,163 @@ const getTypeColor = (type: string) => {
     }
 };
 
-const SourceField: React.FC<{
-    field: SchemaField;
-    nodeData?: any[];
-}> = ({ field, nodeData }) => {
-    // Get the actual value for this field from node data
-    const getFieldValue = () => {
-        if (nodeData && nodeData.length > 0) {
-            // Handle nested paths with dot notation
-            if (field.name.includes('.') || field.name.includes('[')) {
-                try {
-                    const path = field.name.replace(/\[(\d+)\]/g, '.$1').split('.');
-                    let value = nodeData[0];
-                    for (const key of path) {
-                        if (value && typeof value === 'object') {
-                            value = value[key];
-                        } else {
-                            return undefined;
-                        }
-                    }
-                    return value;
-                } catch (e) {
-                    return undefined;
-                }
-            } else {
-                return nodeData[0][field.name];
-            }
-        }
-        return field.exampleValue;
-    };
-
-    const fieldValue = getFieldValue();
-
-    return (
-        <div className="relative">
-            <div className="flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group">
-                <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
-                
-                {/* Value display */}
-                <div className="text-xs min-w-[80px] text-center">
-                    {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
-                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                            {typeof fieldValue === 'object' ? 'Object' : String(fieldValue)}
-                        </span>
+const DataField: React.FC<{
+    path: string;
+    value: any;
+    level: number;
+    onFieldToggle: (path: string) => void;
+    selectedFields: Set<string>;
+    expandedFields: Set<string>;
+}> = ({ path, value, level, onFieldToggle, selectedFields, expandedFields }) => {
+    const fieldName = path.split('.').pop() || path;
+    const isExpanded = expandedFields.has(path);
+    const isSelected = selectedFields.has(path);
+    
+    if (Array.isArray(value)) {
+        return (
+            <div>
+                <div 
+                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer ${
+                        isSelected ? 'bg-blue-50' : ''
+                    }`}
+                    style={{ paddingLeft: `${8 + level * 12}px` }}
+                    onClick={() => onFieldToggle(path)}
+                >
+                    {isExpanded ? (
+                        <ChevronDown className="w-3 h-3 text-gray-400" />
                     ) : (
-                        <span className="text-gray-400 italic">no value</span>
+                        <ChevronRight className="w-3 h-3 text-gray-400" />
+                    )}
+                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                        {fieldName}[]
+                    </span>
+                    <span className="text-xs text-gray-500">({value.length} items)</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('array')}`}>
+                        array
+                    </span>
+                    
+                    {isSelected && (
+                        <Handle
+                            type="source"
+                            position={Position.Right}
+                            id={path}
+                            className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
+                            style={{
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                            }}
+                        />
                     )}
                 </div>
                 
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
-                    {field.type}
-                </span>
-
-                {/* Source handles on the right */}
+                {isExpanded && value.map((item, index) => (
+                    <DataField
+                        key={`${path}[${index}]`}
+                        path={`${path}[${index}]`}
+                        value={item}
+                        level={level + 1}
+                        onFieldToggle={onFieldToggle}
+                        selectedFields={selectedFields}
+                        expandedFields={expandedFields}
+                    />
+                ))}
+            </div>
+        );
+    }
+    
+    if (value && typeof value === 'object') {
+        return (
+            <div>
+                <div 
+                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer ${
+                        isSelected ? 'bg-blue-50' : ''
+                    }`}
+                    style={{ paddingLeft: `${8 + level * 12}px` }}
+                    onClick={() => onFieldToggle(path)}
+                >
+                    {isExpanded ? (
+                        <ChevronDown className="w-3 h-3 text-gray-400" />
+                    ) : (
+                        <ChevronRight className="w-3 h-3 text-gray-400" />
+                    )}
+                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                        {fieldName}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                        ({Object.keys(value).length} fields)
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('object')}`}>
+                        object
+                    </span>
+                    
+                    {isSelected && (
+                        <Handle
+                            type="source"
+                            position={Position.Right}
+                            id={path}
+                            className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
+                            style={{
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                            }}
+                        />
+                    )}
+                </div>
+                
+                {isExpanded && Object.entries(value).map(([key, val]) => (
+                    <DataField
+                        key={`${path}.${key}`}
+                        path={`${path}.${key}`}
+                        value={val}
+                        level={level + 1}
+                        onFieldToggle={onFieldToggle}
+                        selectedFields={selectedFields}
+                        expandedFields={expandedFields}
+                    />
+                ))}
+            </div>
+        );
+    }
+    
+    // Primitive value
+    const valueType = typeof value === 'number' ? 'number' : 
+                     typeof value === 'boolean' ? 'boolean' : 'string';
+    
+    return (
+        <div 
+            className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer ${
+                isSelected ? 'bg-blue-50' : ''
+            }`}
+            style={{ paddingLeft: `${8 + level * 12}px` }}
+            onClick={() => onFieldToggle(path)}
+        >
+            <div className="w-3 h-3" />
+            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{fieldName}</span>
+            <div className="text-xs min-w-[80px] text-center">
+                {value !== undefined && value !== null && value !== '' ? (
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                        {String(value)}
+                    </span>
+                ) : (
+                    <span className="text-gray-400 italic">no value</span>
+                )}
+            </div>
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(valueType)}`}>
+                {valueType}
+            </span>
+            
+            {isSelected && (
                 <Handle
                     type="source"
                     position={Position.Right}
-                    id={field.id}
+                    id={path}
                     className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
                     style={{
                         top: '50%',
                         transform: 'translateY(-50%)',
                     }}
                 />
-            </div>
+            )}
         </div>
     );
 };
@@ -105,19 +197,16 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     const [nodeData, setNodeData] = useState<any[]>(data.data || []);
     const [jsonInput, setJsonInput] = useState('');
-    const [selectedTreeFields, setSelectedTreeFields] = useState<Set<string>>(new Set());
-    const [showTreeView, setShowTreeView] = useState(false);
+    const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
+    const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
 
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
 
     const { label } = data;
 
-    // Check if we have complex nested data
-    const hasNestedData = nodeData.length > 0 && nodeData[0] && typeof nodeData[0] === 'object' && 
-        Object.values(nodeData[0]).some(value => 
-            (value && typeof value === 'object') || Array.isArray(value)
-        );
+    // Check if we have data to show
+    const hasData = nodeData.length > 0 && nodeData[0];
 
     const addField = () => {
         const newField: SchemaField = {
@@ -148,43 +237,71 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             setNodeData(dataArray);
             setJsonInput('');
             
-            // Auto-generate fields from first object (flat fields only for now)
-            if (dataArray.length > 0 && typeof dataArray[0] === 'object') {
-                const generatedFields: SchemaField[] = Object.keys(dataArray[0])
-                    .filter(key => !Array.isArray(dataArray[0][key]) && typeof dataArray[0][key] !== 'object')
-                    .map((key, index) => ({
-                        id: `field-${Date.now()}-${index}`,
-                        name: key,
-                        type: typeof dataArray[0][key] === 'number' ? 'number' : 
-                              typeof dataArray[0][key] === 'boolean' ? 'boolean' : 'string',
-                        exampleValue: dataArray[0][key]
-                    }));
-                setFields(generatedFields);
-            }
+            // Clear existing selections when new data is imported
+            setSelectedFields(new Set());
+            setExpandedFields(new Set());
+            setFields([]);
         } catch (error) {
             console.error('Invalid JSON:', error);
             alert('Invalid JSON format');
         }
     };
 
-    const handleTreeFieldSelect = (path: string, type: string) => {
-        const newSelected = new Set(selectedTreeFields);
-        if (newSelected.has(path)) {
+    const handleFieldToggle = (path: string) => {
+        const newSelected = new Set(selectedFields);
+        const newExpanded = new Set(expandedFields);
+        
+        if (selectedFields.has(path)) {
+            // Deselect
             newSelected.delete(path);
-            // Remove from fields
             setFields(prev => prev.filter(f => f.name !== path));
         } else {
+            // Select
             newSelected.add(path);
-            // Add to fields
+            
+            // Get value for type detection
+            const value = getValueAtPath(nodeData[0], path);
+            const fieldType = Array.isArray(value) ? 'array' :
+                           value && typeof value === 'object' ? 'object' :
+                           typeof value === 'number' ? 'number' :
+                           typeof value === 'boolean' ? 'boolean' : 'string';
+            
             const newField: SchemaField = {
                 id: `field-${Date.now()}`,
                 name: path,
-                type: type === 'object' ? 'string' : type as any,
-                exampleValue: ''
+                type: fieldType,
+                exampleValue: fieldType === 'object' || fieldType === 'array' ? undefined : value
             };
             setFields(prev => [...prev, newField]);
         }
-        setSelectedTreeFields(newSelected);
+        
+        // Toggle expansion for objects and arrays
+        if (expandedFields.has(path)) {
+            newExpanded.delete(path);
+        } else {
+            newExpanded.add(path);
+        }
+        
+        setSelectedFields(newSelected);
+        setExpandedFields(newExpanded);
+    };
+
+    const getValueAtPath = (obj: any, path: string) => {
+        try {
+            const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+            const keys = normalizedPath.split('.');
+            let value = obj;
+            for (const key of keys) {
+                if (value && typeof value === 'object') {
+                    value = value[key];
+                } else {
+                    return undefined;
+                }
+            }
+            return value;
+        } catch (e) {
+            return undefined;
+        }
     };
 
     const getExampleValueInput = (field: SchemaField) => {
@@ -242,17 +359,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                     source
                 </span>
                 
-                {/* Tree view toggle */}
-                {hasNestedData && (
-                    <button
-                        onClick={() => setShowTreeView(!showTreeView)}
-                        className="p-1 hover:bg-gray-200 rounded"
-                        title="Toggle nested view"
-                    >
-                        <TreePine className="w-3 h-3 text-gray-600" />
-                    </button>
-                )}
-                
                 <Sheet>
                     <SheetTrigger asChild>
                         <button className="p-1 hover:bg-gray-200 rounded">
@@ -298,130 +404,85 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                             </div>
                         </div>
 
-                        {/* Field Configuration Tabs */}
+                        {/* Manual Field Configuration */}
                         <div className="flex-1 flex flex-col min-h-0">
-                            <Tabs defaultValue="manual" className="flex-1 flex flex-col">
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="manual">Manual Fields</TabsTrigger>
-                                    <TabsTrigger value="tree" disabled={!hasNestedData}>
-                                        <TreePine className="w-4 h-4 mr-1" />
-                                        Nested Explorer {!hasNestedData && '(No nested data)'}
-                                    </TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="manual" className="flex-1 flex flex-col min-h-0">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-medium">Schema Fields:</h4>
-                                        <button
-                                            onClick={addField}
-                                            className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                                        >
-                                            <Plus className="w-3 h-3" />
-                                            Add Field
-                                        </button>
-                                    </div>
-                                    
-                                    <div className="flex-1 border rounded min-h-0">
-                                        <ScrollArea className="h-full max-h-96">
-                                            <div className="space-y-4 p-4">
-                                                {fields.map((field) => (
-                                                    <div key={field.id} className="border rounded p-3 space-y-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <input
-                                                                type="text"
-                                                                value={field.name}
-                                                                onChange={(e) => updateField(field.id, { name: e.target.value })}
-                                                                className="flex-1 border rounded px-2 py-1 text-sm"
-                                                                placeholder="Field name"
-                                                            />
-                                                            <select
-                                                                value={field.type}
-                                                                onChange={(e) => updateField(field.id, { type: e.target.value as any })}
-                                                                className="border rounded px-2 py-1 text-sm"
-                                                            >
-                                                                <option value="string">String</option>
-                                                                <option value="number">Number</option>
-                                                                <option value="boolean">Boolean</option>
-                                                                <option value="date">Date</option>
-                                                                <option value="object">Object</option>
-                                                                <option value="array">Array</option>
-                                                            </select>
-                                                            <button
-                                                                onClick={() => deleteField(field.id)}
-                                                                className="p-1 text-red-500 hover:text-red-700"
-                                                            >
-                                                                <Trash2 className="w-3 h-3" />
-                                                            </button>
-                                                        </div>
-                                                        
-                                                        <div className="flex items-center gap-2">
-                                                            <label className="text-sm text-gray-600 w-20">Example:</label>
-                                                            {getExampleValueInput(field)}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                            <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-medium">Manual Schema Fields:</h4>
+                                <button
+                                    onClick={addField}
+                                    className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                >
+                                    <Plus className="w-3 h-3" />
+                                    Add Field
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 border rounded min-h-0">
+                                <ScrollArea className="h-full max-h-96">
+                                    <div className="space-y-4 p-4">
+                                        {fields.map((field) => (
+                                            <div key={field.id} className="border rounded p-3 space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={field.name}
+                                                        onChange={(e) => updateField(field.id, { name: e.target.value })}
+                                                        className="flex-1 border rounded px-2 py-1 text-sm"
+                                                        placeholder="Field name"
+                                                    />
+                                                    <select
+                                                        value={field.type}
+                                                        onChange={(e) => updateField(field.id, { type: e.target.value as any })}
+                                                        className="border rounded px-2 py-1 text-sm"
+                                                    >
+                                                        <option value="string">String</option>
+                                                        <option value="number">Number</option>
+                                                        <option value="boolean">Boolean</option>
+                                                        <option value="date">Date</option>
+                                                        <option value="object">Object</option>
+                                                        <option value="array">Array</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() => deleteField(field.id)}
+                                                        className="p-1 text-red-500 hover:text-red-700"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-2">
+                                                    <label className="text-sm text-gray-600 w-20">Example:</label>
+                                                    {getExampleValueInput(field)}
+                                                </div>
                                             </div>
-                                        </ScrollArea>
+                                        ))}
                                     </div>
-                                </TabsContent>
-
-                                <TabsContent value="tree" className="flex-1">
-                                    {hasNestedData ? (
-                                        <TreeFieldSelector
-                                            data={nodeData[0]}
-                                            onFieldSelect={handleTreeFieldSelect}
-                                            selectedFields={selectedTreeFields}
-                                        />
-                                    ) : (
-                                        <div className="text-center py-8 text-gray-500">
-                                            <TreePine className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                                            <p>No nested data structure detected.</p>
-                                            <p className="text-sm">Import complex JSON to use the nested explorer.</p>
-                                        </div>
-                                    )}
-                                </TabsContent>
-                            </Tabs>
+                                </ScrollArea>
+                            </div>
                         </div>
                     </SheetContent>
                 </Sheet>
             </div>
 
             <div className="p-1">
-                {/* Tree view in node */}
-                {hasNestedData && showTreeView && (
-                    <div className="mb-2 border-b pb-2">
-                        <div className="flex items-center gap-2 mb-2 px-2">
-                            <TreePine className="w-3 h-3 text-gray-600" />
-                            <span className="text-xs font-medium text-gray-700">Nested Structure</span>
-                            <button
-                                onClick={() => setShowTreeView(false)}
-                                className="ml-auto p-0.5 hover:bg-gray-200 rounded"
-                            >
-                                <ChevronDown className="w-3 h-3 text-gray-400" />
-                            </button>
-                        </div>
-                        <div className="max-h-48 overflow-y-auto">
-                            <TreeFieldSelector
-                                data={nodeData[0]}
-                                onFieldSelect={handleTreeFieldSelect}
-                                selectedFields={selectedTreeFields}
+                {/* Data Structure Display */}
+                {hasData ? (
+                    <div className="space-y-1">
+                        {Object.entries(nodeData[0]).map(([key, value]) => (
+                            <DataField
+                                key={key}
+                                path={key}
+                                value={value}
+                                level={0}
+                                onFieldToggle={handleFieldToggle}
+                                selectedFields={selectedFields}
+                                expandedFields={expandedFields}
                             />
-                        </div>
+                        ))}
                     </div>
-                )}
-
-                {/* Regular fields */}
-                {fields.map((field) => (
-                    <SourceField
-                        key={field.id}
-                        field={field}
-                        nodeData={nodeData}
-                    />
-                ))}
-                
-                {fields.length === 0 && !showTreeView && (
+                ) : (
                     <div className="text-center py-3 text-gray-500 text-xs">
-                        No fields defined. Click edit to add schema fields.
+                        No data available. Click edit to import JSON data.
                     </div>
                 )}
             </div>
