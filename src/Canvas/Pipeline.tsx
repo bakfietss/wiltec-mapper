@@ -165,7 +165,7 @@ const applyStringTransform = (inputValue: any, config: any, transformType: strin
     return inputValue;
 };
 
-// Apply coalesce transformation - updated for multiple inputs
+// Apply coalesce transformation - updated to use output values
 const applyCoalesceTransform = (inputValues: Record<string, any>, config: any): any => {
   const rules = config.rules || [];
   const defaultValue = config.defaultValue || '';
@@ -174,9 +174,9 @@ const applyCoalesceTransform = (inputValues: Record<string, any>, config: any): 
   for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
     const inputValue = inputValues[rule.id];
     
-    // If this input has a value, use it
+    // If this input has a value, return the rule's output value
     if (inputValue !== undefined && inputValue !== null && inputValue !== '') {
-      return inputValue;
+      return rule.outputValue || inputValue; // Use outputValue if defined, fallback to input
     }
   }
   
@@ -451,7 +451,7 @@ export default function Pipeline() {
         setTargetData(allTargetData);
     }, [nodes]);
 
-    // Enhanced nodes with calculated field values for target nodes
+    // Enhanced nodes with calculated field values for target nodes and input values for coalesce nodes
     const enhancedNodes = useMemo(() => {
         return nodes.map(node => {
             if (isTargetNode(node) && node.data?.fields) {
@@ -462,6 +462,27 @@ export default function Pipeline() {
                     data: {
                         ...node.data,
                         fieldValues,
+                    }
+                };
+            } else if (node.type === 'coalesceTransform') {
+                // Calculate input values for coalesce nodes to display
+                const transformInputEdges = edges.filter(e => e.target === node.id);
+                let inputValues: Record<string, any> = {};
+                
+                transformInputEdges.forEach(inputEdge => {
+                    const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+                    
+                    if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                        const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                        inputValues[inputEdge.targetHandle] = sourceValue;
+                    }
+                });
+                
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        inputValues,
                     }
                 };
             }

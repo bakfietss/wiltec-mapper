@@ -9,18 +9,20 @@ import { useNodeDataSync } from '../hooks/useNodeDataSync';
 interface CoalesceRule {
   id: string;
   priority: number;
-  label: string;
+  outputValue: string;
 }
 
 interface CoalesceTransformData {
   label: string;
   rules: CoalesceRule[];
   defaultValue: string;
+  inputValues?: Record<string, any>;
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
   const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
   const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
+  const inputValues = data.inputValues || {};
 
   // Sync local state changes back to React Flow
   useNodeDataSync(id, { rules, defaultValue }, [rules, defaultValue]);
@@ -29,7 +31,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
     const newRule: CoalesceRule = {
       id: `rule-${Date.now()}`,
       priority: rules.length + 1,
-      label: `Rule ${rules.length + 1}`
+      outputValue: `Value ${rules.length + 1}`
     };
     setRules([...rules, newRule]);
   };
@@ -151,12 +153,12 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
 
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">
-                              Rule Label:
+                              Output Value (returned if this input has data):
                             </label>
                             <input
                               type="text"
-                              value={rule.label}
-                              onChange={(e) => updateRule(rule.id, { label: e.target.value })}
+                              value={rule.outputValue}
+                              onChange={(e) => updateRule(rule.id, { outputValue: e.target.value })}
                               className="w-full border rounded px-2 py-1 text-sm"
                               placeholder="e.g., ATA, ETA, PTA"
                             />
@@ -182,33 +184,43 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
         <div className="space-y-1">
           {rules.length > 0 ? (
             <div className="space-y-1">
-              {rules.map((rule) => (
-                <div key={rule.id} className="relative">
-                  <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group">
-                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
-                      #{rule.priority}: {rule.label || 'Unnamed rule'}
-                    </span>
-                    
-                    <Handle
-                      type="target"
-                      position={Position.Left}
-                      id={rule.id}
-                      className="w-3 h-3 bg-orange-500 border-2 border-white group-hover:bg-orange-600 !absolute !left-1"
-                      style={{
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                      }}
-                    />
+              {rules.map((rule) => {
+                const inputValue = inputValues[rule.id];
+                const hasValue = inputValue !== undefined && inputValue !== null && inputValue !== '';
+                
+                return (
+                  <div key={rule.id} className="relative">
+                    <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
+                          #{rule.priority}: {rule.outputValue || 'No output value'}
+                        </div>
+                        <div className={`text-xs truncate ${hasValue ? 'text-green-600' : 'text-gray-400'}`}>
+                          {hasValue ? `Input: ${inputValue}` : 'No input data'}
+                        </div>
+                      </div>
+                      
+                      <Handle
+                        type="target"
+                        position={Position.Left}
+                        id={rule.id}
+                        className="w-3 h-3 bg-orange-500 border-2 border-white group-hover:bg-orange-600 !absolute !left-1"
+                        style={{
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-xs text-gray-500 italic">No rules configured</div>
           )}
           
           {defaultValue && (
-            <div className="text-xs text-gray-600 mt-2">
+            <div className="text-xs text-gray-600 mt-2 px-2">
               Default: "{defaultValue}"
             </div>
           )}
