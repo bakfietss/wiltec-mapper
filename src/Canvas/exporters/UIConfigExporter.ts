@@ -14,9 +14,9 @@ export const exportUIMappingConfiguration = (
   
   // Add comprehensive debug for ALL nodes that contain "coalesce" anywhere
   nodes.forEach(node => {
-    const nodeId = node.id?.toLowerCase() || '';
-    const nodeType = node.type?.toLowerCase() || '';
-    const transformType = node.data?.transformType?.toLowerCase() || '';
+    const nodeId = typeof node.id === 'string' ? node.id.toLowerCase() : '';
+    const nodeType = typeof node.type === 'string' ? node.type.toLowerCase() : '';
+    const transformType = typeof node.data?.transformType === 'string' ? node.data.transformType.toLowerCase() : '';
     
     if (nodeId.includes('coalesce') || nodeType.includes('coalesce') || transformType.includes('coalesce')) {
       console.log('FOUND COALESCE-LIKE NODE:', {
@@ -91,7 +91,7 @@ export const exportUIMappingConfiguration = (
   // Also include nodes that have coalesce in their ID since that seems to be the pattern
   const allTransformNodes = nodes.filter(node => {
     const isBasicNode = ['source', 'target', 'conversionMapping'].includes(node.type);
-    const hasCoalesceInId = node.id?.toLowerCase().includes('coalesce');
+    const hasCoalesceInId = typeof node.id === 'string' ? node.id.toLowerCase().includes('coalesce') : false;
     
     return !isBasicNode || hasCoalesceInId;
   });
@@ -158,7 +158,7 @@ export const exportUIMappingConfiguration = (
         splitIndex: node.data?.splitIndex || 0,
         config: additionalConfig
       };
-    } else if (node.type === 'coalesceTransform' || node.id?.toLowerCase().includes('coalesce')) {
+    } else if (node.type === 'coalesceTransform' || (typeof node.id === 'string' && node.id.toLowerCase().includes('coalesce'))) {
       console.log('COALESCE EXPORT:', node);
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
