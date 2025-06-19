@@ -35,7 +35,7 @@ export const exportExecutionMapping = (
           const sourceNode = nodes.find(n => n.id === edge.source);
           if (!sourceNode) return;
           
-          console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
+          console.log(`Processing edge from ${sourceNode.type} (${sourceNode.id}) to ${targetField.name}`);
           
           let mapping: ExecutionMapping;
           
@@ -94,17 +94,22 @@ export const exportExecutionMapping = (
               else: elseValue
             };
             
-          } else if (sourceNode.type === 'coalesceTransform' || sourceNode.type === 'Coalesce' || sourceNode.type === 'coalesce') {
-            // Coalesce transform mapping - handle multiple type variants
-            console.log('PROCESSING COALESCE NODE:', sourceNode.id, 'type:', sourceNode.type);
+          } else if (sourceNode.type === 'coalesceTransform') {
+            // Coalesce transform mapping
+            console.log('PROCESSING COALESCE NODE FOR EXECUTION:', sourceNode.id);
             const sourceData = sourceNode.data as any;
             const rules = sourceData?.rules || [];
             const defaultValue = sourceData?.defaultValue || '';
+            
+            console.log('Coalesce rules:', rules);
+            console.log('Coalesce defaultValue:', defaultValue);
             
             // Find all inputs to the coalesce node and build the coalesce mapping
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
             const inputSources: string[] = [];
             const ruleValues: string[] = [];
+            
+            console.log('Coalesce input edges:', coalesceInputEdges.length);
             
             coalesceInputEdges.forEach(inputEdge => {
               const inputNode = nodes.find(n => n.id === inputEdge.source);
@@ -115,6 +120,7 @@ export const exportExecutionMapping = (
                   inputFields.find((f: any) => f.id === inputEdge.sourceHandle) : null;
                 if (inputField) {
                   inputSources.push(inputField.name);
+                  console.log('Added input source:', inputField.name);
                 }
               }
               
@@ -122,6 +128,7 @@ export const exportExecutionMapping = (
               const rule = rules.find((r: any) => r.id === inputEdge.targetHandle);
               if (rule) {
                 ruleValues.push(rule.outputValue || '');
+                console.log('Added rule value:', rule.outputValue);
               }
             });
             
@@ -139,6 +146,8 @@ export const exportExecutionMapping = (
                 }
               }
             };
+            
+            console.log('Created coalesce execution mapping:', mapping);
             
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
@@ -224,6 +233,7 @@ export const exportExecutionMapping = (
             }
           } else {
             // Fallback for unknown node types
+            console.log('Unknown node type for execution mapping:', sourceNode.type);
             return;
           }
           

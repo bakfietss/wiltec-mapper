@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration, SourceNodeConfig, TargetNodeConfig } from '../types/MappingTypes';
 import { buildExecutionSteps } from '../utils/ExecutionStepBuilder';
@@ -152,8 +153,8 @@ export const exportUIMappingConfiguration = (
         splitIndex: node.data?.splitIndex || 0,
         config: additionalConfig
       };
-    } else if (node.type === 'coalesceTransform' || node.type === 'Coalesce' || node.type === 'coalesce') {
-      console.log('FOUND COALESCE NODE - Processing:', node.id);
+    } else if (node.type === 'coalesceTransform') {
+      console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
       
       transformConfig.config = {
@@ -165,24 +166,26 @@ export const exportUIMappingConfiguration = (
       };
       transformConfig.nodeData = {
         rules: node.data?.rules || [],
-        defaultValue: node.data?.defaultValue || ''
+        defaultValue: node.data?.defaultValue || '',
+        inputValues: node.data?.inputValues || {}
       };
       
       console.log('Coalesce transform config created:', transformConfig);
     } else {
       // Handle generic transform nodes and any other types
+      console.log('Processing generic transform node:', node.id, 'with type:', node.type);
       transformConfig.config = node.data?.config || node.data || {};
       if (node.data) {
         transformConfig.nodeData = node.data;
       }
     }
 
-    console.log('Adding transform config:', transformConfig.id);
+    console.log('Adding transform config:', transformConfig.id, 'with type:', transformConfig.type);
     config.nodes.transforms.push(transformConfig);
   });
 
   console.log('Final transforms in config:', config.nodes.transforms.length);
-  console.log('Transform IDs:', config.nodes.transforms.map(t => t.id));
+  console.log('Transform IDs and types:', config.nodes.transforms.map(t => ({ id: t.id, type: t.type, transformType: t.transformType })));
 
   // Extract mapping nodes
   nodes.filter(node => node.type === 'conversionMapping')
