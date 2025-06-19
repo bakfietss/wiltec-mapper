@@ -168,7 +168,8 @@ export const exportExecutionMapping = (
               from: originalSourceField,
               to: targetField.name,
               type: 'map',
-              map: mapObject
+              map: mapObject,
+              defaultValue: 'NotMapped' // Add default value for unmapped cases
             };
             
             // Add transform information if present

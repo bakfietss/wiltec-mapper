@@ -35,6 +35,7 @@ export interface ExecutionMapping {
   then?: string;
   else?: string;
   map?: Record<string, string>;
+  defaultValue?: string; // Add default value for unmapped cases
   split?: {
     delimiter: string;
     index: number;
