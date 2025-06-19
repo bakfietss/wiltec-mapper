@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration, SourceNodeConfig, TargetNodeConfig } from '../types/MappingTypes';
 import { buildExecutionSteps } from '../utils/ExecutionStepBuilder';
@@ -11,6 +10,18 @@ export const exportUIMappingConfiguration = (
   console.log('=== EXPORT DEBUG START ===');
   console.log('Exporting nodes:', nodes.length);
   console.log('All nodes and their types:', nodes.map(n => ({ id: n.id, type: n.type, transformType: n.data?.transformType })));
+  
+  // Add comprehensive debug for coalesce nodes
+  nodes.forEach(node => {
+    if (node.type?.toLowerCase().includes('coalesce') || node.data?.transformType?.toLowerCase().includes('coalesce')) {
+      console.log('FOUND COALESCE-ISH NODE:', {
+        id: node.id,
+        type: node.type,
+        transformType: node.data?.transformType,
+        fullData: node.data
+      });
+    }
+  });
 
   const config: MappingConfiguration = {
     id: `mapping_${Date.now()}`,
@@ -138,7 +149,7 @@ export const exportUIMappingConfiguration = (
         splitIndex: node.data?.splitIndex || 0,
         config: additionalConfig
       };
-    } else if (node.type === 'coalesceTransform') {
+    } else if (node.type === 'coalesceTransform' || node.type === 'Coalesce' || node.type === 'coalesce') {
       console.log('FOUND COALESCE NODE - Processing:', node.id);
       console.log('Coalesce node data:', node.data);
       

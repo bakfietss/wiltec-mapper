@@ -94,8 +94,9 @@ export const exportExecutionMapping = (
               else: elseValue
             };
             
-          } else if (sourceNode.type === 'coalesceTransform') {
-            // Coalesce transform mapping
+          } else if (sourceNode.type === 'coalesceTransform' || sourceNode.type === 'Coalesce' || sourceNode.type === 'coalesce') {
+            // Coalesce transform mapping - handle multiple type variants
+            console.log('PROCESSING COALESCE NODE:', sourceNode.id, 'type:', sourceNode.type);
             const sourceData = sourceNode.data as any;
             const rules = sourceData?.rules || [];
             const defaultValue = sourceData?.defaultValue || '';
