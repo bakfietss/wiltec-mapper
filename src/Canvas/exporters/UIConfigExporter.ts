@@ -30,13 +30,6 @@ export const exportUIMappingConfiguration = (
     }
   };
 
-  console.log('=== EXPORT DEBUG ===');
-  console.log('All nodes received:', nodes.map(n => ({ id: n.id, type: n.type, data: n.data })));
-  
-  // Look specifically for the missing coalesce node
-  const coalesceNode = nodes.find(n => n.id === 'transform-1750361443089');
-  console.log('Found coalesce node:', coalesceNode);
-
   // Extract source nodes
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
@@ -74,18 +67,14 @@ export const exportUIMappingConfiguration = (
       config.nodes.targets.push(targetConfig);
     });
 
-  // Debug transform node filtering
-  console.log('Checking transform nodes...');
-  const allTransformNodes = nodes.filter(node => 
-    node.type === 'transform' || node.type === 'splitterTransform' || 
-    node.type === 'ifThen' || node.type === 'staticValue' || node.type === 'coalesceTransform'
-  );
-  console.log('Transform nodes found by filter:', allTransformNodes.map(n => ({ id: n.id, type: n.type })));
-
-  // Extract transform nodes - preserve complete data for each transform type
-  allTransformNodes.forEach(node => {
-    console.log('Processing transform node:', node.id, 'type:', node.type);
-    
+  // Extract transform nodes - handle all transform types including coalesceTransform
+  nodes.filter(node => 
+    node.type === 'transform' || 
+    node.type === 'splitterTransform' || 
+    node.type === 'ifThen' || 
+    node.type === 'staticValue' || 
+    node.type === 'coalesceTransform'
+  ).forEach(node => {
     let transformConfig: any = {
       id: node.id,
       type: node.type, // Use the actual node type directly
@@ -138,7 +127,6 @@ export const exportUIMappingConfiguration = (
         config: additionalConfig
       };
     } else if (node.type === 'coalesceTransform') {
-      console.log('Exporting coalesceTransform node:', node.id, 'data:', node.data);
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
@@ -154,7 +142,6 @@ export const exportUIMappingConfiguration = (
       transformConfig.config = node.data?.config || node.data || {};
     }
 
-    console.log('Adding transform config:', transformConfig);
     config.nodes.transforms.push(transformConfig);
   });
 
@@ -194,7 +181,5 @@ export const exportUIMappingConfiguration = (
     });
   });
 
-  console.log('Final config transforms:', config.nodes.transforms);
-  console.log('=== END EXPORT DEBUG ===');
   return config;
 };
