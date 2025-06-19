@@ -4,7 +4,8 @@ import React, {
     useCallback,
     useEffect,
 } from 'react';
-import ReactFlow, {
+import {
+    ReactFlow,
     addEdge,
     useNodesState,
     useEdgesState,
@@ -15,34 +16,28 @@ import ReactFlow, {
     OnNodesChange,
     OnEdgesChange,
     OnConnect,
-    getConnectedEdges,
+    applyEdgeChanges,
+    applyNodeChanges,
 } from '@xyflow/react';
-
-import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react';
-
-import { Handle, Position } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
 import './index.css';
 
-// We need to import the node types we want to use
-import { SourceNode } from '../compontents/SourceNode';
-import { TargetNode } from '../compontents/TargetNode';
-import { TransformNode } from '../compontents/TransformNode';
-import { SplitterTransformNode } from '../compontents/SplitterTransformNode';
-import { IfThenNode } from '../compontents/IfThenNode';
-import { StaticValueNode } from '../compontents/StaticValueNode';
-import { MappingNode } from '../compontents/MappingNode';
-import { CoalesceTransformNode } from '../compontents/CoalesceTransformNode';
+// Import node components with default imports
+import SourceNode from '../compontents/SourceNode';
+import TargetNode from '../compontents/TargetNode';
+import TransformNode from '../compontents/TransformNode';
+import SplitterTransformNode from '../compontents/SplitterTransformNode';
+import IfThenNode from '../compontents/IfThenNode';
+import StaticValueNode from '../compontents/StaticValueNode';
+import ConversionMappingNode from '../compontents/ConversionMappingNode';
+import CoalesceTransformNode from '../compontents/CoalesceTransformNode';
 
 // Import custom components
 import MappingToolbar from '../compontents/MappingToolbar';
 
 // Import Node Factories
 import { useNodeFactories } from '../Canvas/NodeFactories';
-
-// Import Edge Handlers
-// import { useEdgeHandlers } from '../Canvas/EdgeHandlers';
 
 const nodeTypes = {
     source: SourceNode,
@@ -51,7 +46,7 @@ const nodeTypes = {
     splitterTransform: SplitterTransformNode,
     ifThen: IfThenNode,
     staticValue: StaticValueNode,
-    conversionMapping: MappingNode,
+    conversionMapping: ConversionMappingNode,
     coalesceTransform: CoalesceTransformNode,
 };
 
@@ -67,14 +62,8 @@ const Pipeline = () => {
     const [isToolbarExpanded, setIsToolbarExpanded] = useState(true);
 
     const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
-    // const { onConnect, handleEdgesChange } = useEdgeHandlers();
 
     const onConnect: OnConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
-
-    const onEdgesChange: OnEdgesChange = useCallback(
-        (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-        [setEdges]
-    );
 
     const onNodesDelete = useCallback(
         (deletedNodes) => {
@@ -125,6 +114,24 @@ const Pipeline = () => {
 
     const getValueFromSource = (sourceNodeId: string, sourceHandle: string) => {
         return nodeOutputs.get(`${sourceNodeId}-${sourceHandle}`);
+    };
+
+    // Helper function to safely get nested values
+    const getNestedValue = (obj: any, path: string): any => {
+        if (!obj || !path) return undefined;
+        
+        return path.split('.').reduce((current, key) => {
+            if (current && typeof current === 'object') {
+                // Handle array notation like [0]
+                if (key.includes('[') && key.includes(']')) {
+                    const [arrayKey, indexStr] = key.split('[');
+                    const index = parseInt(indexStr.replace(']', ''));
+                    return current[arrayKey] && Array.isArray(current[arrayKey]) ? current[arrayKey][index] : undefined;
+                }
+                return current[key];
+            }
+            return undefined;
+        }, obj);
     };
 
     useEffect(() => {
@@ -270,7 +277,7 @@ const Pipeline = () => {
                 case 'coalesceTransform': {
                     console.log('Processing coalesce transform:', targetNode.data);
                     
-                    const rules = targetNode.data.rules || [];
+                    const rules = Array.isArray(targetNode.data.rules) ? targetNode.data.rules : [];
                     const defaultValue = targetNode.data.defaultValue || '';
                     
                     // Process rules in priority order
@@ -290,7 +297,7 @@ const Pipeline = () => {
                             // If we found a non-null/non-empty value, use it
                             if (sourceValue !== null && sourceValue !== undefined && sourceValue !== '') {
                                 resultValue = sourceValue;
-                                resultLabel = rule.outputLabel;
+                                resultLabel = rule.outputLabel || '';
                                 break; // Stop at first match (priority order)
                             }
                         }
@@ -349,7 +356,7 @@ const Pipeline = () => {
                     fitView
                 >
                     <Controls />
-                    <Background variant="dots" gap={12} size={1} />
+                    <Background variant={"dots" as any} gap={12} size={1} />
                 </ReactFlow>
             </div>
         </div>
