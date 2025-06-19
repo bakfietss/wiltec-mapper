@@ -163,23 +163,52 @@ const applyStringTransform = (inputValue: any, config: any, transformType: strin
     return inputValue;
 };
 
-// Get source value from a node
+// Get source value from a node - updated to handle new field structure
 const getSourceValue = (node: any, handleId: string): any => {
     if (!isSourceNode(node)) return null;
     
     const sourceFields = node.data?.fields;
     const sourceData = node.data?.data;
     
-    if (!sourceFields || !Array.isArray(sourceFields)) return null;
-    
-    const sourceField = sourceFields.find((f: any) => f.id === handleId);
-    if (!sourceField) return null;
-    
+    // First try to get value from actual data using the handleId as a path
     if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
-        return sourceData[0][sourceField.name];
+        const dataObject = sourceData[0];
+        
+        // Handle nested paths (like "user.name" or "items[0].title")
+        const getValue = (obj: any, path: string) => {
+            try {
+                // Handle array indices in path like "items[0]"
+                const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+                const keys = normalizedPath.split('.');
+                let value = obj;
+                for (const key of keys) {
+                    if (value && typeof value === 'object') {
+                        value = value[key];
+                    } else {
+                        return undefined;
+                    }
+                }
+                return value;
+            } catch (e) {
+                return undefined;
+            }
+        };
+        
+        const dataValue = getValue(dataObject, handleId);
+        if (dataValue !== undefined) {
+            return dataValue;
+        }
     }
     
-    return sourceField.exampleValue || 'No data';
+    // Fallback to manual schema fields
+    if (sourceFields && Array.isArray(sourceFields)) {
+        const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
+        if (sourceField) {
+            return sourceField.exampleValue || 'No data';
+        }
+    }
+    
+    return null;
 };
 
 // Calculate field values for target nodes based on connections

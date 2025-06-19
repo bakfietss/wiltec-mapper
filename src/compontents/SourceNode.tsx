@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -72,7 +71,7 @@ const DataField: React.FC<{
                         position={Position.Right}
                         id={path}
                         className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
-                            isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-70'
+                            isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
                         }`}
                         style={{
                             top: '50%',
@@ -126,7 +125,7 @@ const DataField: React.FC<{
                         position={Position.Right}
                         id={path}
                         className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
-                            isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-70'
+                            isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
                         }`}
                         style={{
                             top: '50%',
@@ -182,7 +181,53 @@ const DataField: React.FC<{
                 position={Position.Right}
                 id={path}
                 className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
-                    isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-70'
+                    isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
+                }`}
+                style={{
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                }}
+            />
+        </div>
+    );
+};
+
+// Manual field component for schema fields
+const ManualField: React.FC<{
+    field: SchemaField;
+    onFieldToggle: (fieldId: string) => void;
+    selectedFields: Set<string>;
+}> = ({ field, onFieldToggle, selectedFields }) => {
+    const isSelected = selectedFields.has(field.id);
+    
+    return (
+        <div 
+            className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
+                isSelected ? 'bg-blue-50' : ''
+            }`}
+            onClick={() => onFieldToggle(field.id)}
+        >
+            <div className="w-3 h-3" />
+            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
+            <div className="text-xs min-w-[80px] text-center">
+                {field.exampleValue !== undefined && field.exampleValue !== null && field.exampleValue !== '' ? (
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                        {String(field.exampleValue)}
+                    </span>
+                ) : (
+                    <span className="text-gray-400 italic">no value</span>
+                )}
+            </div>
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
+                {field.type}
+            </span>
+            
+            <Handle
+                type="source"
+                position={Position.Right}
+                id={field.id}
+                className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
+                    isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
                 }`}
                 style={{
                     top: '50%',
@@ -228,6 +273,11 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const deleteField = (fieldId: string) => {
         const updatedFields = fields.filter(field => field.id !== fieldId);
         setFields(updatedFields);
+        
+        // Also remove from selected fields
+        const newSelected = new Set(selectedFields);
+        newSelected.delete(fieldId);
+        setSelectedFields(newSelected);
     };
 
     const handleJsonImport = () => {
@@ -240,39 +290,33 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             // Clear existing selections when new data is imported
             setSelectedFields(new Set());
             setExpandedFields(new Set());
-            setFields([]);
         } catch (error) {
             console.error('Invalid JSON:', error);
             alert('Invalid JSON format');
         }
     };
 
-    const handleFieldToggle = (path: string) => {
+    const handleFieldToggle = (fieldId: string) => {
+        const newSelected = new Set(selectedFields);
+        
+        if (selectedFields.has(fieldId)) {
+            newSelected.delete(fieldId);
+        } else {
+            newSelected.add(fieldId);
+        }
+        
+        setSelectedFields(newSelected);
+    };
+
+    const handleDataFieldToggle = (path: string) => {
         const newSelected = new Set(selectedFields);
         const newExpanded = new Set(expandedFields);
         
+        // Toggle selection
         if (selectedFields.has(path)) {
-            // Deselect
             newSelected.delete(path);
-            setFields(prev => prev.filter(f => f.name !== path));
         } else {
-            // Select
             newSelected.add(path);
-            
-            // Get value for type detection
-            const value = getValueAtPath(nodeData[0], path);
-            const fieldType = Array.isArray(value) ? 'array' :
-                           value && typeof value === 'object' ? 'object' :
-                           typeof value === 'number' ? 'number' :
-                           typeof value === 'boolean' ? 'boolean' : 'string';
-            
-            const newField: SchemaField = {
-                id: `field-${Date.now()}`,
-                name: path,
-                type: fieldType,
-                exampleValue: fieldType === 'object' || fieldType === 'array' ? undefined : value
-            };
-            setFields(prev => [...prev, newField]);
         }
         
         // Toggle expansion for objects and arrays
@@ -284,24 +328,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
         
         setSelectedFields(newSelected);
         setExpandedFields(newExpanded);
-    };
-
-    const getValueAtPath = (obj: any, path: string) => {
-        try {
-            const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
-            const keys = normalizedPath.split('.');
-            let value = obj;
-            for (const key of keys) {
-                if (value && typeof value === 'object') {
-                    value = value[key];
-                } else {
-                    return undefined;
-                }
-            }
-            return value;
-        } catch (e) {
-            return undefined;
-        }
     };
 
     const getExampleValueInput = (field: SchemaField) => {
@@ -465,24 +491,42 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             </div>
 
             <div className="p-1">
+                {/* Manual Schema Fields */}
+                {fields.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                        <div className="text-xs font-medium text-gray-500 px-2 py-1">Manual Fields:</div>
+                        {fields.map((field) => (
+                            <ManualField
+                                key={field.id}
+                                field={field}
+                                onFieldToggle={handleFieldToggle}
+                                selectedFields={selectedFields}
+                            />
+                        ))}
+                    </div>
+                )}
+                
                 {/* Data Structure Display */}
-                {hasData ? (
+                {hasData && (
                     <div className="space-y-1">
+                        {fields.length > 0 && <div className="text-xs font-medium text-gray-500 px-2 py-1">Data Fields:</div>}
                         {Object.entries(nodeData[0]).map(([key, value]) => (
                             <DataField
                                 key={key}
                                 path={key}
                                 value={value}
                                 level={0}
-                                onFieldToggle={handleFieldToggle}
+                                onFieldToggle={handleDataFieldToggle}
                                 selectedFields={selectedFields}
                                 expandedFields={expandedFields}
                             />
                         ))}
                     </div>
-                ) : (
+                )}
+                
+                {!hasData && fields.length === 0 && (
                     <div className="text-center py-3 text-gray-500 text-xs">
-                        No data available. Click edit to import JSON data.
+                        No data available. Click edit to import JSON data or add manual fields.
                     </div>
                 )}
             </div>
