@@ -25,6 +25,7 @@ import DataSidebar from '../compontents/DataSidebar';
 import MappingManager from '../compontents/MappingManager';
 import IfThenNode from '../compontents/IfThenNode';
 import StaticValueNode from '../compontents/StaticValueNode';
+import CoalesceTransformNode from '../compontents/CoalesceTransformNode';
 
 import { useNodeFactories } from './NodeFactories';
 import { downloadBothMappingFiles, importMappingConfiguration, MappingConfiguration, exportUIMappingConfiguration } from './MappingExporter';
@@ -37,6 +38,7 @@ const nodeTypes = {
     splitterTransform: SplitterTransformNode,
     ifThen: IfThenNode,
     staticValue: StaticValueNode,
+    coalesceTransform: CoalesceTransformNode,
 };
 
 // Helper function to check if a node is a source-type node
@@ -163,6 +165,58 @@ const applyStringTransform = (inputValue: any, config: any, transformType: strin
     return inputValue;
 };
 
+// Apply coalesce transformation
+const applyCoalesceTransform = (inputValue: any, config: any, sourceNode: any): { value: any; label?: string } => {
+    const rules = config.rules || [];
+    const defaultValue = config.defaultValue || '';
+    const outputType = config.outputType || 'value';
+    
+    // Get the source data object
+    const sourceData = typeof inputValue === 'object' ? inputValue : {};
+    
+    // Try each rule in priority order
+    for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
+        if (!rule.fieldPath) continue;
+        
+        // Get value from the field path
+        const getValue = (obj: any, path: string) => {
+            try {
+                const keys = path.split('.');
+                let value = obj;
+                for (const key of keys) {
+                    if (value && typeof value === 'object') {
+                        value = value[key];
+                    } else {
+                        return undefined;
+                    }
+                }
+                return value;
+            } catch (e) {
+                return undefined;
+            }
+        };
+        
+        const fieldValue = getValue(sourceData, rule.fieldPath);
+        
+        // If this field has a value, use it
+        if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
+            if (outputType === 'value') {
+                return { value: fieldValue };
+            } else if (outputType === 'label') {
+                return { value: rule.outputLabel };
+            } else { // both
+                return { value: fieldValue, label: rule.outputLabel };
+            }
+        }
+    }
+    
+    // No field had a value, return default
+    if (outputType === 'label') {
+        return { value: '' };
+    }
+    return { value: defaultValue };
+};
+
 // Get source value from a node - updated to handle new field structure
 const getSourceValue = (node: any, handleId: string): any => {
     if (!isSourceNode(node)) return null;
@@ -255,6 +309,35 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 const config = sourceNode.data?.config || {};
                 const transformType = sourceNode.data?.transformType;
                 value = applyStringTransform(inputValue, config, transformType);
+            }
+        } else if (sourceNode.type === 'coalesceTransform') {
+            // Handle coalesce transform node
+            const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+            
+            let inputValue: any = null;
+            
+            transformInputEdges.forEach(inputEdge => {
+                const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                
+                if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                    // For coalesce, we need the entire data object, not just a field
+                    const sourceData = inputSourceNode.data?.data;
+                    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
+                        inputValue = sourceData[0];
+                    }
+                }
+            });
+            
+            if (inputValue !== null) {
+                const config = sourceNode.data || {};
+                const result = applyCoalesceTransform(inputValue, config, sourceNode);
+                
+                // Handle different output types based on the target handle
+                if (edge.sourceHandle === 'value' || edge.sourceHandle === 'output') {
+                    value = result.value;
+                } else if (edge.sourceHandle === 'label') {
+                    value = result.label;
+                }
             }
         } else if (sourceNode.type === 'staticValue') {
             // Handle new multi-value static value nodes

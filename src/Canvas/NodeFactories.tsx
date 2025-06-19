@@ -47,6 +47,14 @@ export const useNodeFactories = (
                 value: '',
                 valueType: 'string',
             };
+        } else if (transformType === 'Coalesce') {
+            nodeType = 'coalesceTransform';
+            nodeData = {
+                label: 'Coalesce Transform',
+                rules: [],
+                defaultValue: '',
+                outputType: 'value',
+            };
         }
         
         const newNode: Node = {

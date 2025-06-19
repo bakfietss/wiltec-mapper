@@ -25,6 +25,7 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
     { type: 'format', label: 'Format', icon: Shuffle },
     { type: 'IF THEN', label: 'IF THEN Logic', icon: GitMerge },
     { type: 'Static Value', label: 'Static Value', icon: Database },
+    { type: 'Coalesce', label: 'Coalesce Transform', icon: GitMerge },
   ];
 
   const handleToggle = () => {
