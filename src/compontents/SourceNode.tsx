@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -48,7 +47,7 @@ const DataField: React.FC<{
         return (
             <div>
                 <div 
-                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer ${
+                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                         isSelected ? 'bg-blue-50' : ''
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
@@ -100,7 +99,7 @@ const DataField: React.FC<{
         return (
             <div>
                 <div 
-                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer ${
+                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                         isSelected ? 'bg-blue-50' : ''
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
@@ -156,7 +155,7 @@ const DataField: React.FC<{
     
     return (
         <div 
-            className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer ${
+            className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                 isSelected ? 'bg-blue-50' : ''
             }`}
             style={{ paddingLeft: `${8 + level * 12}px` }}
