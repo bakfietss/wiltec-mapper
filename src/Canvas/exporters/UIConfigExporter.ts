@@ -30,7 +30,12 @@ export const exportUIMappingConfiguration = (
     }
   };
 
-  console.log('Exporting nodes:', nodes.map(n => ({ id: n.id, type: n.type })));
+  console.log('=== EXPORT DEBUG ===');
+  console.log('All nodes received:', nodes.map(n => ({ id: n.id, type: n.type, data: n.data })));
+  
+  // Look specifically for the missing coalesce node
+  const coalesceNode = nodes.find(n => n.id === 'transform-1750361443089');
+  console.log('Found coalesce node:', coalesceNode);
 
   // Extract source nodes
   nodes.filter(node => node.type === 'source')
@@ -69,11 +74,16 @@ export const exportUIMappingConfiguration = (
       config.nodes.targets.push(targetConfig);
     });
 
-  // Extract transform nodes - preserve complete data for each transform type
-  nodes.filter(node => 
+  // Debug transform node filtering
+  console.log('Checking transform nodes...');
+  const allTransformNodes = nodes.filter(node => 
     node.type === 'transform' || node.type === 'splitterTransform' || 
     node.type === 'ifThen' || node.type === 'staticValue' || node.type === 'coalesceTransform'
-  ).forEach(node => {
+  );
+  console.log('Transform nodes found by filter:', allTransformNodes.map(n => ({ id: n.id, type: n.type })));
+
+  // Extract transform nodes - preserve complete data for each transform type
+  allTransformNodes.forEach(node => {
     console.log('Processing transform node:', node.id, 'type:', node.type);
     
     let transformConfig: any = {
@@ -185,5 +195,6 @@ export const exportUIMappingConfiguration = (
   });
 
   console.log('Final config transforms:', config.nodes.transforms);
+  console.log('=== END EXPORT DEBUG ===');
   return config;
 };
