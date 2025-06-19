@@ -67,8 +67,8 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-none w-auto">
-      {/* Input Handles - one for each rule */}
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-none w-auto relative">
+      {/* Input Handles - aligned with each rule */}
       {rules.map((rule, index) => (
         <Handle
           key={rule.id}
@@ -76,7 +76,10 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
           position={Position.Left}
           id={rule.id}
           className="w-3 h-3 bg-orange-500 border-2 border-white"
-          style={{ top: `${20 + (index * 25)}%` }}
+          style={{ 
+            top: `${88 + (index * 32)}px`,
+            transform: 'translate(-50%, -50%)'
+          }}
         />
       ))}
 
@@ -191,12 +194,11 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
       </div>
 
       <div className="p-3">
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-gray-600">Rules:</div>
+        <div className="space-y-1">
           {rules.length > 0 ? (
             <div className="space-y-1">
               {rules.map((rule) => (
-                <div key={rule.id} className="text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                <div key={rule.id} className="text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded flex items-center h-8">
                   #{rule.priority}: {rule.label || 'Unnamed rule'}
                 </div>
               ))}
@@ -206,7 +208,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
           )}
           
           {defaultValue && (
-            <div className="text-xs text-gray-600">
+            <div className="text-xs text-gray-600 mt-2">
               Default: "{defaultValue}"
             </div>
           )}
