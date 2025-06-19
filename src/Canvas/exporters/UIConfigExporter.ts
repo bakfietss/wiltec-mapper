@@ -30,9 +30,6 @@ export const exportUIMappingConfiguration = (
     }
   };
 
-  console.log('=== NODE TYPE DEBUG ===');
-  console.log('All nodes and their types:', nodes.map(n => ({ id: n.id, type: n.type, data: n.data })));
-
   // Extract source nodes
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
@@ -71,18 +68,11 @@ export const exportUIMappingConfiguration = (
     });
 
   // Extract ALL transform-like nodes by checking if they're not source, target, or mapping
-  const transformNodeTypes = ['transform', 'splitterTransform', 'ifThen', 'staticValue', 'coalesceTransform'];
-  
-  // Get all nodes that are not source, target, or mapping nodes
   const allTransformNodes = nodes.filter(node => 
     !['source', 'target', 'conversionMapping'].includes(node.type)
   );
-  
-  console.log('All transform-like nodes found:', allTransformNodes.map(n => ({ id: n.id, type: n.type })));
 
   allTransformNodes.forEach(node => {
-    console.log('Processing node:', node.id, 'type:', node.type, 'data:', node.data);
-    
     let transformConfig: any = {
       id: node.id,
       type: node.type, // Use the actual node type directly
@@ -135,7 +125,6 @@ export const exportUIMappingConfiguration = (
         config: additionalConfig
       };
     } else if (node.type === 'coalesceTransform') {
-      console.log('Processing coalesceTransform node:', node.id);
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
@@ -155,7 +144,6 @@ export const exportUIMappingConfiguration = (
       }
     }
 
-    console.log('Adding transform config for node:', node.id, transformConfig);
     config.nodes.transforms.push(transformConfig);
   });
 
@@ -192,9 +180,6 @@ export const exportUIMappingConfiguration = (
       type: connectionType
     });
   });
-
-  console.log('Final transforms array:', config.nodes.transforms);
-  console.log('=== END NODE TYPE DEBUG ===');
   
   return config;
 };

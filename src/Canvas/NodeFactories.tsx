@@ -23,6 +23,7 @@ export const useNodeFactories = (
 
     const addTransformNode = useCallback((transformType: string) => {
         let nodeType = 'transform';
+        let nodeIdPrefix = 'transform';
         let nodeData: any = {
             label: transformType,
             transformType: transformType,
@@ -32,8 +33,10 @@ export const useNodeFactories = (
 
         if (transformType === 'Text Splitter') {
             nodeType = 'splitterTransform';
+            nodeIdPrefix = 'splitter';
         } else if (transformType === 'IF THEN') {
             nodeType = 'ifThen';
+            nodeIdPrefix = 'ifThen';
             nodeData = {
                 label: 'IF THEN Logic',
                 condition: '',
@@ -42,6 +45,7 @@ export const useNodeFactories = (
             };
         } else if (transformType === 'Static Value') {
             nodeType = 'staticValue';
+            nodeIdPrefix = 'static';
             nodeData = {
                 label: 'Static Value',
                 value: '',
@@ -49,6 +53,7 @@ export const useNodeFactories = (
             };
         } else if (transformType === 'Coalesce') {
             nodeType = 'coalesceTransform';
+            nodeIdPrefix = 'coalesce';
             nodeData = {
                 label: 'Coalesce Transform',
                 rules: [],
@@ -58,7 +63,7 @@ export const useNodeFactories = (
         }
         
         const newNode: Node = {
-            id: `transform-${Date.now()}`,
+            id: `${nodeIdPrefix}-${Date.now()}`,
             type: nodeType,
             position: { x: 400, y: 100 + nodes.length * 50 },
             data: nodeData,
