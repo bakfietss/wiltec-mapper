@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration, SourceNodeConfig, TargetNodeConfig } from '../types/MappingTypes';
 import { buildExecutionSteps } from '../utils/ExecutionStepBuilder';
@@ -11,13 +12,14 @@ export const exportUIMappingConfiguration = (
   console.log('Exporting nodes:', nodes.length);
   console.log('All nodes and their types:', nodes.map(n => ({ id: n.id, type: n.type, transformType: n.data?.transformType })));
   
-  // Add comprehensive debug for coalesce nodes
+  // Add comprehensive debug for ALL nodes that contain "coalesce" anywhere
   nodes.forEach(node => {
-    const nodeType = typeof node.type === 'string' ? node.type : '';
-    const transformType = typeof node.data?.transformType === 'string' ? node.data.transformType : '';
+    const nodeId = node.id?.toLowerCase() || '';
+    const nodeType = node.type?.toLowerCase() || '';
+    const transformType = node.data?.transformType?.toLowerCase() || '';
     
-    if (nodeType.toLowerCase().includes('coalesce') || transformType.toLowerCase().includes('coalesce')) {
-      console.log('FOUND COALESCE-ISH NODE:', {
+    if (nodeId.includes('coalesce') || nodeType.includes('coalesce') || transformType.includes('coalesce')) {
+      console.log('FOUND COALESCE-LIKE NODE:', {
         id: node.id,
         type: node.type,
         transformType: node.data?.transformType,
@@ -86,9 +88,13 @@ export const exportUIMappingConfiguration = (
     });
 
   // Extract ALL transform-like nodes by checking if they're not source, target, or mapping
-  const allTransformNodes = nodes.filter(node => 
-    !['source', 'target', 'conversionMapping'].includes(node.type)
-  );
+  // Also include nodes that have coalesce in their ID since that seems to be the pattern
+  const allTransformNodes = nodes.filter(node => {
+    const isBasicNode = ['source', 'target', 'conversionMapping'].includes(node.type);
+    const hasCoalesceInId = node.id?.toLowerCase().includes('coalesce');
+    
+    return !isBasicNode || hasCoalesceInId;
+  });
 
   console.log('Transform nodes found:', allTransformNodes.length);
   console.log('Transform nodes details:', allTransformNodes.map(n => ({ 
@@ -152,10 +158,14 @@ export const exportUIMappingConfiguration = (
         splitIndex: node.data?.splitIndex || 0,
         config: additionalConfig
       };
-    } else if (node.type === 'coalesceTransform') {
+    } else if (node.type === 'coalesceTransform' || node.id?.toLowerCase().includes('coalesce')) {
       console.log('COALESCE EXPORT:', node);
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
+      
+      // Force the type to be coalesceTransform for coalesce nodes
+      transformConfig.type = 'coalesceTransform';
+      transformConfig.transformType = 'Coalesce';
       
       transformConfig.config = {
         operation: 'coalesce',
