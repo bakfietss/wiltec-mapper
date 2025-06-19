@@ -169,7 +169,7 @@ export const exportExecutionMapping = (
               to: targetField.name,
               type: 'map',
               map: mapObject,
-              defaultValue: 'NotMapped' // Add default value for unmapped cases
+              defaultValue: 'NotMapped' // Ensure default value is always added for map type
             };
             
             // Add transform information if present
