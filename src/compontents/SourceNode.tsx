@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -47,7 +48,7 @@ const DataField: React.FC<{
         return (
             <div>
                 <div 
-                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
+                    className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                         isSelected ? 'bg-blue-50' : ''
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
@@ -66,18 +67,18 @@ const DataField: React.FC<{
                         array
                     </span>
                     
-                    {isSelected && (
-                        <Handle
-                            type="source"
-                            position={Position.Right}
-                            id={path}
-                            className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
-                            style={{
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                            }}
-                        />
-                    )}
+                    <Handle
+                        type="source"
+                        position={Position.Right}
+                        id={path}
+                        className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
+                            isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-70'
+                        }`}
+                        style={{
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                        }}
+                    />
                 </div>
                 
                 {isExpanded && value.map((item, index) => (
@@ -99,7 +100,7 @@ const DataField: React.FC<{
         return (
             <div>
                 <div 
-                    className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
+                    className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                         isSelected ? 'bg-blue-50' : ''
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
@@ -120,18 +121,18 @@ const DataField: React.FC<{
                         object
                     </span>
                     
-                    {isSelected && (
-                        <Handle
-                            type="source"
-                            position={Position.Right}
-                            id={path}
-                            className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
-                            style={{
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                            }}
-                        />
-                    )}
+                    <Handle
+                        type="source"
+                        position={Position.Right}
+                        id={path}
+                        className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
+                            isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-70'
+                        }`}
+                        style={{
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                        }}
+                    />
                 </div>
                 
                 {isExpanded && Object.entries(value).map(([key, val]) => (
@@ -155,7 +156,7 @@ const DataField: React.FC<{
     
     return (
         <div 
-            className={`flex items-center gap-2 py-1 px-2 pr-6 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
+            className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                 isSelected ? 'bg-blue-50' : ''
             }`}
             style={{ paddingLeft: `${8 + level * 12}px` }}
@@ -176,18 +177,18 @@ const DataField: React.FC<{
                 {valueType}
             </span>
             
-            {isSelected && (
-                <Handle
-                    type="source"
-                    position={Position.Right}
-                    id={path}
-                    className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
-                    style={{
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                    }}
-                />
-            )}
+            <Handle
+                type="source"
+                position={Position.Right}
+                id={path}
+                className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
+                    isSelected ? 'opacity-100' : 'opacity-30 group-hover:opacity-70'
+                }`}
+                style={{
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                }}
+            />
         </div>
     );
 };
@@ -350,7 +351,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     };
 
     return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-80">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-80 max-w-none w-auto">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-blue-50">
                 <Database className="w-4 h-4 text-blue-600" />
                 <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
