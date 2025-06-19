@@ -74,7 +74,7 @@ export const exportUIMappingConfiguration = (
   ).forEach(node => {
     let transformConfig: any = {
       id: node.id,
-      type: node.type as any,
+      type: node.type, // Use the actual node type directly
       label: String(node.data?.label || 'Transform Node'),
       position: node.position,
       transformType: String(node.data?.transformType || node.type || 'unknown'),
