@@ -106,6 +106,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [nodeData, setNodeData] = useState<any[]>(data.data || []);
     const [jsonInput, setJsonInput] = useState('');
     const [selectedTreeFields, setSelectedTreeFields] = useState<Set<string>>(new Set());
+    const [showTreeView, setShowTreeView] = useState(false);
 
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
@@ -241,6 +242,17 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                     source
                 </span>
                 
+                {/* Tree view toggle */}
+                {hasNestedData && (
+                    <button
+                        onClick={() => setShowTreeView(!showTreeView)}
+                        className="p-1 hover:bg-gray-200 rounded"
+                        title="Toggle nested view"
+                    >
+                        <TreePine className="w-3 h-3 text-gray-600" />
+                    </button>
+                )}
+                
                 <Sheet>
                     <SheetTrigger asChild>
                         <button className="p-1 hover:bg-gray-200 rounded">
@@ -375,6 +387,30 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             </div>
 
             <div className="p-1">
+                {/* Tree view in node */}
+                {hasNestedData && showTreeView && (
+                    <div className="mb-2 border-b pb-2">
+                        <div className="flex items-center gap-2 mb-2 px-2">
+                            <TreePine className="w-3 h-3 text-gray-600" />
+                            <span className="text-xs font-medium text-gray-700">Nested Structure</span>
+                            <button
+                                onClick={() => setShowTreeView(false)}
+                                className="ml-auto p-0.5 hover:bg-gray-200 rounded"
+                            >
+                                <ChevronDown className="w-3 h-3 text-gray-400" />
+                            </button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                            <TreeFieldSelector
+                                data={nodeData[0]}
+                                onFieldSelect={handleTreeFieldSelect}
+                                selectedFields={selectedTreeFields}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Regular fields */}
                 {fields.map((field) => (
                     <SourceField
                         key={field.id}
@@ -383,7 +419,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                     />
                 ))}
                 
-                {fields.length === 0 && (
+                {fields.length === 0 && !showTreeView && (
                     <div className="text-center py-3 text-gray-500 text-xs">
                         No fields defined. Click edit to add schema fields.
                     </div>
