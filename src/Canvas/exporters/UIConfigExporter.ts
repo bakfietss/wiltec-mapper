@@ -30,6 +30,8 @@ export const exportUIMappingConfiguration = (
     }
   };
 
+  console.log('Exporting nodes:', nodes.map(n => ({ id: n.id, type: n.type })));
+
   // Extract source nodes
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
@@ -72,6 +74,8 @@ export const exportUIMappingConfiguration = (
     node.type === 'transform' || node.type === 'splitterTransform' || 
     node.type === 'ifThen' || node.type === 'staticValue' || node.type === 'coalesceTransform'
   ).forEach(node => {
+    console.log('Processing transform node:', node.id, 'type:', node.type);
+    
     let transformConfig: any = {
       id: node.id,
       type: node.type, // Use the actual node type directly
@@ -124,6 +128,7 @@ export const exportUIMappingConfiguration = (
         config: additionalConfig
       };
     } else if (node.type === 'coalesceTransform') {
+      console.log('Exporting coalesceTransform node:', node.id, 'data:', node.data);
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
@@ -139,6 +144,7 @@ export const exportUIMappingConfiguration = (
       transformConfig.config = node.data?.config || node.data || {};
     }
 
+    console.log('Adding transform config:', transformConfig);
     config.nodes.transforms.push(transformConfig);
   });
 
@@ -178,5 +184,6 @@ export const exportUIMappingConfiguration = (
     });
   });
 
+  console.log('Final config transforms:', config.nodes.transforms);
   return config;
 };
