@@ -8,6 +8,10 @@ export const exportUIMappingConfiguration = (
   edges: Edge[],
   name: string = 'Untitled Mapping'
 ): MappingConfiguration => {
+  console.log('=== EXPORT DEBUG START ===');
+  console.log('Exporting nodes:', nodes.length);
+  console.log('All nodes and their types:', nodes.map(n => ({ id: n.id, type: n.type, transformType: n.data?.transformType })));
+
   const config: MappingConfiguration = {
     id: `mapping_${Date.now()}`,
     name,
@@ -72,7 +76,17 @@ export const exportUIMappingConfiguration = (
     !['source', 'target', 'conversionMapping'].includes(node.type)
   );
 
+  console.log('Transform nodes found:', allTransformNodes.length);
+  console.log('Transform nodes details:', allTransformNodes.map(n => ({ 
+    id: n.id, 
+    type: n.type, 
+    transformType: n.data?.transformType,
+    hasData: !!n.data 
+  })));
+
   allTransformNodes.forEach(node => {
+    console.log('Processing transform node:', node.id, 'type:', node.type);
+    
     let transformConfig: any = {
       id: node.id,
       type: node.type, // Use the actual node type directly
@@ -125,6 +139,9 @@ export const exportUIMappingConfiguration = (
         config: additionalConfig
       };
     } else if (node.type === 'coalesceTransform') {
+      console.log('FOUND COALESCE NODE - Processing:', node.id);
+      console.log('Coalesce node data:', node.data);
+      
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
@@ -136,6 +153,8 @@ export const exportUIMappingConfiguration = (
         rules: node.data?.rules || [],
         defaultValue: node.data?.defaultValue || ''
       };
+      
+      console.log('Coalesce transform config created:', transformConfig);
     } else {
       // Handle generic transform nodes and any other types
       transformConfig.config = node.data?.config || node.data || {};
@@ -144,8 +163,12 @@ export const exportUIMappingConfiguration = (
       }
     }
 
+    console.log('Adding transform config:', transformConfig.id);
     config.nodes.transforms.push(transformConfig);
   });
+
+  console.log('Final transforms in config:', config.nodes.transforms.length);
+  console.log('Transform IDs:', config.nodes.transforms.map(t => t.id));
 
   // Extract mapping nodes
   nodes.filter(node => node.type === 'conversionMapping')
@@ -180,6 +203,9 @@ export const exportUIMappingConfiguration = (
       type: connectionType
     });
   });
+
+  console.log('=== EXPORT DEBUG END ===');
+  console.log('Final config transforms:', config.nodes.transforms);
   
   return config;
 };

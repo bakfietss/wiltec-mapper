@@ -31,6 +31,9 @@ export const useNodeFactories = (
             config: {},
         };
 
+        console.log('=== CREATING TRANSFORM NODE ===');
+        console.log('Transform type requested:', transformType);
+
         if (transformType === 'Text Splitter') {
             nodeType = 'splitterTransform';
             nodeIdPrefix = 'splitter';
@@ -60,16 +63,30 @@ export const useNodeFactories = (
                 defaultValue: '',
                 outputType: 'value',
             };
+            console.log('Creating coalesce node with type:', nodeType, 'prefix:', nodeIdPrefix);
         }
         
+        const nodeId = `${nodeIdPrefix}-${Date.now()}`;
         const newNode: Node = {
-            id: `${nodeIdPrefix}-${Date.now()}`,
+            id: nodeId,
             type: nodeType,
             position: { x: 400, y: 100 + nodes.length * 50 },
             data: nodeData,
         };
 
-        setNodes((nds) => [...nds, newNode]);
+        console.log('Created node:', {
+            id: nodeId,
+            type: nodeType,
+            transformType: transformType,
+            data: nodeData
+        });
+
+        setNodes((nds) => {
+            const updatedNodes = [...nds, newNode];
+            console.log('Updated nodes array length:', updatedNodes.length);
+            console.log('All node types:', updatedNodes.map(n => ({ id: n.id, type: n.type })));
+            return updatedNodes;
+        });
     }, [nodes.length, setNodes]);
 
     const addMappingNode = useCallback(() => {
