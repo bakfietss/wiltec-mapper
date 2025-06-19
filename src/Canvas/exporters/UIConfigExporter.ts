@@ -87,13 +87,11 @@ export const exportUIMappingConfiguration = (
       config.nodes.targets.push(targetConfig);
     });
 
-  // Extract ALL transform-like nodes by checking if they're not source, target, or mapping
-  // Also include nodes that have coalesce in their ID since that seems to be the pattern
+  // Extract ALL transform-like nodes - FIXED LOGIC
   const allTransformNodes = nodes.filter(node => {
+    // Include any node that is NOT a basic node type (source, target, conversionMapping)
     const isBasicNode = ['source', 'target', 'conversionMapping'].includes(node.type);
-    const hasCoalesceInId = typeof node.id === 'string' ? node.id.toLowerCase().includes('coalesce') : false;
-    
-    return !isBasicNode || hasCoalesceInId;
+    return !isBasicNode;
   });
 
   console.log('Transform nodes found:', allTransformNodes.length);
@@ -158,14 +156,10 @@ export const exportUIMappingConfiguration = (
         splitIndex: node.data?.splitIndex || 0,
         config: additionalConfig
       };
-    } else if (node.type === 'coalesceTransform' || (typeof node.id === 'string' && node.id.toLowerCase().includes('coalesce'))) {
+    } else if (node.type === 'coalesceTransform') {
       console.log('COALESCE EXPORT:', node);
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
-      
-      // Force the type to be coalesceTransform for coalesce nodes
-      transformConfig.type = 'coalesceTransform';
-      transformConfig.transformType = 'Coalesce';
       
       transformConfig.config = {
         operation: 'coalesce',
