@@ -9,31 +9,27 @@ import { useNodeDataSync } from '../hooks/useNodeDataSync';
 interface CoalesceRule {
   id: string;
   priority: number;
-  fieldPath: string;
-  outputLabel: string;
+  label: string;
 }
 
 interface CoalesceTransformData {
   label: string;
   rules: CoalesceRule[];
   defaultValue: string;
-  outputType: 'value' | 'label' | 'both';
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
   const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
   const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
-  const [outputType, setOutputType] = useState<'value' | 'label' | 'both'>(data.outputType || 'value');
 
   // Sync local state changes back to React Flow
-  useNodeDataSync(id, { rules, defaultValue, outputType }, [rules, defaultValue, outputType]);
+  useNodeDataSync(id, { rules, defaultValue }, [rules, defaultValue]);
 
   const addRule = () => {
     const newRule: CoalesceRule = {
       id: `rule-${Date.now()}`,
       priority: rules.length + 1,
-      fieldPath: '',
-      outputLabel: ''
+      label: `Rule ${rules.length + 1}`
     };
     setRules([...rules, newRule]);
   };
@@ -46,7 +42,8 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   };
 
   const deleteRule = (ruleId: string) => {
-    const updatedRules = rules.filter(rule => rule.id !== ruleId);
+    const updatedRules = rules.filter(rule => rule.id !== ruleId)
+      .map((rule, index) => ({ ...rule, priority: index + 1 }));
     setRules(updatedRules);
   };
 
@@ -71,14 +68,17 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-none w-auto">
-      {/* Input Handle */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="input"
-        className="w-3 h-3 bg-orange-500 border-2 border-white"
-        style={{ top: '50%' }}
-      />
+      {/* Input Handles - one for each rule */}
+      {rules.map((rule, index) => (
+        <Handle
+          key={rule.id}
+          type="target"
+          position={Position.Left}
+          id={rule.id}
+          className="w-3 h-3 bg-orange-500 border-2 border-white"
+          style={{ top: `${20 + (index * 25)}%` }}
+        />
+      ))}
 
       <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-orange-50">
         <GitMerge className="w-4 h-4 text-orange-600" />
@@ -99,26 +99,10 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
             </SheetHeader>
 
             <div className="flex-1 flex flex-col gap-4">
-              {/* Output Type Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Output Type:
-                </label>
-                <select
-                  value={outputType}
-                  onChange={(e) => setOutputType(e.target.value as 'value' | 'label' | 'both')}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                >
-                  <option value="value">Value Only (First non-null value)</option>
-                  <option value="label">Label Only (ATA/ETA/PTA)</option>
-                  <option value="both">Both Value and Label</option>
-                </select>
-              </div>
-
               {/* Default Value */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Default Value (if no fields have values):
+                  Default Value (if no inputs have values):
                 </label>
                 <input
                   type="text"
@@ -177,32 +161,17 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
                             </button>
                           </div>
 
-                          <div className="space-y-2">
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-1">
-                                Field Path:
-                              </label>
-                              <input
-                                type="text"
-                                value={rule.fieldPath}
-                                onChange={(e) => updateRule(rule.id, { fieldPath: e.target.value })}
-                                className="w-full border rounded px-2 py-1 text-sm"
-                                placeholder="e.g., itinerary.actual_time_of_arrival"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-1">
-                                Output Label:
-                              </label>
-                              <input
-                                type="text"
-                                value={rule.outputLabel}
-                                onChange={(e) => updateRule(rule.id, { outputLabel: e.target.value })}
-                                className="w-full border rounded px-2 py-1 text-sm"
-                                placeholder="e.g., ATA, ETA, PTA"
-                              />
-                            </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Rule Label:
+                            </label>
+                            <input
+                              type="text"
+                              value={rule.label}
+                              onChange={(e) => updateRule(rule.id, { label: e.target.value })}
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              placeholder="e.g., ATA, ETA, PTA"
+                            />
                           </div>
                         </div>
                       ))}
@@ -228,18 +197,12 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
             <div className="space-y-1">
               {rules.map((rule) => (
                 <div key={rule.id} className="text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded">
-                  #{rule.priority}: {rule.fieldPath || 'No path'} → {rule.outputLabel || 'No label'}
+                  #{rule.priority}: {rule.label || 'Unnamed rule'}
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-xs text-gray-500 italic">No rules configured</div>
-          )}
-          
-          {outputType !== 'label' && (
-            <div className="text-xs text-gray-600">
-              Output: {outputType === 'both' ? 'Value + Label' : 'Value Only'}
-            </div>
           )}
           
           {defaultValue && (
@@ -250,37 +213,14 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
         </div>
       </div>
 
-      {/* Output Handles */}
-      {outputType === 'both' ? (
-        <>
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="value"
-            className="w-3 h-3 bg-orange-500 border-2 border-white"
-            style={{ top: '40%' }}
-          />
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="label"
-            className="w-3 h-3 bg-orange-500 border-2 border-white"
-            style={{ top: '60%' }}
-          />
-          <div className="absolute right-4 text-xs text-gray-600">
-            <div style={{ top: '35%' }} className="absolute">value</div>
-            <div style={{ top: '55%' }} className="absolute">label</div>
-          </div>
-        </>
-      ) : (
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="output"
-          className="w-3 h-3 bg-orange-500 border-2 border-white"
-          style={{ top: '50%' }}
-        />
-      )}
+      {/* Single Output Handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="output"
+        className="w-3 h-3 bg-orange-500 border-2 border-white"
+        style={{ top: '50%' }}
+      />
     </div>
   );
 };

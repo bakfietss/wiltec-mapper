@@ -165,56 +165,23 @@ const applyStringTransform = (inputValue: any, config: any, transformType: strin
     return inputValue;
 };
 
-// Apply coalesce transformation
-const applyCoalesceTransform = (inputValue: any, config: any, sourceNode: any): { value: any; label?: string } => {
-    const rules = config.rules || [];
-    const defaultValue = config.defaultValue || '';
-    const outputType = config.outputType || 'value';
+// Apply coalesce transformation - updated for multiple inputs
+const applyCoalesceTransform = (inputValues: Record<string, any>, config: any): any => {
+  const rules = config.rules || [];
+  const defaultValue = config.defaultValue || '';
+  
+  // Try each rule in priority order
+  for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
+    const inputValue = inputValues[rule.id];
     
-    // Get the source data object
-    const sourceData = typeof inputValue === 'object' ? inputValue : {};
-    
-    // Try each rule in priority order
-    for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
-        if (!rule.fieldPath) continue;
-        
-        // Get value from the field path
-        const getValue = (obj: any, path: string) => {
-            try {
-                const keys = path.split('.');
-                let value = obj;
-                for (const key of keys) {
-                    if (value && typeof value === 'object') {
-                        value = value[key];
-                    } else {
-                        return undefined;
-                    }
-                }
-                return value;
-            } catch (e) {
-                return undefined;
-            }
-        };
-        
-        const fieldValue = getValue(sourceData, rule.fieldPath);
-        
-        // If this field has a value, use it
-        if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
-            if (outputType === 'value') {
-                return { value: fieldValue };
-            } else if (outputType === 'label') {
-                return { value: rule.outputLabel };
-            } else { // both
-                return { value: fieldValue, label: rule.outputLabel };
-            }
-        }
+    // If this input has a value, use it
+    if (inputValue !== undefined && inputValue !== null && inputValue !== '') {
+      return inputValue;
     }
-    
-    // No field had a value, return default
-    if (outputType === 'label') {
-        return { value: '' };
-    }
-    return { value: defaultValue };
+  }
+  
+  // No input had a value, return default
+  return defaultValue;
 };
 
 // Get source value from a node - updated to handle new field structure
@@ -311,33 +278,23 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 value = applyStringTransform(inputValue, config, transformType);
             }
         } else if (sourceNode.type === 'coalesceTransform') {
-            // Handle coalesce transform node
+            // Handle coalesce transform node with multiple inputs
             const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
             
-            let inputValue: any = null;
+            let inputValues: Record<string, any> = {};
             
             transformInputEdges.forEach(inputEdge => {
                 const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
                 
                 if (inputSourceNode && isSourceNode(inputSourceNode)) {
-                    // For coalesce, we need the entire data object, not just a field
-                    const sourceData = inputSourceNode.data?.data;
-                    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
-                        inputValue = sourceData[0];
-                    }
+                  const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                  inputValues[inputEdge.targetHandle] = sourceValue;
                 }
             });
             
-            if (inputValue !== null) {
+            if (Object.keys(inputValues).length > 0) {
                 const config = sourceNode.data || {};
-                const result = applyCoalesceTransform(inputValue, config, sourceNode);
-                
-                // Handle different output types based on the target handle
-                if (edge.sourceHandle === 'value' || edge.sourceHandle === 'output') {
-                    value = result.value;
-                } else if (edge.sourceHandle === 'label') {
-                    value = result.label;
-                }
+                value = applyCoalesceTransform(inputValues, config);
             }
         } else if (sourceNode.type === 'staticValue') {
             // Handle new multi-value static value nodes
