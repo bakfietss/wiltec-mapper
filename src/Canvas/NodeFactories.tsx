@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 
@@ -52,6 +53,7 @@ export const useNodeFactories = (
                 label: 'Coalesce Transform',
                 rules: [],
                 defaultValue: '',
+                outputType: 'value',
             };
         }
         
