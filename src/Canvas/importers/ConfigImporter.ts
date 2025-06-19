@@ -105,6 +105,21 @@ export const importMappingConfiguration = (
           config: transformConfig.config
         };
       }
+    } else if (transformConfig.transformType === 'Coalesce' || transformConfig.type === 'coalesceTransform') {
+      nodeType = 'coalesceTransform';
+      if ((transformConfig as any).nodeData) {
+        nodeData = {
+          label: transformConfig.label,
+          ...((transformConfig as any).nodeData)
+        };
+      } else {
+        const params = transformConfig.config?.parameters || {};
+        nodeData = {
+          label: transformConfig.label,
+          rules: params.rules || [],
+          defaultValue: params.defaultValue || ''
+        };
+      }
     } else {
       nodeType = 'transform';
       nodeData = {

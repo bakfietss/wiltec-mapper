@@ -70,7 +70,7 @@ export const exportUIMappingConfiguration = (
   // Extract transform nodes - preserve complete data for each transform type
   nodes.filter(node => 
     node.type === 'transform' || node.type === 'splitterTransform' || 
-    node.type === 'ifThen' || node.type === 'staticValue'
+    node.type === 'ifThen' || node.type === 'staticValue' || node.type === 'coalesceTransform'
   ).forEach(node => {
     let transformConfig: any = {
       id: node.id,
@@ -123,6 +123,18 @@ export const exportUIMappingConfiguration = (
         splitIndex: node.data?.splitIndex || 0,
         config: additionalConfig
       };
+    } else if (node.type === 'coalesceTransform') {
+      transformConfig.config = {
+        operation: 'coalesce',
+        parameters: {
+          rules: node.data?.rules || [],
+          defaultValue: node.data?.defaultValue || ''
+        }
+      };
+      transformConfig.nodeData = {
+        rules: node.data?.rules || [],
+        defaultValue: node.data?.defaultValue || ''
+      };
     } else {
       transformConfig.config = node.data?.config || node.data || {};
     }
@@ -149,7 +161,8 @@ export const exportUIMappingConfiguration = (
     let connectionType: 'direct' | 'transform' | 'mapping' = 'direct';
     
     if (sourceNode?.type === 'transform' || sourceNode?.type === 'splitterTransform' || 
-        sourceNode?.type === 'ifThen' || sourceNode?.type === 'staticValue') {
+        sourceNode?.type === 'ifThen' || sourceNode?.type === 'staticValue' || 
+        sourceNode?.type === 'coalesceTransform') {
       connectionType = 'transform';
     } else if (sourceNode?.type === 'conversionMapping') {
       connectionType = 'mapping';

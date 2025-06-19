@@ -94,6 +94,51 @@ export const exportExecutionMapping = (
               else: elseValue
             };
             
+          } else if (sourceNode.type === 'coalesceTransform') {
+            // Coalesce transform mapping
+            const sourceData = sourceNode.data as any;
+            const rules = sourceData?.rules || [];
+            const defaultValue = sourceData?.defaultValue || '';
+            
+            // Find all inputs to the coalesce node and build the coalesce mapping
+            const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
+            const inputSources: string[] = [];
+            const ruleValues: string[] = [];
+            
+            coalesceInputEdges.forEach(inputEdge => {
+              const inputNode = nodes.find(n => n.id === inputEdge.source);
+              if (inputNode && inputNode.type === 'source') {
+                const inputData = inputNode.data as any;
+                const inputFields = inputData?.fields;
+                const inputField = Array.isArray(inputFields) ? 
+                  inputFields.find((f: any) => f.id === inputEdge.sourceHandle) : null;
+                if (inputField) {
+                  inputSources.push(inputField.name);
+                }
+              }
+              
+              // Find the corresponding rule for this input
+              const rule = rules.find((r: any) => r.id === inputEdge.targetHandle);
+              if (rule) {
+                ruleValues.push(rule.outputValue || '');
+              }
+            });
+            
+            mapping = {
+              from: inputSources.length > 0 ? inputSources[0] : null,
+              to: targetField.name,
+              type: 'transform',
+              transform: {
+                type: 'coalesce',
+                operation: 'coalesce',
+                parameters: {
+                  sources: inputSources,
+                  rules: rules,
+                  defaultValue: defaultValue
+                }
+              }
+            };
+            
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
             const sourceData = sourceNode.data as any;
