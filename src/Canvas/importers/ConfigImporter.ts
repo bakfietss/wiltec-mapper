@@ -67,18 +67,27 @@ export const importMappingConfiguration = (
       if (transformConfig.transformType === 'coalesce') {
         console.log('Restoring coalesce transform node:', transformConfig.id);
         
-        // Get coalesce data from config - using type assertion to access properties
+        // Get coalesce data from config - check both direct config and nested config
         const coalesceConfig = transformConfig.config as any;
         
-        // Extract the rules directly from the config
-        const rules = coalesceConfig?.rules || [];
-        const defaultValue = coalesceConfig?.defaultValue || '';
-        const outputType = coalesceConfig?.outputType || 'value';
-        const inputValues = coalesceConfig?.inputValues || {};
+        // Extract the rules - they might be in config.rules or config.config.rules
+        let rules = coalesceConfig?.rules || [];
+        let defaultValue = coalesceConfig?.defaultValue || '';
+        let outputType = coalesceConfig?.outputType || 'value';
+        let inputValues = coalesceConfig?.inputValues || {};
+        
+        // If rules not found in direct config, check nested config
+        if (rules.length === 0 && coalesceConfig?.config) {
+          rules = coalesceConfig.config.rules || [];
+          defaultValue = coalesceConfig.config.defaultValue || defaultValue;
+          outputType = coalesceConfig.config.outputType || outputType;
+          inputValues = coalesceConfig.config.inputValues || inputValues;
+        }
         
         console.log('Restoring coalesce rules:', rules);
         console.log('Restoring coalesce defaultValue:', defaultValue);
         
+        // Create the node data with rules at the root level (where CoalesceTransformNode expects them)
         nodeData = {
           label: transformConfig.label,
           transformType: 'coalesce',
