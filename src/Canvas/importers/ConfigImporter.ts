@@ -66,44 +66,31 @@ export const importMappingConfiguration = (
       // For coalesce transforms, ensure we have the proper structure
       if (transformConfig.transformType === 'coalesce') {
         console.log('Restoring coalesce transform node:', transformConfig.id);
+        console.log('Transform config:', transformConfig.config);
         
-        // Get coalesce data from config - check both direct config and nested config
+        // Get coalesce data from config - the structure in your JSON is config.rules, config.defaultValue, etc.
         const coalesceConfig = transformConfig.config as any;
         
-        // Extract the rules - they might be in config.rules or config.config.rules
-        let rules = coalesceConfig?.rules || [];
-        let defaultValue = coalesceConfig?.defaultValue || '';
-        let outputType = coalesceConfig?.outputType || 'value';
-        let inputValues = coalesceConfig?.inputValues || {};
+        // Extract the properties directly from the config
+        const rules = coalesceConfig?.rules || [];
+        const defaultValue = coalesceConfig?.defaultValue || '';
+        const outputType = coalesceConfig?.outputType || 'value';
+        const inputValues = coalesceConfig?.inputValues || {};
         
-        // If rules not found in direct config, check nested config
-        if (rules.length === 0 && coalesceConfig?.config) {
-          rules = coalesceConfig.config.rules || [];
-          defaultValue = coalesceConfig.config.defaultValue || defaultValue;
-          outputType = coalesceConfig.config.outputType || outputType;
-          inputValues = coalesceConfig.config.inputValues || inputValues;
-        }
+        console.log('Extracted coalesce rules:', rules);
+        console.log('Extracted coalesce defaultValue:', defaultValue);
         
-        console.log('Restoring coalesce rules:', rules);
-        console.log('Restoring coalesce defaultValue:', defaultValue);
-        
-        // Create the node data with rules at the root level (where CoalesceTransformNode expects them)
+        // Create the node data with properties at the root level for CoalesceTransformNode
         nodeData = {
           label: transformConfig.label,
           transformType: 'coalesce',
           rules: rules,
           defaultValue: defaultValue,
           outputType: outputType,
-          inputValues: inputValues,
-          config: {
-            rules: rules,
-            defaultValue: defaultValue,
-            outputType: outputType,
-            inputValues: inputValues
-          }
+          inputValues: inputValues
         };
         
-        console.log('Restored coalesce node data:', nodeData);
+        console.log('Final coalesce node data:', nodeData);
       } else {
         // Regular transform node
         nodeData = {
@@ -184,7 +171,70 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import connections with improved validation for coalesce nodes
+  // Track which nested paths we need to expand in source nodes
+  const nestedPathsToExpand = new Set<string>();
+
+  // First pass: collect all nested paths that are being used in connections
+  config.connections.forEach(connectionConfig => {
+    const sourceHandle = connectionConfig.sourceHandle;
+    if (sourceHandle && sourceHandle.includes('.')) {
+      nestedPathsToExpand.add(`${connectionConfig.sourceNodeId}:${sourceHandle}`);
+    }
+  });
+
+  // Second pass: expand source nodes that have nested connections
+  nestedPathsToExpand.forEach(pathKey => {
+    const [nodeId, path] = pathKey.split(':');
+    const sourceNode = nodes.find(n => n.id === nodeId);
+    
+    if (sourceNode && sourceNode.type === 'source') {
+      console.log('Expanding nested path for source node:', nodeId, 'path:', path);
+      
+      // Add nested field to the source node's fields if it doesn't exist
+      const fields = sourceNode.data.fields as any[] || [];
+      const pathParts = path.split('.');
+      
+      // Create nested field structure
+      let currentFields = fields;
+      let currentPath = '';
+      
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        currentPath = currentPath ? `${currentPath}.${part}` : part;
+        
+        // Check if field exists at this level
+        let existingField = currentFields.find((f: any) => f.id === part || f.name === part);
+        
+        if (!existingField) {
+          // Create the field
+          existingField = {
+            id: part,
+            name: part,
+            type: i === pathParts.length - 1 ? 'string' : 'object',
+            children: i === pathParts.length - 1 ? undefined : []
+          };
+          currentFields.push(existingField);
+          console.log('Added field:', part, 'to path:', currentPath);
+        }
+        
+        // Move to children for next iteration if not the last part
+        if (i < pathParts.length - 1) {
+          if (!existingField.children) {
+            existingField.children = [];
+          }
+          currentFields = existingField.children;
+        }
+      }
+      
+      // Update the node data
+      sourceNode.data = {
+        ...sourceNode.data,
+        fields: fields
+      };
+    }
+  });
+
+  // Import connections with improved validation
   config.connections.forEach(connectionConfig => {
     const sourceNode = nodes.find(n => n.id === connectionConfig.sourceNodeId);
     const targetNode = nodes.find(n => n.id === connectionConfig.targetNodeId);
@@ -195,48 +245,32 @@ export const importMappingConfiguration = (
     if (sourceNode && targetNode) {
       let canCreateEdge = true;
       
-      // For source nodes, validate that the source handle exists
+      // For source nodes, validate that the source handle exists (more flexible validation)
       if (sourceNode.type === 'source') {
         const sourceFields = (sourceNode.data?.fields || []) as any[];
         const sourceHandle = connectionConfig.sourceHandle;
         
-        // Try multiple validation strategies
-        let sourceHandleExists = false;
-        
-        // 1. Direct ID match
-        sourceHandleExists = sourceFields.some((field: any) => field.id === sourceHandle);
-        
-        // 2. If not found and handle contains dots, try finding by the last part (field name)
-        if (!sourceHandleExists && sourceHandle && sourceHandle.includes('.')) {
-          const fieldName = sourceHandle.split('.').pop();
-          sourceHandleExists = sourceFields.some((field: any) => field.id === fieldName || field.name === fieldName);
+        if (sourceHandle) {
+          let sourceHandleExists = false;
           
-          if (sourceHandleExists) {
-            console.log('Found field by extracted name:', fieldName, 'from handle:', sourceHandle);
+          // Check if it's a direct field match
+          sourceHandleExists = sourceFields.some((field: any) => field.id === sourceHandle || field.name === sourceHandle);
+          
+          // If not found and it's a nested path, validate the nested structure
+          if (!sourceHandleExists && sourceHandle.includes('.')) {
+            sourceHandleExists = validateNestedFieldPath(sourceFields, sourceHandle);
           }
-        }
-        
-        // 3. Try finding by name match
-        if (!sourceHandleExists) {
-          sourceHandleExists = sourceFields.some((field: any) => field.name === sourceHandle);
-          if (sourceHandleExists) {
-            console.log('Found field by name match:', sourceHandle);
+          
+          // If still not found, check in sample data
+          if (!sourceHandleExists && sourceNode.data?.data && Array.isArray(sourceNode.data.data) && sourceNode.data.data.length > 0) {
+            const sampleData = sourceNode.data.data[0];
+            sourceHandleExists = checkNestedPath(sampleData, sourceHandle);
           }
-        }
-        
-        // 4. For nested data structures, check if the handle represents a valid path
-        if (!sourceHandleExists && sourceNode.data?.data && Array.isArray(sourceNode.data.data) && sourceNode.data.data.length > 0) {
-          const sampleData = sourceNode.data.data[0];
-          const pathExists = checkNestedPath(sampleData, sourceHandle);
-          if (pathExists) {
-            sourceHandleExists = true;
-            console.log('Found valid nested path:', sourceHandle);
+          
+          if (!sourceHandleExists) {
+            console.warn('Source handle not found, but allowing edge creation:', sourceHandle);
+            // Don't block edge creation - the field might be dynamically created
           }
-        }
-        
-        if (!sourceHandleExists) {
-          console.warn('Source handle not found:', sourceHandle, 'Available fields:', sourceFields.map(f => ({ id: f.id, name: f.name })));
-          canCreateEdge = false;
         }
       }
       
@@ -244,11 +278,14 @@ export const importMappingConfiguration = (
       if (canCreateEdge && targetNode.type === 'transform' && targetNode.data?.transformType === 'coalesce') {
         const targetRules = (targetNode.data?.rules || []) as any[];
         const targetHandle = connectionConfig.targetHandle;
-        const targetHandleExists = targetRules.some((rule: any) => rule.id === targetHandle);
         
-        if (!targetHandleExists) {
-          console.warn('Target handle (rule) not found in coalesce node:', targetHandle, 'Available rules:', targetRules.map(r => r.id));
-          canCreateEdge = false;
+        if (targetHandle) {
+          const targetHandleExists = targetRules.some((rule: any) => rule.id === targetHandle);
+          
+          if (!targetHandleExists) {
+            console.warn('Target handle (rule) not found in coalesce node:', targetHandle, 'Available rules:', targetRules.map(r => r.id));
+            canCreateEdge = false;
+          }
         }
       }
       
@@ -281,6 +318,24 @@ export const importMappingConfiguration = (
   console.log('Final edges:', edges);
 
   return { nodes, edges };
+};
+
+// Helper function to validate nested field paths
+const validateNestedFieldPath = (fields: any[], path: string): boolean => {
+  const pathParts = path.split('.');
+  let currentFields = fields;
+  
+  for (const part of pathParts) {
+    const field = currentFields.find((f: any) => f.id === part || f.name === part);
+    if (!field) {
+      return false;
+    }
+    if (field.children) {
+      currentFields = field.children;
+    }
+  }
+  
+  return true;
 };
 
 // Helper function to check if a nested path exists in an object
