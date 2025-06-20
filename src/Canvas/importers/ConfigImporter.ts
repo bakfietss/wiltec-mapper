@@ -184,7 +184,7 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import connections - with better validation
+  // Import connections with improved validation for coalesce nodes
   config.connections.forEach(connectionConfig => {
     const sourceNode = nodes.find(n => n.id === connectionConfig.sourceNodeId);
     const targetNode = nodes.find(n => n.id === connectionConfig.targetNodeId);
@@ -193,51 +193,84 @@ export const importMappingConfiguration = (
     console.log('Source handle:', connectionConfig.sourceHandle, 'Target handle:', connectionConfig.targetHandle);
     
     if (sourceNode && targetNode) {
-      // For source nodes, validate that the source handle exists in the fields
+      let canCreateEdge = true;
+      
+      // For source nodes, validate that the source handle exists
       if (sourceNode.type === 'source') {
         const sourceFields = (sourceNode.data?.fields || []) as any[];
-        const sourceHandleExists = sourceFields.some((field: any) => field.id === connectionConfig.sourceHandle);
+        const sourceHandle = connectionConfig.sourceHandle;
+        
+        // Try multiple validation strategies
+        let sourceHandleExists = false;
+        
+        // 1. Direct ID match
+        sourceHandleExists = sourceFields.some((field: any) => field.id === sourceHandle);
+        
+        // 2. If not found and handle contains dots, try finding by the last part (field name)
+        if (!sourceHandleExists && sourceHandle && sourceHandle.includes('.')) {
+          const fieldName = sourceHandle.split('.').pop();
+          sourceHandleExists = sourceFields.some((field: any) => field.id === fieldName || field.name === fieldName);
+          
+          if (sourceHandleExists) {
+            console.log('Found field by extracted name:', fieldName, 'from handle:', sourceHandle);
+          }
+        }
+        
+        // 3. Try finding by name match
+        if (!sourceHandleExists) {
+          sourceHandleExists = sourceFields.some((field: any) => field.name === sourceHandle);
+          if (sourceHandleExists) {
+            console.log('Found field by name match:', sourceHandle);
+          }
+        }
+        
+        // 4. For nested data structures, check if the handle represents a valid path
+        if (!sourceHandleExists && sourceNode.data?.data && Array.isArray(sourceNode.data.data) && sourceNode.data.data.length > 0) {
+          const sampleData = sourceNode.data.data[0];
+          const pathExists = checkNestedPath(sampleData, sourceHandle);
+          if (pathExists) {
+            sourceHandleExists = true;
+            console.log('Found valid nested path:', sourceHandle);
+          }
+        }
         
         if (!sourceHandleExists) {
-          console.warn('Source handle not found in source node fields:', connectionConfig.sourceHandle, 'Available fields:', sourceFields);
-          // Try to find a field with matching name instead of id
-          const fieldByName = sourceFields.find((field: any) => field.name === connectionConfig.sourceHandle);
-          if (fieldByName) {
-            console.log('Found field by name, using field id:', fieldByName.id);
-            connectionConfig.sourceHandle = fieldByName.id;
-          } else {
-            console.warn('Could not find matching field, skipping connection');
-            return;
-          }
+          console.warn('Source handle not found:', sourceHandle, 'Available fields:', sourceFields.map(f => ({ id: f.id, name: f.name })));
+          canCreateEdge = false;
         }
       }
       
       // For coalesce target nodes, validate that the target handle (rule) exists
-      if (targetNode.type === 'transform' && targetNode.data?.transformType === 'coalesce') {
+      if (canCreateEdge && targetNode.type === 'transform' && targetNode.data?.transformType === 'coalesce') {
         const targetRules = (targetNode.data?.rules || []) as any[];
-        const targetHandleExists = targetRules.some((rule: any) => rule.id === connectionConfig.targetHandle);
+        const targetHandle = connectionConfig.targetHandle;
+        const targetHandleExists = targetRules.some((rule: any) => rule.id === targetHandle);
         
         if (!targetHandleExists) {
-          console.warn('Target handle (rule) not found in coalesce node:', connectionConfig.targetHandle, 'Available rules:', targetRules);
-          return;
+          console.warn('Target handle (rule) not found in coalesce node:', targetHandle, 'Available rules:', targetRules.map(r => r.id));
+          canCreateEdge = false;
         }
       }
       
-      edges.push({
-        id: connectionConfig.id,
-        source: connectionConfig.sourceNodeId,
-        target: connectionConfig.targetNodeId,
-        sourceHandle: connectionConfig.sourceHandle || undefined,
-        targetHandle: connectionConfig.targetHandle || undefined,
-        type: 'smoothstep',
-        animated: true,
-        style: { 
-          strokeWidth: 2.0,
-          stroke: '#3b82f6'
-        }
-      });
-      
-      console.log('Added edge:', connectionConfig.id);
+      if (canCreateEdge) {
+        edges.push({
+          id: connectionConfig.id,
+          source: connectionConfig.sourceNodeId,
+          target: connectionConfig.targetNodeId,
+          sourceHandle: connectionConfig.sourceHandle || undefined,
+          targetHandle: connectionConfig.targetHandle || undefined,
+          type: 'smoothstep',
+          animated: true,
+          style: { 
+            strokeWidth: 2.0,
+            stroke: '#3b82f6'
+          }
+        });
+        
+        console.log('Added edge:', connectionConfig.id);
+      } else {
+        console.warn('Skipping edge - validation failed:', connectionConfig);
+      }
     } else {
       console.warn('Skipping edge - source or target node not found:', connectionConfig);
     }
@@ -248,4 +281,26 @@ export const importMappingConfiguration = (
   console.log('Final edges:', edges);
 
   return { nodes, edges };
+};
+
+// Helper function to check if a nested path exists in an object
+const checkNestedPath = (obj: any, path: string): boolean => {
+  if (!obj || !path) return false;
+  
+  try {
+    const keys = path.split('.');
+    let current = obj;
+    
+    for (const key of keys) {
+      if (current && typeof current === 'object' && key in current) {
+        current = current[key];
+      } else {
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (e) {
+    return false;
+  }
 };
