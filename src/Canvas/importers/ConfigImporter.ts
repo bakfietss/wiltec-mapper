@@ -1,5 +1,6 @@
 
 
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -66,18 +67,18 @@ export const importMappingConfiguration = (
       if (transformConfig.transformType === 'coalesce') {
         console.log('Restoring coalesce transform node:', transformConfig.id);
         
-        // Get coalesce data from config
-        const coalesceConfig = transformConfig.config || {};
+        // Get coalesce data from config - using type assertion to access properties
+        const coalesceConfig = transformConfig.config as any;
         
         nodeData = {
           label: transformConfig.label,
           transformType: 'coalesce',
           config: coalesceConfig,
           // Also add the coalesce-specific properties at the root level for TransformNode
-          rules: coalesceConfig.rules || [],
-          defaultValue: coalesceConfig.defaultValue || '',
-          outputType: coalesceConfig.outputType || 'value',
-          inputValues: coalesceConfig.inputValues || {}
+          rules: coalesceConfig?.rules || [],
+          defaultValue: coalesceConfig?.defaultValue || '',
+          outputType: coalesceConfig?.outputType || 'value',
+          inputValues: coalesceConfig?.inputValues || {}
         };
         
         console.log('Restored coalesce node data:', nodeData);
@@ -187,3 +188,4 @@ export const importMappingConfiguration = (
 
   return { nodes, edges };
 };
+
