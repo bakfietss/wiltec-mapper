@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -27,7 +26,7 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import target nodes with complete data preservation including fieldValues
+  // Import target nodes with complete data preservation
   config.nodes.targets.forEach(targetConfig => {
     const nodeData: any = {
       label: targetConfig.label,
@@ -36,7 +35,6 @@ export const importMappingConfiguration = (
       schemaType: 'target'
     };
     
-    // Restore fieldValues if they exist
     if ((targetConfig as any).fieldValues) {
       nodeData.fieldValues = (targetConfig as any).fieldValues;
     }
@@ -56,41 +54,67 @@ export const importMappingConfiguration = (
     // Handle coalesce transforms with proper data extraction
     if (transformConfig.transformType === 'coalesce') {
       console.log('Processing coalesce transform node:', transformConfig.id);
-      console.log('Full transform config:', JSON.stringify(transformConfig, null, 2));
       
-      // Extract coalesce data from various possible locations in the config
-      let coalesceData: any = {};
+      // Extract coalesce data from all possible locations
+      let rules: any[] = [];
+      let defaultValue = '';
+      let outputType = 'value';
+      let inputValues: Record<string, any> = {};
       
-      // Check if data is in config object
-      if (transformConfig.config) {
-        coalesceData = transformConfig.config;
-      }
-      
-      // Check if data is nested under parameters
-      if (transformConfig.config?.parameters) {
-        coalesceData = { ...coalesceData, ...transformConfig.config.parameters };
-      }
-      
-      // Check if data is directly on the transform config (from export)
+      // Try to extract from direct properties first (from export)
       if ((transformConfig as any).rules) {
-        coalesceData.rules = (transformConfig as any).rules;
+        rules = (transformConfig as any).rules;
       }
       if ((transformConfig as any).defaultValue !== undefined) {
-        coalesceData.defaultValue = (transformConfig as any).defaultValue;
+        defaultValue = (transformConfig as any).defaultValue;
       }
       if ((transformConfig as any).outputType) {
-        coalesceData.outputType = (transformConfig as any).outputType;
+        outputType = (transformConfig as any).outputType;
       }
       if ((transformConfig as any).inputValues) {
-        coalesceData.inputValues = (transformConfig as any).inputValues;
+        inputValues = (transformConfig as any).inputValues;
+      }
+      
+      // Fallback to config object if direct properties not found
+      if (transformConfig.config) {
+        if (!rules.length && transformConfig.config.rules) {
+          rules = transformConfig.config.rules;
+        }
+        if (!defaultValue && transformConfig.config.defaultValue) {
+          defaultValue = transformConfig.config.defaultValue;
+        }
+        if (transformConfig.config.outputType) {
+          outputType = transformConfig.config.outputType;
+        }
+        if (transformConfig.config.inputValues) {
+          inputValues = transformConfig.config.inputValues;
+        }
+        
+        // Check nested parameters
+        if (transformConfig.config.parameters) {
+          const params = transformConfig.config.parameters;
+          if (!rules.length && params.rules) {
+            rules = params.rules;
+          }
+          if (!defaultValue && params.defaultValue) {
+            defaultValue = params.defaultValue;
+          }
+          if (params.outputType) {
+            outputType = params.outputType;
+          }
+          if (params.inputValues) {
+            inputValues = params.inputValues;
+          }
+        }
       }
 
       const nodeData = {
         label: transformConfig.label,
-        rules: coalesceData.rules || [],
-        defaultValue: coalesceData.defaultValue || '',
-        outputType: coalesceData.outputType || 'value',
-        inputValues: coalesceData.inputValues || {}
+        transformType: 'coalesce',
+        rules: rules,
+        defaultValue: defaultValue,
+        outputType: outputType,
+        inputValues: inputValues
       };
       
       console.log('Final coalesce node data:', nodeData);
@@ -195,51 +219,7 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Expand source nodes for nested connections
-  const nestedConnections = config.connections.filter(conn => 
-    conn.sourceHandle && conn.sourceHandle.includes('.')
-  );
-
-  nestedConnections.forEach(connection => {
-    const sourceNode = nodes.find(n => n.id === connection.sourceNodeId);
-    if (sourceNode && sourceNode.type === 'source') {
-      const path = connection.sourceHandle;
-      const pathParts = path.split('.');
-      
-      console.log('Expanding nested path for source node:', sourceNode.id, 'path:', path);
-      
-      let currentFields = sourceNode.data.fields as any[] || [];
-      let currentPath = '';
-      
-      // Ensure the nested structure exists
-      for (let i = 0; i < pathParts.length; i++) {
-        const part = pathParts[i];
-        currentPath = currentPath ? `${currentPath}.${part}` : part;
-        
-        let existingField = currentFields.find((f: any) => f.id === part || f.name === part);
-        
-        if (!existingField) {
-          existingField = {
-            id: part,
-            name: part,
-            type: i === pathParts.length - 1 ? 'string' : 'object',
-            children: i === pathParts.length - 1 ? undefined : []
-          };
-          currentFields.push(existingField);
-          console.log('Added nested field:', part, 'to path:', currentPath);
-        }
-        
-        if (i < pathParts.length - 1) {
-          if (!existingField.children) {
-            existingField.children = [];
-          }
-          currentFields = existingField.children;
-        }
-      }
-    }
-  });
-
-  // Import connections with simplified validation
+  // Import connections with proper validation
   config.connections.forEach(connectionConfig => {
     const sourceNode = nodes.find(n => n.id === connectionConfig.sourceNodeId);
     const targetNode = nodes.find(n => n.id === connectionConfig.targetNodeId);
