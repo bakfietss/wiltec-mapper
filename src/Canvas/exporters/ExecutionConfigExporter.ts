@@ -93,20 +93,22 @@ export const exportExecutionMapping = (
               else: elseValue
             };
             
-          } else if (sourceNode.type === 'coalesceTransform' || (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce')) {
+          } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
             // Coalesce transform mapping
-            console.log('PROCESSING COALESCE NODE FOR EXECUTION:', sourceNode.id);
+            console.log('PROCESSING COALESCE TRANSFORM NODE FOR EXECUTION:', sourceNode.id);
             const sourceData = sourceNode.data as any;
-            const rules = sourceData?.rules || [];
-            const defaultValue = sourceData?.defaultValue || '';
             
-            console.log('Coalesce rules:', rules);
-            console.log('Coalesce defaultValue:', defaultValue);
+            // Get coalesce configuration from the node's config
+            const coalesceConfig = sourceData?.config || {};
+            const rules = coalesceConfig?.rules || [];
+            const defaultValue = coalesceConfig?.defaultValue || '';
+            
+            console.log('Coalesce rules from config:', rules);
+            console.log('Coalesce defaultValue from config:', defaultValue);
             
             // Find all inputs to the coalesce node and build the coalesce mapping
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
             const inputSources: string[] = [];
-            const ruleValues: string[] = [];
             
             console.log('Coalesce input edges:', coalesceInputEdges.length);
             
@@ -121,13 +123,6 @@ export const exportExecutionMapping = (
                   inputSources.push(inputField.name);
                   console.log('Added input source:', inputField.name);
                 }
-              }
-              
-              // Find the corresponding rule for this input
-              const rule = rules.find((r: any) => r.id === inputEdge.targetHandle);
-              if (rule) {
-                ruleValues.push(rule.outputValue || '');
-                console.log('Added rule value:', rule.outputValue);
               }
             });
             

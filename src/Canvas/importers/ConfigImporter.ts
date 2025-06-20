@@ -1,4 +1,5 @@
 
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -58,7 +59,38 @@ export const importMappingConfiguration = (
     console.log('Importing transform node:', transformConfig.id, 'type:', transformConfig.type, 'transformType:', transformConfig.transformType);
 
     // Restore node data based on transform type
-    if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
+    if (transformConfig.transformType === 'coalesce' || transformConfig.type === 'transform') {
+      nodeType = 'transform';
+      
+      // For coalesce transforms, ensure we have the proper structure
+      if (transformConfig.transformType === 'coalesce') {
+        console.log('Restoring coalesce transform node:', transformConfig.id);
+        
+        // Get coalesce data from config
+        const coalesceConfig = transformConfig.config || {};
+        
+        nodeData = {
+          label: transformConfig.label,
+          transformType: 'coalesce',
+          config: coalesceConfig,
+          // Also add the coalesce-specific properties at the root level for TransformNode
+          rules: coalesceConfig.rules || [],
+          defaultValue: coalesceConfig.defaultValue || '',
+          outputType: coalesceConfig.outputType || 'value',
+          inputValues: coalesceConfig.inputValues || {}
+        };
+        
+        console.log('Restored coalesce node data:', nodeData);
+      } else {
+        // Regular transform node
+        nodeData = {
+          label: transformConfig.label,
+          transformType: transformConfig.transformType,
+          config: transformConfig.config
+        };
+      }
+      
+    } else if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
       nodeType = 'ifThen';
       if ((transformConfig as any).nodeData) {
         nodeData = {
@@ -105,28 +137,6 @@ export const importMappingConfiguration = (
           config: transformConfig.config
         };
       }
-    } else if (transformConfig.transformType === 'Coalesce' || transformConfig.type === 'coalesceTransform') {
-      nodeType = 'coalesceTransform';
-      if ((transformConfig as any).nodeData) {
-        nodeData = {
-          label: transformConfig.label,
-          ...((transformConfig as any).nodeData)
-        };
-      } else {
-        const params = transformConfig.config?.parameters || {};
-        nodeData = {
-          label: transformConfig.label,
-          rules: params.rules || [],
-          defaultValue: params.defaultValue || ''
-        };
-      }
-    } else {
-      nodeType = 'transform';
-      nodeData = {
-        label: transformConfig.label,
-        transformType: transformConfig.transformType,
-        config: transformConfig.config
-      };
     }
 
     nodes.push({
