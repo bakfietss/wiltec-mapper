@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -113,7 +112,7 @@ export interface TargetNodeConfig {
 
 export interface TransformNodeConfig {
   id: string;
-  type: 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue' | 'coalesceTransform' | 'Coalesce' | 'coalesce';
+  type: 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue' | 'coalesceTransform';
   label: string;
   position: { x: number; y: number };
   transformType: string;

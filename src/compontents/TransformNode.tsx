@@ -1,8 +1,8 @@
-
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Zap, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import CoalesceTransformNode from './CoalesceTransformNode';
 
 interface TransformConfig {
   operation?: string;
@@ -29,6 +29,11 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
   const { setNodes } = useReactFlow();
   const [config, setConfig] = useState<TransformConfig>(data.config || {});
   const { label, transformType, description } = data;
+  
+  // If this is a coalesce transform, render the specialized component
+  if (transformType === 'coalesce') {
+    return <CoalesceTransformNode data={data} id={id} />;
+  }
   
   const updateNodeData = useCallback((newConfig: TransformConfig) => {
     console.log('Updating transform node config:', newConfig);

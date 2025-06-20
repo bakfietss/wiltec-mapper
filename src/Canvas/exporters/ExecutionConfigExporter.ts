@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -94,7 +93,7 @@ export const exportExecutionMapping = (
               else: elseValue
             };
             
-          } else if (sourceNode.type === 'coalesceTransform') {
+          } else if (sourceNode.type === 'coalesceTransform' || (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce')) {
             // Coalesce transform mapping
             console.log('PROCESSING COALESCE NODE FOR EXECUTION:', sourceNode.id);
             const sourceData = sourceNode.data as any;

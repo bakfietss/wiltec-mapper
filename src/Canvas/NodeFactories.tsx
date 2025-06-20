@@ -55,15 +55,16 @@ export const useNodeFactories = (
                 valueType: 'string',
             };
         } else if (transformType === 'Coalesce') {
-            nodeType = 'coalesceTransform';
+            nodeType = 'transform';
             nodeIdPrefix = 'coalesce';
             nodeData = {
                 label: 'Coalesce Transform',
+                transformType: 'coalesce',
                 rules: [],
                 defaultValue: '',
                 outputType: 'value',
             };
-            console.log('Creating coalesce node with type:', nodeType, 'prefix:', nodeIdPrefix);
+            console.log('Creating coalesce node with type:', nodeType, 'transformType:', 'coalesce');
         }
         
         const nodeId = `${nodeIdPrefix}-${Date.now()}`;
@@ -77,7 +78,7 @@ export const useNodeFactories = (
         console.log('Created node:', {
             id: nodeId,
             type: nodeType,
-            transformType: transformType,
+            transformType: nodeData.transformType,
             data: nodeData
         });
 

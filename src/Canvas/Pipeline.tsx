@@ -259,26 +259,48 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
         if (isSourceNode(sourceNode)) {
             value = getSourceValue(sourceNode, edge.sourceHandle);
         } else if (sourceNode.type === 'transform') {
-            // Find input to the transform node
-            const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
-            
-            let inputValue: any = null;
-            
-            transformInputEdges.forEach(inputEdge => {
-                const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+            // Check if this is a coalesce transform
+            if (sourceNode.data?.transformType === 'coalesce') {
+                // Handle coalesce transform node with multiple inputs
+                const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
                 
-                if (inputSourceNode && isSourceNode(inputSourceNode)) {
-                    inputValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                let inputValues: Record<string, any> = {};
+                
+                transformInputEdges.forEach(inputEdge => {
+                    const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                    
+                    if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                      const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                      inputValues[inputEdge.targetHandle] = sourceValue;
+                    }
+                });
+                
+                if (Object.keys(inputValues).length > 0) {
+                    const config = sourceNode.data || {};
+                    value = applyCoalesceTransform(inputValues, config);
                 }
-            });
-            
-            if (inputValue !== null) {
-                const config = sourceNode.data?.config || {};
-                const transformType = sourceNode.data?.transformType;
-                value = applyStringTransform(inputValue, config, transformType);
+            } else {
+                // Regular transform node
+                const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+                
+                let inputValue: any = null;
+                
+                transformInputEdges.forEach(inputEdge => {
+                    const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                    
+                    if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                        inputValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                    }
+                });
+                
+                if (inputValue !== null) {
+                    const config = sourceNode.data?.config || {};
+                    const transformType = sourceNode.data?.transformType;
+                    value = applyStringTransform(inputValue, config, transformType);
+                }
             }
         } else if (sourceNode.type === 'coalesceTransform') {
-            // Handle coalesce transform node with multiple inputs
+            // Handle legacy coalesceTransform node type for backward compatibility
             const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
             
             let inputValues: Record<string, any> = {};
@@ -464,7 +486,7 @@ export default function Pipeline() {
                         fieldValues,
                     }
                 };
-            } else if (node.type === 'coalesceTransform') {
+            } else if (node.type === 'coalesceTransform' || (node.type === 'transform' && node.data?.transformType === 'coalesce')) {
                 // Calculate input values for coalesce nodes to display
                 const transformInputEdges = edges.filter(e => e.target === node.id);
                 let inputValues: Record<string, any> = {};
