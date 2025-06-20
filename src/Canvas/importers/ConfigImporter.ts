@@ -1,6 +1,4 @@
 
-
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -14,6 +12,8 @@ export const importMappingConfiguration = (
 
   // Import source nodes with complete data preservation
   config.nodes.sources.forEach(sourceConfig => {
+    console.log('Importing source node:', sourceConfig.id, 'with fields:', sourceConfig.schema.fields);
+    
     nodes.push({
       id: sourceConfig.id,
       type: 'source',
@@ -175,15 +175,45 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Import connections
+  // Import connections - with better validation
   config.connections.forEach(connectionConfig => {
-    const sourceExists = nodes.some(n => n.id === connectionConfig.sourceNodeId);
-    const targetExists = nodes.some(n => n.id === connectionConfig.targetNodeId);
+    const sourceNode = nodes.find(n => n.id === connectionConfig.sourceNodeId);
+    const targetNode = nodes.find(n => n.id === connectionConfig.targetNodeId);
     
     console.log('Importing connection:', connectionConfig.id, 'from', connectionConfig.sourceNodeId, 'to', connectionConfig.targetNodeId);
     console.log('Source handle:', connectionConfig.sourceHandle, 'Target handle:', connectionConfig.targetHandle);
     
-    if (sourceExists && targetExists) {
+    if (sourceNode && targetNode) {
+      // For source nodes, validate that the source handle exists in the fields
+      if (sourceNode.type === 'source') {
+        const sourceFields = sourceNode.data?.fields || [];
+        const sourceHandleExists = sourceFields.some((field: any) => field.id === connectionConfig.sourceHandle);
+        
+        if (!sourceHandleExists) {
+          console.warn('Source handle not found in source node fields:', connectionConfig.sourceHandle, 'Available fields:', sourceFields);
+          // Try to find a field with matching name instead of id
+          const fieldByName = sourceFields.find((field: any) => field.name === connectionConfig.sourceHandle);
+          if (fieldByName) {
+            console.log('Found field by name, using field id:', fieldByName.id);
+            connectionConfig.sourceHandle = fieldByName.id;
+          } else {
+            console.warn('Could not find matching field, skipping connection');
+            return;
+          }
+        }
+      }
+      
+      // For coalesce target nodes, validate that the target handle (rule) exists
+      if (targetNode.type === 'transform' && targetNode.data?.transformType === 'coalesce') {
+        const targetRules = targetNode.data?.rules || [];
+        const targetHandleExists = targetRules.some((rule: any) => rule.id === connectionConfig.targetHandle);
+        
+        if (!targetHandleExists) {
+          console.warn('Target handle (rule) not found in coalesce node:', connectionConfig.targetHandle, 'Available rules:', targetRules);
+          return;
+        }
+      }
+      
       edges.push({
         id: connectionConfig.id,
         source: connectionConfig.sourceNodeId,
