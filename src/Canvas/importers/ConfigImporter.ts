@@ -70,15 +70,28 @@ export const importMappingConfiguration = (
         // Get coalesce data from config - using type assertion to access properties
         const coalesceConfig = transformConfig.config as any;
         
+        // Extract the rules directly from the config
+        const rules = coalesceConfig?.rules || [];
+        const defaultValue = coalesceConfig?.defaultValue || '';
+        const outputType = coalesceConfig?.outputType || 'value';
+        const inputValues = coalesceConfig?.inputValues || {};
+        
+        console.log('Restoring coalesce rules:', rules);
+        console.log('Restoring coalesce defaultValue:', defaultValue);
+        
         nodeData = {
           label: transformConfig.label,
           transformType: 'coalesce',
-          config: coalesceConfig,
-          // Also add the coalesce-specific properties at the root level for TransformNode
-          rules: coalesceConfig?.rules || [],
-          defaultValue: coalesceConfig?.defaultValue || '',
-          outputType: coalesceConfig?.outputType || 'value',
-          inputValues: coalesceConfig?.inputValues || {}
+          rules: rules,
+          defaultValue: defaultValue,
+          outputType: outputType,
+          inputValues: inputValues,
+          config: {
+            rules: rules,
+            defaultValue: defaultValue,
+            outputType: outputType,
+            inputValues: inputValues
+          }
         };
         
         console.log('Restored coalesce node data:', nodeData);
@@ -167,6 +180,9 @@ export const importMappingConfiguration = (
     const sourceExists = nodes.some(n => n.id === connectionConfig.sourceNodeId);
     const targetExists = nodes.some(n => n.id === connectionConfig.targetNodeId);
     
+    console.log('Importing connection:', connectionConfig.id, 'from', connectionConfig.sourceNodeId, 'to', connectionConfig.targetNodeId);
+    console.log('Source handle:', connectionConfig.sourceHandle, 'Target handle:', connectionConfig.targetHandle);
+    
     if (sourceExists && targetExists) {
       edges.push({
         id: connectionConfig.id,
@@ -181,11 +197,16 @@ export const importMappingConfiguration = (
           stroke: '#3b82f6'
         }
       });
+      
+      console.log('Added edge:', connectionConfig.id);
+    } else {
+      console.warn('Skipping edge - source or target node not found:', connectionConfig);
     }
   });
 
   console.log('Import completed - Nodes:', nodes.length, 'Edges:', edges.length);
+  console.log('Final nodes:', nodes);
+  console.log('Final edges:', edges);
 
   return { nodes, edges };
 };
-
