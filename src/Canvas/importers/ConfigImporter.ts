@@ -1,5 +1,3 @@
-
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -58,61 +56,22 @@ export const importMappingConfiguration = (
       console.log('Processing coalesce transform node:', transformConfig.id);
       console.log('Transform config:', transformConfig);
       
-      // Extract coalesce data - it's inside the config object in the JSON
-      let rules: any[] = [];
-      let defaultValue = '';
-      let outputType = 'value';
-      let inputValues: Record<string, any> = {};
+      // Extract coalesce data directly from the config object
+      const configData = transformConfig.config as any;
       
-      // The data is stored inside config in the JSON - cast to any to access dynamic properties
-      if (transformConfig.config) {
-        const configAny = transformConfig.config as any;
-        if (configAny.rules) {
-          rules = configAny.rules;
-        }
-        if (configAny.defaultValue !== undefined) {
-          defaultValue = configAny.defaultValue;
-        }
-        if (configAny.outputType) {
-          outputType = configAny.outputType;
-        }
-        if (configAny.inputValues) {
-          inputValues = configAny.inputValues;
-        }
-        
-        // Also check if they're nested under parameters
-        if (configAny.parameters) {
-          const params = configAny.parameters;
-          if (!rules.length && params.rules) {
-            rules = params.rules;
-          }
-          if (!defaultValue && params.defaultValue) {
-            defaultValue = params.defaultValue;
-          }
-          if (params.outputType) {
-            outputType = params.outputType;
-          }
-          if (params.inputValues) {
-            inputValues = params.inputValues;
-          }
-        }
-      }
-
-      // Create the node with the correct data structure for CoalesceTransformNode
       const nodeData = {
-        label: transformConfig.label,
-        transformType: 'coalesce',
-        rules: rules,
-        defaultValue: defaultValue,
-        outputType: outputType,
-        inputValues: inputValues
+        label: configData.label || transformConfig.label,
+        rules: configData.rules || [],
+        defaultValue: configData.defaultValue || '',
+        outputType: configData.outputType || 'value',
+        inputValues: configData.inputValues || {}
       };
       
       console.log('Final coalesce node data:', nodeData);
       
       nodes.push({
         id: transformConfig.id,
-        type: 'transform',  // Keep as transform type so TransformNode renders CoalesceTransformNode
+        type: 'transform',
         position: transformConfig.position,
         data: nodeData
       });
@@ -244,4 +203,3 @@ export const importMappingConfiguration = (
 
   return { nodes, edges };
 };
-
