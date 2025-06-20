@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -59,47 +58,29 @@ export const importMappingConfiguration = (
 
     console.log('Importing transform node:', transformConfig.id, 'type:', transformConfig.type, 'transformType:', transformConfig.transformType);
 
-    // Restore node data based on transform type
-    if (transformConfig.transformType === 'coalesce' || transformConfig.type === 'transform') {
-      nodeType = 'transform';
+    // Handle coalesce transforms FIRST with proper data extraction
+    if (transformConfig.transformType === 'coalesce') {
+      console.log('Processing coalesce transform node:', transformConfig.id);
+      console.log('Transform config structure:', transformConfig);
       
-      // For coalesce transforms, ensure we have the proper structure
-      if (transformConfig.transformType === 'coalesce') {
-        console.log('Restoring coalesce transform node:', transformConfig.id);
-        console.log('Transform config:', transformConfig.config);
-        
-        // Get coalesce data from config - the structure in your JSON is config.rules, config.defaultValue, etc.
-        const coalesceConfig = transformConfig.config as any;
-        
-        // Extract the properties directly from the config
-        const rules = coalesceConfig?.rules || [];
-        const defaultValue = coalesceConfig?.defaultValue || '';
-        const outputType = coalesceConfig?.outputType || 'value';
-        const inputValues = coalesceConfig?.inputValues || {};
-        
-        console.log('Extracted coalesce rules:', rules);
-        console.log('Extracted coalesce defaultValue:', defaultValue);
-        
-        // Create the node data with properties at the root level for CoalesceTransformNode
-        nodeData = {
-          label: transformConfig.label,
-          transformType: 'coalesce',
-          rules: rules,
-          defaultValue: defaultValue,
-          outputType: outputType,
-          inputValues: inputValues
-        };
-        
-        console.log('Final coalesce node data:', nodeData);
-      } else {
-        // Regular transform node
-        nodeData = {
-          label: transformConfig.label,
-          transformType: transformConfig.transformType,
-          config: transformConfig.config
-        };
-      }
+      // The JSON structure has the data nested under 'config'
+      const configData = transformConfig.config as any;
+      console.log('Config data:', configData);
       
+      // Extract coalesce-specific data and put it at root level for CoalesceTransformNode
+      nodeData = {
+        label: transformConfig.label,
+        transformType: 'coalesce',
+        rules: configData?.rules || [],
+        defaultValue: configData?.defaultValue || '',
+        outputType: configData?.outputType || 'value',
+        inputValues: configData?.inputValues || {}
+      };
+      
+      // Set the correct node type for coalesce
+      nodeType = 'transform'; // This will route to TransformNode which then routes to CoalesceTransformNode
+      
+      console.log('Final coalesce node data:', nodeData);
     } else if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
       nodeType = 'ifThen';
       if ((transformConfig as any).nodeData) {
@@ -147,6 +128,14 @@ export const importMappingConfiguration = (
           config: transformConfig.config
         };
       }
+    } else {
+      // Handle generic transform nodes and any other types
+      console.log('Processing generic transform node:', transformConfig.id, 'with type:', transformConfig.type);
+      nodeData = {
+        label: transformConfig.label,
+        transformType: transformConfig.transformType,
+        config: transformConfig.config
+      };
     }
 
     nodes.push({
@@ -253,7 +242,7 @@ export const importMappingConfiguration = (
         if (sourceHandle) {
           let sourceHandleExists = false;
           
-          // Check if it's a direct field match
+          // Check if it's a direct field match first
           sourceHandleExists = sourceFields.some((field: any) => field.id === sourceHandle || field.name === sourceHandle);
           
           // If not found and it's a nested path, validate the nested structure
@@ -267,9 +256,15 @@ export const importMappingConfiguration = (
             sourceHandleExists = checkNestedPath(sampleData, sourceHandle);
           }
           
+          // For nested paths, try extracting the last part and check if it exists
+          if (!sourceHandleExists && sourceHandle.includes('.')) {
+            const lastPart = sourceHandle.split('.').pop();
+            sourceHandleExists = sourceFields.some((field: any) => field.id === lastPart || field.name === lastPart);
+          }
+          
           if (!sourceHandleExists) {
             console.warn('Source handle not found, but allowing edge creation:', sourceHandle);
-            // Don't block edge creation - the field might be dynamically created
+            // Allow edge creation anyway - the field might be dynamically created
           }
         }
       }
@@ -279,12 +274,12 @@ export const importMappingConfiguration = (
         const targetRules = (targetNode.data?.rules || []) as any[];
         const targetHandle = connectionConfig.targetHandle;
         
-        if (targetHandle) {
+        if (targetHandle && targetRules.length > 0) {
           const targetHandleExists = targetRules.some((rule: any) => rule.id === targetHandle);
           
           if (!targetHandleExists) {
             console.warn('Target handle (rule) not found in coalesce node:', targetHandle, 'Available rules:', targetRules.map(r => r.id));
-            canCreateEdge = false;
+            // Still allow the edge - the rule might be created later
           }
         }
       }
