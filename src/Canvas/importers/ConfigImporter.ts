@@ -1,4 +1,5 @@
 
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -63,24 +64,25 @@ export const importMappingConfiguration = (
       let outputType = 'value';
       let inputValues: Record<string, any> = {};
       
-      // The data is stored inside config in the JSON
+      // The data is stored inside config in the JSON - cast to any to access dynamic properties
       if (transformConfig.config) {
-        if (transformConfig.config.rules) {
-          rules = transformConfig.config.rules;
+        const configAny = transformConfig.config as any;
+        if (configAny.rules) {
+          rules = configAny.rules;
         }
-        if (transformConfig.config.defaultValue !== undefined) {
-          defaultValue = transformConfig.config.defaultValue;
+        if (configAny.defaultValue !== undefined) {
+          defaultValue = configAny.defaultValue;
         }
-        if (transformConfig.config.outputType) {
-          outputType = transformConfig.config.outputType;
+        if (configAny.outputType) {
+          outputType = configAny.outputType;
         }
-        if (transformConfig.config.inputValues) {
-          inputValues = transformConfig.config.inputValues;
+        if (configAny.inputValues) {
+          inputValues = configAny.inputValues;
         }
         
         // Also check if they're nested under parameters
-        if (transformConfig.config.parameters) {
-          const params = transformConfig.config.parameters;
+        if (configAny.parameters) {
+          const params = configAny.parameters;
           if (!rules.length && params.rules) {
             rules = params.rules;
           }
@@ -242,3 +244,4 @@ export const importMappingConfiguration = (
 
   return { nodes, edges };
 };
+
