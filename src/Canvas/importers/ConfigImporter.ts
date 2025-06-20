@@ -186,7 +186,7 @@ export const importMappingConfiguration = (
     if (sourceNode && targetNode) {
       // For source nodes, validate that the source handle exists in the fields
       if (sourceNode.type === 'source') {
-        const sourceFields = sourceNode.data?.fields || [];
+        const sourceFields = (sourceNode.data?.fields || []) as any[];
         const sourceHandleExists = sourceFields.some((field: any) => field.id === connectionConfig.sourceHandle);
         
         if (!sourceHandleExists) {
@@ -205,7 +205,7 @@ export const importMappingConfiguration = (
       
       // For coalesce target nodes, validate that the target handle (rule) exists
       if (targetNode.type === 'transform' && targetNode.data?.transformType === 'coalesce') {
-        const targetRules = targetNode.data?.rules || [];
+        const targetRules = (targetNode.data?.rules || []) as any[];
         const targetHandleExists = targetRules.some((rule: any) => rule.id === connectionConfig.targetHandle);
         
         if (!targetHandleExists) {
