@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -54,33 +55,20 @@ export const importMappingConfiguration = (
     // Handle coalesce transforms with proper data extraction
     if (transformConfig.transformType === 'coalesce') {
       console.log('Processing coalesce transform node:', transformConfig.id);
+      console.log('Transform config:', transformConfig);
       
-      // Extract coalesce data from all possible locations
+      // Extract coalesce data - it's inside the config object in the JSON
       let rules: any[] = [];
       let defaultValue = '';
       let outputType = 'value';
       let inputValues: Record<string, any> = {};
       
-      // Try to extract from direct properties first (from export)
-      if ((transformConfig as any).rules) {
-        rules = (transformConfig as any).rules;
-      }
-      if ((transformConfig as any).defaultValue !== undefined) {
-        defaultValue = (transformConfig as any).defaultValue;
-      }
-      if ((transformConfig as any).outputType) {
-        outputType = (transformConfig as any).outputType;
-      }
-      if ((transformConfig as any).inputValues) {
-        inputValues = (transformConfig as any).inputValues;
-      }
-      
-      // Fallback to config object if direct properties not found
+      // The data is stored inside config in the JSON
       if (transformConfig.config) {
-        if (!rules.length && transformConfig.config.rules) {
+        if (transformConfig.config.rules) {
           rules = transformConfig.config.rules;
         }
-        if (!defaultValue && transformConfig.config.defaultValue) {
+        if (transformConfig.config.defaultValue !== undefined) {
           defaultValue = transformConfig.config.defaultValue;
         }
         if (transformConfig.config.outputType) {
@@ -90,7 +78,7 @@ export const importMappingConfiguration = (
           inputValues = transformConfig.config.inputValues;
         }
         
-        // Check nested parameters
+        // Also check if they're nested under parameters
         if (transformConfig.config.parameters) {
           const params = transformConfig.config.parameters;
           if (!rules.length && params.rules) {
@@ -108,6 +96,7 @@ export const importMappingConfiguration = (
         }
       }
 
+      // Create the node with the correct data structure for CoalesceTransformNode
       const nodeData = {
         label: transformConfig.label,
         transformType: 'coalesce',
@@ -121,7 +110,7 @@ export const importMappingConfiguration = (
       
       nodes.push({
         id: transformConfig.id,
-        type: 'transform',
+        type: 'transform',  // Keep as transform type so TransformNode renders CoalesceTransformNode
         position: transformConfig.position,
         data: nodeData
       });
