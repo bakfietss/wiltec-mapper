@@ -51,24 +51,27 @@ export const importMappingConfiguration = (
   config.nodes.transforms.forEach(transformConfig => {
     console.log('Importing transform node:', transformConfig.id, 'type:', transformConfig.type, 'transformType:', transformConfig.transformType);
 
-    // Handle simple coalesce transforms
+    // Handle coalesce transforms with proper data extraction
     if (transformConfig.transformType === 'coalesce') {
-      console.log('Processing simple coalesce transform node:', transformConfig.id);
+      console.log('Processing coalesce transform node:', transformConfig.id);
+      console.log('Transform config:', transformConfig);
       
+      // Extract coalesce data directly from the config object
       const configData = transformConfig.config as any;
       
       const nodeData = {
         label: configData.label || transformConfig.label,
         rules: configData.rules || [],
         defaultValue: configData.defaultValue || '',
+        outputType: configData.outputType || 'value',
         inputValues: configData.inputValues || {}
       };
       
-      console.log('Final simple coalesce node data:', nodeData);
+      console.log('Final coalesce node data:', nodeData);
       
       nodes.push({
         id: transformConfig.id,
-        type: 'simpleCoalesce',
+        type: 'transform',
         position: transformConfig.position,
         data: nodeData
       });

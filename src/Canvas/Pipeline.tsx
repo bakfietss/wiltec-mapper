@@ -26,7 +26,6 @@ import MappingManager from '../compontents/MappingManager';
 import IfThenNode from '../compontents/IfThenNode';
 import StaticValueNode from '../compontents/StaticValueNode';
 import CoalesceTransformNode from '../compontents/CoalesceTransformNode';
-import SimpleCoalesceNode from '../compontents/SimpleCoalesceNode';
 
 import { useNodeFactories } from './NodeFactories';
 import { downloadBothMappingFiles, importMappingConfiguration, MappingConfiguration, exportUIMappingConfiguration } from './MappingExporter';
@@ -40,7 +39,6 @@ const nodeTypes = {
     ifThen: IfThenNode,
     staticValue: StaticValueNode,
     coalesceTransform: CoalesceTransformNode,
-    simpleCoalesce: SimpleCoalesceNode,
 };
 
 // Helper function to check if a node is a source-type node

@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 
@@ -54,14 +55,16 @@ export const useNodeFactories = (
                 valueType: 'string',
             };
         } else if (transformType === 'Coalesce') {
-            nodeType = 'simpleCoalesce';
+            nodeType = 'transform';
             nodeIdPrefix = 'coalesce';
             nodeData = {
                 label: 'Coalesce Transform',
+                transformType: 'coalesce',
                 rules: [],
                 defaultValue: '',
+                outputType: 'value',
             };
-            console.log('Creating simple coalesce node with type:', nodeType);
+            console.log('Creating coalesce node with type:', nodeType, 'transformType:', 'coalesce');
         }
         
         const nodeId = `${nodeIdPrefix}-${Date.now()}`;
@@ -75,6 +78,7 @@ export const useNodeFactories = (
         console.log('Created node:', {
             id: nodeId,
             type: nodeType,
+            transformType: nodeData.transformType,
             data: nodeData
         });
 
