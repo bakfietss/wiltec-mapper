@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -50,100 +51,134 @@ export const importMappingConfiguration = (
 
   // Import transform nodes with complete data preservation
   config.nodes.transforms.forEach(transformConfig => {
-    let nodeType = transformConfig.type;
-    let nodeData: any = {
-      label: transformConfig.label,
-      transformType: transformConfig.transformType
-    };
-
     console.log('Importing transform node:', transformConfig.id, 'type:', transformConfig.type, 'transformType:', transformConfig.transformType);
 
-    // Handle coalesce transforms FIRST with proper data extraction
+    // Handle coalesce transforms with proper data extraction
     if (transformConfig.transformType === 'coalesce') {
       console.log('Processing coalesce transform node:', transformConfig.id);
-      console.log('Transform config structure:', transformConfig);
+      console.log('Full transform config:', JSON.stringify(transformConfig, null, 2));
       
-      // The JSON structure has the data nested under 'config'
-      const configData = transformConfig.config as any;
-      console.log('Config data:', configData);
+      // Extract coalesce data from various possible locations in the config
+      let coalesceData: any = {};
       
-      // Extract coalesce-specific data and put it at root level for CoalesceTransformNode
-      nodeData = {
+      // Check if data is in config object
+      if (transformConfig.config) {
+        coalesceData = transformConfig.config;
+      }
+      
+      // Check if data is nested under parameters
+      if (transformConfig.config?.parameters) {
+        coalesceData = { ...coalesceData, ...transformConfig.config.parameters };
+      }
+      
+      // Check if data is directly on the transform config (from export)
+      if ((transformConfig as any).rules) {
+        coalesceData.rules = (transformConfig as any).rules;
+      }
+      if ((transformConfig as any).defaultValue !== undefined) {
+        coalesceData.defaultValue = (transformConfig as any).defaultValue;
+      }
+      if ((transformConfig as any).outputType) {
+        coalesceData.outputType = (transformConfig as any).outputType;
+      }
+      if ((transformConfig as any).inputValues) {
+        coalesceData.inputValues = (transformConfig as any).inputValues;
+      }
+
+      const nodeData = {
         label: transformConfig.label,
-        transformType: 'coalesce',
-        rules: configData?.rules || [],
-        defaultValue: configData?.defaultValue || '',
-        outputType: configData?.outputType || 'value',
-        inputValues: configData?.inputValues || {}
+        rules: coalesceData.rules || [],
+        defaultValue: coalesceData.defaultValue || '',
+        outputType: coalesceData.outputType || 'value',
+        inputValues: coalesceData.inputValues || {}
       };
       
-      // Set the correct node type for coalesce
-      nodeType = 'transform'; // This will route to TransformNode which then routes to CoalesceTransformNode
-      
       console.log('Final coalesce node data:', nodeData);
+      
+      nodes.push({
+        id: transformConfig.id,
+        type: 'transform',
+        position: transformConfig.position,
+        data: nodeData
+      });
     } else if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
-      nodeType = 'ifThen';
+      let nodeData: any = {
+        label: transformConfig.label
+      };
+      
       if ((transformConfig as any).nodeData) {
-        nodeData = {
-          label: transformConfig.label,
-          ...((transformConfig as any).nodeData)
-        };
+        nodeData = { ...nodeData, ...((transformConfig as any).nodeData) };
       } else {
         const params = transformConfig.config?.parameters || {};
         nodeData = {
-          label: transformConfig.label,
+          ...nodeData,
           operator: params.operator || '=',
           compareValue: params.compareValue || '',
           thenValue: params.thenValue || '',
           elseValue: params.elseValue || ''
         };
       }
+      
+      nodes.push({
+        id: transformConfig.id,
+        type: 'ifThen',
+        position: transformConfig.position,
+        data: nodeData
+      });
     } else if (transformConfig.transformType === 'Static Value' || transformConfig.type === 'staticValue') {
-      nodeType = 'staticValue';
+      let nodeData: any = {
+        label: transformConfig.label
+      };
+      
       if ((transformConfig as any).nodeData && (transformConfig as any).nodeData.values) {
-        nodeData = {
-          label: transformConfig.label,
-          values: (transformConfig as any).nodeData.values
-        };
+        nodeData.values = (transformConfig as any).nodeData.values;
       } else {
         const params = transformConfig.config?.parameters || {};
-        nodeData = {
-          label: transformConfig.label,
-          values: params.values || []
-        };
+        nodeData.values = params.values || [];
       }
+      
+      nodes.push({
+        id: transformConfig.id,
+        type: 'staticValue',
+        position: transformConfig.position,
+        data: nodeData
+      });
     } else if (transformConfig.transformType === 'Text Splitter' || transformConfig.type === 'splitterTransform') {
-      nodeType = 'splitterTransform';
+      let nodeData: any = {
+        label: transformConfig.label
+      };
+      
       if ((transformConfig as any).nodeData) {
-        nodeData = {
-          label: transformConfig.label,
-          ...((transformConfig as any).nodeData)
-        };
+        nodeData = { ...nodeData, ...((transformConfig as any).nodeData) };
       } else {
         const params = transformConfig.config?.parameters || {};
         nodeData = {
-          label: transformConfig.label,
+          ...nodeData,
           delimiter: params.delimiter || ',',
           splitIndex: params.splitIndex || 0,
           config: transformConfig.config
         };
       }
+      
+      nodes.push({
+        id: transformConfig.id,
+        type: 'splitterTransform',
+        position: transformConfig.position,
+        data: nodeData
+      });
     } else {
-      // Handle generic transform nodes and any other types
-      console.log('Processing generic transform node:', transformConfig.id, 'with type:', transformConfig.type);
-      nodeData = {
-        label: transformConfig.label,
-        transformType: transformConfig.transformType,
-        config: transformConfig.config
-      };
+      // Handle generic transform nodes
+      nodes.push({
+        id: transformConfig.id,
+        type: 'transform',
+        position: transformConfig.position,
+        data: {
+          label: transformConfig.label,
+          transformType: transformConfig.transformType,
+          config: transformConfig.config
+        }
+      });
     }
-
-    nodes.push({
-      id: transformConfig.id,
-      type: nodeType,
-      position: transformConfig.position,
-      data: nodeData
-    });
   });
 
   // Import mapping nodes
@@ -160,42 +195,30 @@ export const importMappingConfiguration = (
     });
   });
 
-  // Track which nested paths we need to expand in source nodes
-  const nestedPathsToExpand = new Set<string>();
+  // Expand source nodes for nested connections
+  const nestedConnections = config.connections.filter(conn => 
+    conn.sourceHandle && conn.sourceHandle.includes('.')
+  );
 
-  // First pass: collect all nested paths that are being used in connections
-  config.connections.forEach(connectionConfig => {
-    const sourceHandle = connectionConfig.sourceHandle;
-    if (sourceHandle && sourceHandle.includes('.')) {
-      nestedPathsToExpand.add(`${connectionConfig.sourceNodeId}:${sourceHandle}`);
-    }
-  });
-
-  // Second pass: expand source nodes that have nested connections
-  nestedPathsToExpand.forEach(pathKey => {
-    const [nodeId, path] = pathKey.split(':');
-    const sourceNode = nodes.find(n => n.id === nodeId);
-    
+  nestedConnections.forEach(connection => {
+    const sourceNode = nodes.find(n => n.id === connection.sourceNodeId);
     if (sourceNode && sourceNode.type === 'source') {
-      console.log('Expanding nested path for source node:', nodeId, 'path:', path);
-      
-      // Add nested field to the source node's fields if it doesn't exist
-      const fields = sourceNode.data.fields as any[] || [];
+      const path = connection.sourceHandle;
       const pathParts = path.split('.');
       
-      // Create nested field structure
-      let currentFields = fields;
+      console.log('Expanding nested path for source node:', sourceNode.id, 'path:', path);
+      
+      let currentFields = sourceNode.data.fields as any[] || [];
       let currentPath = '';
       
+      // Ensure the nested structure exists
       for (let i = 0; i < pathParts.length; i++) {
         const part = pathParts[i];
         currentPath = currentPath ? `${currentPath}.${part}` : part;
         
-        // Check if field exists at this level
         let existingField = currentFields.find((f: any) => f.id === part || f.name === part);
         
         if (!existingField) {
-          // Create the field
           existingField = {
             id: part,
             name: part,
@@ -203,10 +226,9 @@ export const importMappingConfiguration = (
             children: i === pathParts.length - 1 ? undefined : []
           };
           currentFields.push(existingField);
-          console.log('Added field:', part, 'to path:', currentPath);
+          console.log('Added nested field:', part, 'to path:', currentPath);
         }
         
-        // Move to children for next iteration if not the last part
         if (i < pathParts.length - 1) {
           if (!existingField.children) {
             existingField.children = [];
@@ -214,95 +236,32 @@ export const importMappingConfiguration = (
           currentFields = existingField.children;
         }
       }
-      
-      // Update the node data
-      sourceNode.data = {
-        ...sourceNode.data,
-        fields: fields
-      };
     }
   });
 
-  // Import connections with improved validation
+  // Import connections with simplified validation
   config.connections.forEach(connectionConfig => {
     const sourceNode = nodes.find(n => n.id === connectionConfig.sourceNodeId);
     const targetNode = nodes.find(n => n.id === connectionConfig.targetNodeId);
     
     console.log('Importing connection:', connectionConfig.id, 'from', connectionConfig.sourceNodeId, 'to', connectionConfig.targetNodeId);
-    console.log('Source handle:', connectionConfig.sourceHandle, 'Target handle:', connectionConfig.targetHandle);
     
     if (sourceNode && targetNode) {
-      let canCreateEdge = true;
-      
-      // For source nodes, validate that the source handle exists (more flexible validation)
-      if (sourceNode.type === 'source') {
-        const sourceFields = (sourceNode.data?.fields || []) as any[];
-        const sourceHandle = connectionConfig.sourceHandle;
-        
-        if (sourceHandle) {
-          let sourceHandleExists = false;
-          
-          // Check if it's a direct field match first
-          sourceHandleExists = sourceFields.some((field: any) => field.id === sourceHandle || field.name === sourceHandle);
-          
-          // If not found and it's a nested path, validate the nested structure
-          if (!sourceHandleExists && sourceHandle.includes('.')) {
-            sourceHandleExists = validateNestedFieldPath(sourceFields, sourceHandle);
-          }
-          
-          // If still not found, check in sample data
-          if (!sourceHandleExists && sourceNode.data?.data && Array.isArray(sourceNode.data.data) && sourceNode.data.data.length > 0) {
-            const sampleData = sourceNode.data.data[0];
-            sourceHandleExists = checkNestedPath(sampleData, sourceHandle);
-          }
-          
-          // For nested paths, try extracting the last part and check if it exists
-          if (!sourceHandleExists && sourceHandle.includes('.')) {
-            const lastPart = sourceHandle.split('.').pop();
-            sourceHandleExists = sourceFields.some((field: any) => field.id === lastPart || field.name === lastPart);
-          }
-          
-          if (!sourceHandleExists) {
-            console.warn('Source handle not found, but allowing edge creation:', sourceHandle);
-            // Allow edge creation anyway - the field might be dynamically created
-          }
+      edges.push({
+        id: connectionConfig.id,
+        source: connectionConfig.sourceNodeId,
+        target: connectionConfig.targetNodeId,
+        sourceHandle: connectionConfig.sourceHandle || undefined,
+        targetHandle: connectionConfig.targetHandle || undefined,
+        type: 'smoothstep',
+        animated: true,
+        style: { 
+          strokeWidth: 2.0,
+          stroke: '#3b82f6'
         }
-      }
+      });
       
-      // For coalesce target nodes, validate that the target handle (rule) exists
-      if (canCreateEdge && targetNode.type === 'transform' && targetNode.data?.transformType === 'coalesce') {
-        const targetRules = (targetNode.data?.rules || []) as any[];
-        const targetHandle = connectionConfig.targetHandle;
-        
-        if (targetHandle && targetRules.length > 0) {
-          const targetHandleExists = targetRules.some((rule: any) => rule.id === targetHandle);
-          
-          if (!targetHandleExists) {
-            console.warn('Target handle (rule) not found in coalesce node:', targetHandle, 'Available rules:', targetRules.map(r => r.id));
-            // Still allow the edge - the rule might be created later
-          }
-        }
-      }
-      
-      if (canCreateEdge) {
-        edges.push({
-          id: connectionConfig.id,
-          source: connectionConfig.sourceNodeId,
-          target: connectionConfig.targetNodeId,
-          sourceHandle: connectionConfig.sourceHandle || undefined,
-          targetHandle: connectionConfig.targetHandle || undefined,
-          type: 'smoothstep',
-          animated: true,
-          style: { 
-            strokeWidth: 2.0,
-            stroke: '#3b82f6'
-          }
-        });
-        
-        console.log('Added edge:', connectionConfig.id);
-      } else {
-        console.warn('Skipping edge - validation failed:', connectionConfig);
-      }
+      console.log('Added edge:', connectionConfig.id);
     } else {
       console.warn('Skipping edge - source or target node not found:', connectionConfig);
     }
@@ -313,44 +272,4 @@ export const importMappingConfiguration = (
   console.log('Final edges:', edges);
 
   return { nodes, edges };
-};
-
-// Helper function to validate nested field paths
-const validateNestedFieldPath = (fields: any[], path: string): boolean => {
-  const pathParts = path.split('.');
-  let currentFields = fields;
-  
-  for (const part of pathParts) {
-    const field = currentFields.find((f: any) => f.id === part || f.name === part);
-    if (!field) {
-      return false;
-    }
-    if (field.children) {
-      currentFields = field.children;
-    }
-  }
-  
-  return true;
-};
-
-// Helper function to check if a nested path exists in an object
-const checkNestedPath = (obj: any, path: string): boolean => {
-  if (!obj || !path) return false;
-  
-  try {
-    const keys = path.split('.');
-    let current = obj;
-    
-    for (const key of keys) {
-      if (current && typeof current === 'object' && key in current) {
-        current = current[key];
-      } else {
-        return false;
-      }
-    }
-    
-    return true;
-  } catch (e) {
-    return false;
-  }
 };
