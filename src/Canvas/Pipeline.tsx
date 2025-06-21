@@ -166,12 +166,14 @@ const applyStringTransform = (inputValue: any, config: any, transformType: strin
 };
 
 // Apply coalesce transformation - updated to use output values
-const applyCoalesceTransform = (inputValues: Record<string, any>, config: any): any => {
-  const rules = config.rules || [];
-  const defaultValue = config.defaultValue || '';
+const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: any): any => {
+  // Get rules from either direct nodeData or from config (for imported configurations)
+  const rules = nodeData?.rules || nodeData?.config?.rules || [];
+  const defaultValue = nodeData?.defaultValue || nodeData?.config?.defaultValue || '';
   
   console.log('=== COALESCE TRANSFORM DEBUG ===');
   console.log('Input values received:', inputValues);
+  console.log('Node data received:', nodeData);
   console.log('Rules configuration:', rules);
   console.log('Default value:', defaultValue);
   
@@ -273,7 +275,7 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
         } else if (sourceNode.type === 'transform') {
             // Check if this is a coalesce transform
             if (sourceNode.data?.transformType === 'coalesce') {
-                console.log('=== PROCESSING COALESCE TRANSFORM ===');
+                console.log('=== PROCESSING COALESCE TRANSFORM FOR TARGET ===');
                 console.log('Coalesce node ID:', sourceNode.id);
                 console.log('Coalesce node data:', sourceNode.data);
                 
@@ -298,7 +300,7 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 
                 console.log('Final input values for coalesce:', inputValues);
                 
-                if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0) {
+                if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0 || sourceNode.data?.config?.rules?.length > 0) {
                     // Pass the actual node data instead of just config
                     value = applyCoalesceTransform(inputValues, sourceNode.data);
                     console.log('Coalesce transform result:', value);
@@ -338,7 +340,7 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 }
             });
             
-            if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0) {
+            if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0 || sourceNode.data?.config?.rules?.length > 0) {
                 // Pass the actual node data instead of just config
                 value = applyCoalesceTransform(inputValues, sourceNode.data);
             }
@@ -515,14 +517,20 @@ export default function Pipeline() {
                 const transformInputEdges = edges.filter(e => e.target === node.id);
                 let inputValues: Record<string, any> = {};
                 
+                console.log(`=== ENHANCING COALESCE NODE ${node.id} ===`);
+                console.log('Transform input edges:', transformInputEdges);
+                
                 transformInputEdges.forEach(inputEdge => {
                     const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
                     
                     if (inputSourceNode && isSourceNode(inputSourceNode)) {
                         const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
                         inputValues[inputEdge.targetHandle] = sourceValue;
+                        console.log(`Mapped input for coalesce: ${inputEdge.targetHandle} = ${sourceValue}`);
                     }
                 });
+                
+                console.log('Final input values for coalesce node:', inputValues);
                 
                 return {
                     ...node,

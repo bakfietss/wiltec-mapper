@@ -17,31 +17,44 @@ interface CoalesceTransformData {
   rules: CoalesceRule[];
   defaultValue: string;
   inputValues?: Record<string, any>;
+  // Support legacy config structure from imports
+  config?: {
+    rules?: CoalesceRule[];
+    defaultValue?: string;
+  };
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
-  const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
-  const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
+  // Initialize rules from either data.rules or data.config.rules (for imported configs)
+  const initialRules = data.rules || data.config?.rules || [];
+  const initialDefaultValue = data.defaultValue || data.config?.defaultValue || '';
+  
+  const [rules, setRules] = useState<CoalesceRule[]>(initialRules);
+  const [defaultValue, setDefaultValue] = useState(initialDefaultValue);
   const inputValues = data.inputValues || {};
 
   console.log('=== COALESCE NODE RENDER ===');
   console.log('Node ID:', id);
+  console.log('Initial rules from data:', initialRules);
   console.log('Local rules state:', rules);
-  console.log('Data rules from props:', data.rules);
   console.log('Default value:', defaultValue);
   console.log('Input values:', inputValues);
 
-  // Initialize from data if rules are empty but data has rules
+  // Initialize rules and default value from data on mount and when data changes
   useEffect(() => {
-    if (rules.length === 0 && data.rules && data.rules.length > 0) {
-      console.log('Initializing rules from data:', data.rules);
-      setRules(data.rules);
+    const dataRules = data.rules || data.config?.rules || [];
+    const dataDefaultValue = data.defaultValue || data.config?.defaultValue || '';
+    
+    if (dataRules.length > 0 && rules.length === 0) {
+      console.log('Initializing rules from data:', dataRules);
+      setRules(dataRules);
     }
-    if (!defaultValue && data.defaultValue) {
-      console.log('Initializing default value from data:', data.defaultValue);
-      setDefaultValue(data.defaultValue);
+    
+    if (dataDefaultValue && !defaultValue) {
+      console.log('Initializing default value from data:', dataDefaultValue);
+      setDefaultValue(dataDefaultValue);
     }
-  }, [data.rules, data.defaultValue]);
+  }, [data.rules, data.config?.rules, data.defaultValue, data.config?.defaultValue]);
 
   // Sync changes back to React Flow with immediate effect
   useNodeDataSync(id, { 
@@ -245,7 +258,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
               })}
             </div>
           ) : (
-            <div className="text-xs text-gray-500 italic">No rules configured</div>
+            <div className="text-xs text-gray-500 italic px-2 py-2">No rules configured</div>
           )}
           
           {defaultValue && (
