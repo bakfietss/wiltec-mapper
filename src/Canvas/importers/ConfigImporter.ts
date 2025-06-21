@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -7,12 +8,8 @@ export const importMappingConfiguration = (
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  console.log('Starting import with config:', config);
-
   // Import source nodes with complete data preservation
   config.nodes.sources.forEach(sourceConfig => {
-    console.log('Importing source node:', sourceConfig.id, 'with fields:', sourceConfig.schema.fields);
-    
     nodes.push({
       id: sourceConfig.id,
       type: 'source',
@@ -49,13 +46,8 @@ export const importMappingConfiguration = (
 
   // Import transform nodes with complete data preservation
   config.nodes.transforms.forEach(transformConfig => {
-    console.log('Importing transform node:', transformConfig.id, 'type:', transformConfig.type, 'transformType:', transformConfig.transformType);
-
     // Handle coalesce transforms with improved data extraction
     if (transformConfig.transformType === 'coalesce') {
-      console.log('Processing coalesce transform node:', transformConfig.id);
-      console.log('Transform config:', transformConfig);
-      
       // Extract coalesce data from multiple possible locations
       let rules: any[] = [];
       let defaultValue = '';
@@ -105,8 +97,6 @@ export const importMappingConfiguration = (
         outputType: outputType,
         inputValues: inputValues
       };
-      
-      console.log('Final coalesce node data with rules:', nodeData.rules);
       
       nodes.push({
         id: transformConfig.id,
@@ -213,8 +203,6 @@ export const importMappingConfiguration = (
     const sourceNode = nodes.find(n => n.id === connectionConfig.sourceNodeId);
     const targetNode = nodes.find(n => n.id === connectionConfig.targetNodeId);
     
-    console.log('Importing connection:', connectionConfig.id, 'from', connectionConfig.sourceNodeId, 'to', connectionConfig.targetNodeId);
-    
     if (sourceNode && targetNode) {
       edges.push({
         id: connectionConfig.id,
@@ -229,16 +217,10 @@ export const importMappingConfiguration = (
           stroke: '#3b82f6'
         }
       });
-      
-      console.log('Added edge:', connectionConfig.id);
-    } else {
-      console.warn('Skipping edge - source or target node not found:', connectionConfig);
     }
   });
 
   console.log('Import completed - Nodes:', nodes.length, 'Edges:', edges.length);
-  console.log('Final nodes:', nodes);
-  console.log('Final edges:', edges);
 
   return { nodes, edges };
 };
