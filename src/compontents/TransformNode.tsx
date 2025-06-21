@@ -16,13 +16,6 @@ interface TransformConfig {
   joinDelimiter?: string;
   substringStart?: number;
   substringEnd?: number;
-}
-
-interface TransformNodeData {
-  label: string;
-  transformType: string;
-  description?: string;
-  config?: TransformConfig;
   // Add coalesce-specific properties
   rules?: Array<{
     id: string;
@@ -30,6 +23,13 @@ interface TransformNodeData {
     outputValue: string;
   }>;
   defaultValue?: string;
+}
+
+interface TransformNodeData {
+  label: string;
+  transformType: string;
+  description?: string;
+  config?: TransformConfig;
   outputType?: string;
   inputValues?: Record<string, any>;
 }
@@ -41,11 +41,14 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
   
   // If this is a coalesce transform, render the specialized component
   if (transformType === 'coalesce') {
-    // Use simple structure like other nodes - no nested config
+    // Pass the data in the format CoalesceTransformNode expects
     const coalesceData = {
       label: data.label,
-      rules: data.rules || [],
-      defaultValue: data.defaultValue || '',
+      transformType: 'coalesce',
+      config: {
+        rules: data.config?.rules || [],
+        defaultValue: data.config?.defaultValue || ''
+      },
       inputValues: data.inputValues || {}
     };
     return <CoalesceTransformNode data={coalesceData} id={id} />;
