@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitMerge, Plus, Trash2, Edit3 } from 'lucide-react';
@@ -239,7 +240,5 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
     </div>
   );
 };
-
-console.log('Loaded Coalesce rules:', data.rules);
 
 export default CoalesceTransformNode;
