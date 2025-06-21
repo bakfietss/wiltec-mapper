@@ -50,12 +50,12 @@ export const importMappingConfiguration = (
     if (transformConfig.transformType === 'coalesce') {
       console.log('Processing coalesce transform node:', transformConfig.id);
       
-      // Extract coalesce data from config
+      // Extract coalesce data from config - check both direct properties and parameters
       const coalesceConfig = transformConfig.config || {};
-      const rules = coalesceConfig.rules || [];
-      const defaultValue = coalesceConfig.defaultValue || '';
-      const outputType = coalesceConfig.outputType || 'value';
-      const inputValues = coalesceConfig.inputValues || {};
+      const rules = coalesceConfig.rules || coalesceConfig.parameters?.rules || [];
+      const defaultValue = coalesceConfig.defaultValue || coalesceConfig.parameters?.defaultValue || '';
+      const outputType = coalesceConfig.outputType || coalesceConfig.parameters?.outputType || 'value';
+      const inputValues = coalesceConfig.inputValues || coalesceConfig.parameters?.inputValues || {};
 
       // Create the node with correct data structure
       nodes.push({

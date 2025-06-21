@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -120,6 +121,11 @@ export interface TransformNodeConfig {
     operation?: string;
     parameters?: Record<string, any>;
     expression?: string;
+    // Add coalesce-specific properties
+    rules?: Array<{ id: string; priority: number; outputValue: string }>;
+    defaultValue?: string;
+    outputType?: string;
+    inputValues?: Record<string, any>;
   };
 }
 

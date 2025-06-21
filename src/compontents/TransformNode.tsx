@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Zap, Edit3 } from 'lucide-react';
@@ -34,9 +35,17 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
   const [config, setConfig] = useState<TransformConfig>(data.config || {});
   const { label, transformType, description } = data;
 
-  // If this is a coalesce transform, render the specialized component (passing data directly!)
+  // If this is a coalesce transform, render the specialized component
   if (data.transformType === 'coalesce') {
-    return <CoalesceTransformNode data={data} id={id} />;
+    // Ensure all required properties are present for CoalesceTransformNode
+    const coalesceData = {
+      ...data,
+      rules: data.rules || [],
+      defaultValue: data.defaultValue || '',
+      outputType: data.outputType || 'value',
+      inputValues: data.inputValues || {}
+    };
+    return <CoalesceTransformNode data={coalesceData} id={id} />;
   }
 
   const updateNodeData = useCallback((newConfig: TransformConfig) => {
