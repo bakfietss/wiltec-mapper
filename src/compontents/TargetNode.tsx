@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { FileText, Edit3, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
@@ -49,8 +48,20 @@ const TargetField: React.FC<{
 
     return (
         <div className="relative">
-            <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group"
-                 style={{ paddingLeft: `${8 + level * 12}px` }}>
+            <div className="flex items-center gap-2 py-2 px-2 pl-8 hover:bg-gray-50 rounded text-sm group min-h-[32px]"
+                 style={{ paddingLeft: `${8 + level * 16}px` }}>
+                
+                {/* Handle - positioned to avoid overlap */}
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={field.id}
+                    className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !left-1"
+                    style={{
+                        top: `${6 + level * 2}px`,
+                        transform: 'none',
+                    }}
+                />
                 
                 {/* Chevron for expandable fields */}
                 {hasChildren ? (
@@ -59,7 +70,7 @@ const TargetField: React.FC<{
                             e.stopPropagation();
                             onFieldExpansionToggle(field.id);
                         }}
-                        className="cursor-pointer p-1 -m-1"
+                        className="cursor-pointer p-1 -m-1 flex-shrink-0"
                     >
                         {isExpanded ? (
                             <ChevronDown className="w-3 h-3 text-gray-400" />
@@ -68,19 +79,22 @@ const TargetField: React.FC<{
                         )}
                     </div>
                 ) : (
-                    <div className="w-3 h-3" />
+                    <div className="w-5 h-5 flex-shrink-0" />
                 )}
 
-                <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
-                    {field.name}
-                    {field.type === 'array' && '[]'}
-                    {field.type === 'object' && hasChildren && ` (${field.children!.length} fields)`}
-                </span>
+                {/* Field name - with proper flex allocation */}
+                <div className="flex-1 min-w-0 mr-2">
+                    <span className="font-medium text-gray-900 truncate block">
+                        {field.name}
+                        {field.type === 'array' && '[]'}
+                        {field.type === 'object' && hasChildren && ` (${field.children!.length})`}
+                    </span>
+                </div>
                 
-                {/* Value display */}
-                <div className="text-xs min-w-[80px] text-center">
+                {/* Value display - fixed width */}
+                <div className="text-xs w-20 text-center flex-shrink-0">
                     {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium truncate block">
                             {String(fieldValue)}
                         </span>
                     ) : (
@@ -88,20 +102,10 @@ const TargetField: React.FC<{
                     )}
                 </div>
                 
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
+                {/* Type badge - fixed width */}
+                <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 w-16 text-center ${getTypeColor(field.type)}`}>
                     {field.type}
                 </span>
-
-                <Handle
-                    type="target"
-                    position={Position.Left}
-                    id={field.id}
-                    className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !left-1"
-                    style={{
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                    }}
-                />
             </div>
             
             {/* Render children if expanded */}
@@ -312,7 +316,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     );
 
     return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-80 max-w-96">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-96 max-w-[500px]">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-green-50">
                 <FileText className="w-4 h-4 text-green-600" />
                 <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
