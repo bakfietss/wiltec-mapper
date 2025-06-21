@@ -80,21 +80,22 @@ const DataField: React.FC<{
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('array')}`}>
                         array
                     </span>
-                    
-                    {/* Handle for the array itself - always visible */}
-                    <Handle
-                        type="source"
-                        position={Position.Right}
-                        id={path}
-                        className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
-                            isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
-                        }`}
-                        style={{
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                        }}
-                    />
                 </div>
+                
+                {/* Handle for the array itself - always visible, positioned outside the expansion logic */}
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={path}
+                    className={`w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !right-1 ${
+                        isSelected ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                    }`}
+                    style={{
+                        top: `${(level * 20) + 10}px`,
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
                 
                 {isExpanded && value.map((item, index) => (
                     <DataField
@@ -149,21 +150,22 @@ const DataField: React.FC<{
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('object')}`}>
                         object
                     </span>
-                    
-                    {/* Handle for the object itself - always visible */}
-                    <Handle
-                        type="source"
-                        position={Position.Right}
-                        id={path}
-                        className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
-                            isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
-                        }`}
-                        style={{
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                        }}
-                    />
                 </div>
+                
+                {/* Handle for the object itself - always visible, positioned outside the expansion logic */}
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={path}
+                    className={`w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !right-1 ${
+                        isSelected ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                    }`}
+                    style={{
+                        top: `${(level * 20) + 10}px`,
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
                 
                 {isExpanded && Object.entries(value).map(([key, val]) => (
                     <DataField
