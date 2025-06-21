@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -66,7 +65,6 @@ export const importMappingConfiguration = (
         }
       });
 
-    // --- IF THEN Transform ---
     } else if (tx.transformType === 'ifThen' || tx.transformType === 'IF THEN') {
       const params = (tx.config?.parameters as any) ?? {};
       const nodeData = {
@@ -83,7 +81,6 @@ export const importMappingConfiguration = (
         data: nodeData
       });
 
-    // --- Static Value Transform ---
     } else if (tx.transformType === 'staticValue' || tx.transformType === 'Static Value') {
       const params = (tx.config?.parameters as any) ?? {};
       const nodeData: any = {
@@ -97,7 +94,6 @@ export const importMappingConfiguration = (
         data: nodeData
       });
 
-    // --- Text Splitter Transform ---
     } else if (tx.transformType === 'splitterTransform' || tx.transformType === 'Text Splitter') {
       const params = (tx.config?.parameters as any) ?? {};
       const nodeData: any = {
@@ -113,7 +109,6 @@ export const importMappingConfiguration = (
         data: nodeData
       });
 
-    // --- Generic Transform ---
     } else {
       nodes.push({
         id: tx.id,
