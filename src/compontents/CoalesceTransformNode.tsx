@@ -14,14 +14,17 @@ interface CoalesceRule {
 
 interface CoalesceTransformData {
   label: string;
-  rules: CoalesceRule[];
-  defaultValue: string;
+  transformType: string;
+  config: {
+    rules: CoalesceRule[];
+    defaultValue: string;
+  };
   inputValues?: Record<string, any>;
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
-  const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
-  const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
+  const [rules, setRules] = useState<CoalesceRule[]>(data.config?.rules || []);
+  const [defaultValue, setDefaultValue] = useState(data.config?.defaultValue || '');
   const inputValues = data.inputValues || {};
 
   console.log('=== COALESCE NODE RENDER ===');
@@ -30,10 +33,12 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   console.log('Default value:', defaultValue);
   console.log('Input values:', inputValues);
 
-  // Sync changes back to React Flow
+  // Sync changes back to React Flow using standard config structure
   useNodeDataSync(id, { 
-    rules, 
-    defaultValue,
+    config: {
+      rules, 
+      defaultValue
+    },
     transformType: 'coalesce',
     label: data.label
   }, [rules, defaultValue]);

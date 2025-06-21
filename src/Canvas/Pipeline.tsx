@@ -165,10 +165,10 @@ const applyStringTransform = (inputValue: any, config: any, transformType: strin
     return inputValue;
 };
 
-// Apply coalesce transformation - simplified version
+// Apply coalesce transformation - now using standard config structure
 const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: any): any => {
-  const rules = nodeData?.rules || [];
-  const defaultValue = nodeData?.defaultValue || '';
+  const rules = nodeData?.config?.rules || [];
+  const defaultValue = nodeData?.config?.defaultValue || '';
   
   console.log('=== COALESCE TRANSFORM DEBUG ===');
   console.log('Input values received:', inputValues);
@@ -291,7 +291,7 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
             
             console.log('Final input values for coalesce:', inputValues);
             
-            if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0) {
+            if (Object.keys(inputValues).length > 0 || sourceNode.data?.config?.rules?.length > 0) {
                 value = applyCoalesceTransform(inputValues, sourceNode.data);
                 console.log('Coalesce transform result:', value);
             }
