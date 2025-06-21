@@ -9,38 +9,47 @@ export const buildExecutionSteps = (
   const steps: ExecutionStep[] = [];
   let stepCounter = 1;
 
+  // Create maps for O(1) lookups instead of O(n) finds
+  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+  const edgesBySource = new Map<string, Edge[]>();
+  
+  // Group edges by source for faster lookup
+  edges.forEach(edge => {
+    const sourceEdges = edgesBySource.get(edge.source) || [];
+    sourceEdges.push(edge);
+    edgesBySource.set(edge.source, sourceEdges);
+  });
+
+  const getFieldInfo = (node: Node, handleId: string) => {
+    const nodeData = node.data as any;
+    if (nodeData?.fields && Array.isArray(nodeData.fields)) {
+      const field = nodeData.fields.find((f: any) => f.id === handleId);
+      return field ? { id: field.id, name: field.name } : { id: handleId, name: handleId };
+    }
+    return { id: handleId, name: handleId };
+  };
+
+  const getSampleValue = (node: Node, fieldName: string) => {
+    const nodeData = node.data as any;
+    if (nodeData?.data && Array.isArray(nodeData.data) && nodeData.data.length > 0) {
+      return nodeData.data[0][fieldName];
+    }
+    if (nodeData?.fields && Array.isArray(nodeData.fields)) {
+      const field = nodeData.fields.find((f: any) => f.name === fieldName);
+      return field?.exampleValue;
+    }
+    return undefined;
+  };
+
   // Process each edge to create execution steps
   edges.forEach(edge => {
-    const sourceNode = nodes.find(n => n.id === edge.source);
-    const targetNode = nodes.find(n => n.id === edge.target);
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
     
     if (!sourceNode || !targetNode) return;
 
-    // Get field information
-    const getFieldInfo = (node: Node, handleId: string) => {
-      const nodeData = node.data as any;
-      if (nodeData?.fields && Array.isArray(nodeData.fields)) {
-        const field = nodeData.fields.find((f: any) => f.id === handleId);
-        return field ? { id: field.id, name: field.name } : { id: handleId, name: handleId };
-      }
-      return { id: handleId, name: handleId };
-    };
-
     const sourceField = getFieldInfo(sourceNode, edge.sourceHandle || '');
     const targetField = getFieldInfo(targetNode, edge.targetHandle || '');
-
-    // Get sample data for source field
-    const getSampleValue = (node: Node, fieldName: string) => {
-      const nodeData = node.data as any;
-      if (nodeData?.data && Array.isArray(nodeData.data) && nodeData.data.length > 0) {
-        return nodeData.data[0][fieldName];
-      }
-      if (nodeData?.fields && Array.isArray(nodeData.fields)) {
-        const field = nodeData.fields.find((f: any) => f.name === fieldName);
-        return field?.exampleValue;
-      }
-      return undefined;
-    };
 
     // Direct mapping (source to target)
     if (sourceNode.type === 'source' && targetNode.type === 'target') {
@@ -66,10 +75,14 @@ export const buildExecutionSteps = (
         (targetNode.type === 'transform' || targetNode.type === 'splitterTransform' || 
          targetNode.type === 'ifThen' || targetNode.type === 'staticValue')) {
       
-      // Find the edge from this transform to a target
-      const transformToTargetEdge = edges.find(e => e.source === targetNode.id);
-      const finalTargetNode = transformToTargetEdge ? 
-        nodes.find(n => n.id === transformToTargetEdge.target) : null;
+      // Use the edge map for faster lookup
+      const transformToTargetEdges = edgesBySource.get(targetNode.id) || [];
+      const transformToTargetEdge = transformToTargetEdges.find(e => {
+        const finalTarget = nodeMap.get(e.target);
+        return finalTarget?.type === 'target';
+      });
+      
+      const finalTargetNode = transformToTargetEdge ? nodeMap.get(transformToTargetEdge.target) : null;
 
       if (finalTargetNode && finalTargetNode.type === 'target') {
         const finalTargetField = getFieldInfo(finalTargetNode, transformToTargetEdge!.targetHandle || '');
@@ -101,10 +114,13 @@ export const buildExecutionSteps = (
 
     // Conversion mapping step
     if (sourceNode.type === 'source' && targetNode.type === 'conversionMapping') {
-      // Find the edge from this mapping to a target
-      const mappingToTargetEdge = edges.find(e => e.source === targetNode.id);
-      const finalTargetNode = mappingToTargetEdge ? 
-        nodes.find(n => n.id === mappingToTargetEdge.target) : null;
+      const mappingToTargetEdges = edgesBySource.get(targetNode.id) || [];
+      const mappingToTargetEdge = mappingToTargetEdges.find(e => {
+        const finalTarget = nodeMap.get(e.target);
+        return finalTarget?.type === 'target';
+      });
+      
+      const finalTargetNode = mappingToTargetEdge ? nodeMap.get(mappingToTargetEdge.target) : null;
 
       if (finalTargetNode && finalTargetNode.type === 'target') {
         const finalTargetField = getFieldInfo(finalTargetNode, mappingToTargetEdge!.targetHandle || '');

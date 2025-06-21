@@ -8,11 +8,11 @@ export const importMappingConfiguration = (
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  console.log('Starting import with config:', config);
-
-  // 1. Sources
+  // 1. Sources - use Map for better performance when looking up nodes later
+  const nodeMap = new Map<string, Node>();
+  
   config.nodes.sources.forEach(src => {
-    nodes.push({
+    const node = {
       id: src.id,
       type: 'source',
       position: src.position,
@@ -22,7 +22,9 @@ export const importMappingConfiguration = (
         data: src.sampleData,
         schemaType: 'source'
       }
-    });
+    };
+    nodes.push(node);
+    nodeMap.set(src.id, node);
   });
 
   // 2. Targets
@@ -36,19 +38,22 @@ export const importMappingConfiguration = (
     if ((tgt as any).fieldValues) {
       nodeData.fieldValues = (tgt as any).fieldValues;
     }
-    nodes.push({
+    const node = {
       id: tgt.id,
       type: 'target',
       position: tgt.position,
       data: nodeData
-    });
+    };
+    nodes.push(node);
+    nodeMap.set(tgt.id, node);
   });
 
   // 3. Transforms
   config.nodes.transforms.forEach(tx => {
+    let node: Node;
+    
     if (tx.transformType === 'coalesce') {
-      // Handle coalesce transform with proper nested config structure
-      nodes.push({
+      node = {
         id: tx.id,
         type: 'transform',
         position: tx.position,
@@ -60,54 +65,47 @@ export const importMappingConfiguration = (
             defaultValue: tx.config?.defaultValue || ''
           }
         }
-      });
-
+      };
     } else if (tx.transformType === 'ifThen' || tx.transformType === 'IF THEN') {
       const params = (tx.config?.parameters as any) ?? {};
-      const nodeData = {
-        label: tx.label,
-        operator: params.operator ?? '=',
-        compareValue: params.compareValue ?? '',
-        thenValue: params.thenValue ?? '',
-        elseValue: params.elseValue ?? ''
-      };
-      nodes.push({
+      node = {
         id: tx.id,
         type: 'ifThen',
         position: tx.position,
-        data: nodeData
-      });
-
+        data: {
+          label: tx.label,
+          operator: params.operator ?? '=',
+          compareValue: params.compareValue ?? '',
+          thenValue: params.thenValue ?? '',
+          elseValue: params.elseValue ?? ''
+        }
+      };
     } else if (tx.transformType === 'staticValue' || tx.transformType === 'Static Value') {
       const params = (tx.config?.parameters as any) ?? {};
-      const nodeData: any = {
-        label: tx.label,
-        values: params.values ?? []
-      };
-      nodes.push({
+      node = {
         id: tx.id,
         type: 'staticValue',
         position: tx.position,
-        data: nodeData
-      });
-
+        data: {
+          label: tx.label,
+          values: params.values ?? []
+        }
+      };
     } else if (tx.transformType === 'splitterTransform' || tx.transformType === 'Text Splitter') {
       const params = (tx.config?.parameters as any) ?? {};
-      const nodeData: any = {
-        label: tx.label,
-        delimiter: params.delimiter ?? ',',
-        splitIndex: params.splitIndex ?? 0,
-        config: tx.config
-      };
-      nodes.push({
+      node = {
         id: tx.id,
         type: 'splitterTransform',
         position: tx.position,
-        data: nodeData
-      });
-
+        data: {
+          label: tx.label,
+          delimiter: params.delimiter ?? ',',
+          splitIndex: params.splitIndex ?? 0,
+          config: tx.config
+        }
+      };
     } else {
-      nodes.push({
+      node = {
         id: tx.id,
         type: 'transform',
         position: tx.position,
@@ -116,13 +114,16 @@ export const importMappingConfiguration = (
           transformType: tx.transformType,
           config: tx.config
         }
-      });
+      };
     }
+    
+    nodes.push(node);
+    nodeMap.set(tx.id, node);
   });
 
   // 4. Conversion Mappings
   config.nodes.mappings.forEach(mp => {
-    nodes.push({
+    const node = {
       id: mp.id,
       type: 'conversionMapping',
       position: mp.position,
@@ -131,15 +132,15 @@ export const importMappingConfiguration = (
         mappings: mp.mappings,
         isExpanded: false
       }
-    });
+    };
+    nodes.push(node);
+    nodeMap.set(mp.id, node);
   });
 
-  // 5. Connections
+  // 5. Connections - use nodeMap for O(1) lookup instead of O(n) find operations
   config.connections.forEach(conn => {
-    const src = nodes.find(n => n.id === conn.sourceNodeId);
-    const tgt = nodes.find(n => n.id === conn.targetNodeId);
-    
-    console.log('Importing connection:', conn.id, 'from', conn.sourceNodeId, 'to', conn.targetNodeId);
+    const src = nodeMap.get(conn.sourceNodeId);
+    const tgt = nodeMap.get(conn.targetNodeId);
     
     if (src && tgt) {
       edges.push({
@@ -152,13 +153,8 @@ export const importMappingConfiguration = (
         animated: true,
         style: { strokeWidth: 2, stroke: '#3b82f6' }
       });
-      
-      console.log('Added edge:', conn.id);
-    } else {
-      console.warn('Skipping edge - source or target node not found:', conn);
     }
   });
 
-  console.log(`Import complete: ${nodes.length} nodes, ${edges.length} edges`);
   return { nodes, edges };
 };

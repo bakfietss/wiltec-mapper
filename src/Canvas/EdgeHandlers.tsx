@@ -1,8 +1,8 @@
-// This file is no longer needed as edge handling is now done directly in Pipeline
-// Keeping file for backward compatibility
+
+// This file has been deprecated - edge handling is now done directly in Pipeline
+// Kept for backward compatibility but should be removed in future cleanup
 
 export const useEdgeHandlers = () => {
-    console.warn('useEdgeHandlers hook is deprecated - edge handling is now done directly in Pipeline');
     return {
         onConnect: () => {},
         handleEdgesChange: () => {}
