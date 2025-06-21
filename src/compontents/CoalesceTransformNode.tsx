@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitMerge, Plus, Trash2, Edit3 } from 'lucide-react';
@@ -15,7 +16,6 @@ interface CoalesceTransformData {
   label: string;
   rules: CoalesceRule[];
   defaultValue: string;
-  outputType?: string;
   inputValues?: Record<string, any>;
 }
 
@@ -23,10 +23,9 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
   const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
   const inputValues = data.inputValues || {};
-  const outputType = data.outputType || 'value';
 
-  // Sync local state changes back to React Flow - INCLUDING outputType
-  useNodeDataSync(id, { rules, defaultValue, outputType }, [rules, defaultValue, outputType]);
+  // Sync changes back to React Flow - simple structure like other nodes
+  useNodeDataSync(id, { rules, defaultValue }, [rules, defaultValue]);
 
   const addRule = () => {
     const newRule: CoalesceRule = {
@@ -60,7 +59,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
     if (targetIndex >= 0 && targetIndex < newRules.length) {
       [newRules[ruleIndex], newRules[targetIndex]] = [newRules[targetIndex], newRules[ruleIndex]];
       
-      // Update priorities
       newRules.forEach((rule, index) => {
         rule.priority = index + 1;
       });
@@ -90,7 +88,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
             </SheetHeader>
 
             <div className="flex-1 flex flex-col gap-4">
-              {/* Default Value */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Default Value (if no inputs have values):
@@ -104,7 +101,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
                 />
               </div>
 
-              {/* Rules Configuration */}
               <div className="flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
@@ -228,7 +224,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
         </div>
       </div>
 
-      {/* Single Output Handle */}
       <Handle
         type="source"
         position={Position.Right}

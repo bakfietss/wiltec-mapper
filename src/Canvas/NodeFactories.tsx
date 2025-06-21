@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 
@@ -31,9 +30,6 @@ export const useNodeFactories = (
             config: {},
         };
 
-        console.log('=== CREATING TRANSFORM NODE ===');
-        console.log('Transform type requested:', transformType);
-
         if (transformType === 'Text Splitter') {
             nodeType = 'splitterTransform';
             nodeIdPrefix = 'splitter';
@@ -62,9 +58,7 @@ export const useNodeFactories = (
                 transformType: 'coalesce',
                 rules: [],
                 defaultValue: '',
-                outputType: 'value',
             };
-            console.log('Creating coalesce node with type:', nodeType, 'transformType:', 'coalesce');
         }
         
         const nodeId = `${nodeIdPrefix}-${Date.now()}`;
@@ -75,19 +69,7 @@ export const useNodeFactories = (
             data: nodeData,
         };
 
-        console.log('Created node:', {
-            id: nodeId,
-            type: nodeType,
-            transformType: nodeData.transformType,
-            data: nodeData
-        });
-
-        setNodes((nds) => {
-            const updatedNodes = [...nds, newNode];
-            console.log('Updated nodes array length:', updatedNodes.length);
-            console.log('All node types:', updatedNodes.map(n => ({ id: n.id, type: n.type })));
-            return updatedNodes;
-        });
+        setNodes((nds) => [...nds, newNode]);
     }, [nodes.length, setNodes]);
 
     const addMappingNode = useCallback(() => {

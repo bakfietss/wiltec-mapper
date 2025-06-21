@@ -41,12 +41,11 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
   
   // If this is a coalesce transform, render the specialized component
   if (transformType === 'coalesce') {
-    // Ensure the data has the required properties for CoalesceTransformNode
+    // Use simple structure like other nodes - no nested config
     const coalesceData = {
       label: data.label,
       rules: data.rules || [],
       defaultValue: data.defaultValue || '',
-      outputType: data.outputType || 'value',
       inputValues: data.inputValues || {}
     };
     return <CoalesceTransformNode data={coalesceData} id={id} />;
