@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useStoreState } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
@@ -246,13 +246,29 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
 
-    // Initialize expanded fields from import data
+    // Get all edges from React Flow store and auto-expand connected fields
+    const allEdges = useStoreState((store) => store.edges);
+
     useEffect(() => {
-        if (data.initialExpandedFields && data.initialExpandedFields.size > 0) {
-            console.log('Setting initial expanded fields for source node:', data.initialExpandedFields);
-            setExpandedFields(new Set(data.initialExpandedFields));
-        }
-    }, [data.initialExpandedFields]);
+        const connectedPaths = new Set<string>();
+
+        // Find all edges connected to this source node
+        allEdges.forEach((edge) => {
+            if (edge.source === id && edge.sourceHandle) {
+                console.log(`Found connected handle: ${edge.sourceHandle}`);
+                // Split path and add all parent paths that need to be expanded
+                const segments = edge.sourceHandle.split('.');
+                for (let i = 1; i <= segments.length; i++) {
+                    const path = segments.slice(0, i).join('.');
+                    connectedPaths.add(path);
+                    console.log(`Auto-expanding path: ${path}`);
+                }
+            }
+        });
+
+        console.log(`Total auto-expanded paths for ${id}:`, Array.from(connectedPaths));
+        setExpandedFields(connectedPaths);
+    }, [allEdges, id]);
 
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
@@ -298,7 +314,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             
             // Clear existing selections when new data is imported
             setSelectedFields(new Set());
-            setExpandedFields(new Set());
         } catch (error) {
             console.error('Invalid JSON:', error);
             alert('Invalid JSON format');
@@ -328,7 +343,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             newSelected.add(path);
         }
         
-        // Toggle expansion for objects and arrays
+        // Toggle expansion for objects and arrays (manual toggle)
         if (expandedFields.has(path)) {
             newExpanded.delete(path);
         } else {
