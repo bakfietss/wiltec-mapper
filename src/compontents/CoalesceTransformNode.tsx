@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitMerge, Plus, Trash2, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
@@ -14,6 +13,7 @@ interface CoalesceRule {
 
 interface CoalesceTransformData {
   label: string;
+  transformType?: string;
   rules: CoalesceRule[];
   defaultValue: string;
   outputType?: string;
@@ -21,15 +21,23 @@ interface CoalesceTransformData {
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
-  console.log('Loaded Coalesce rules:', data.rules);
-  
+  // Debug - should show your saved rules
+  console.log('🚨 Coalesce node data on load:', data);
+
   const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
   const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
   const inputValues = data.inputValues || {};
   const outputType = data.outputType || 'value';
 
-  // Sync local state changes back to React Flow - INCLUDING outputType
-  useNodeDataSync(id, { rules, defaultValue, outputType }, [rules, defaultValue, outputType]);
+  // Hydrate state if data.rules arrives after initial mount
+  useEffect(() => {
+    if (data.rules?.length && rules.length === 0) {
+      setRules(data.rules);
+    }
+  }, [data.rules]);
+
+  // Sync back into the node
+  useNodeDataSync(id, { rules, defaultValue, outputType, inputValues }, [rules, defaultValue, outputType, inputValues]);
 
   const addRule = () => {
     const newRule: CoalesceRule = {
@@ -41,197 +49,121 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   };
 
   const updateRule = (ruleId: string, updates: Partial<CoalesceRule>) => {
-    const updatedRules = rules.map(rule => 
-      rule.id === ruleId ? { ...rule, ...updates } : rule
-    );
-    setRules(updatedRules);
+    setRules(rules.map(r => r.id === ruleId ? { ...r, ...updates } : r));
   };
 
   const deleteRule = (ruleId: string) => {
-    const updatedRules = rules.filter(rule => rule.id !== ruleId)
-      .map((rule, index) => ({ ...rule, priority: index + 1 }));
-    setRules(updatedRules);
+    const updated = rules.filter(r => r.id !== ruleId).map((r, i) => ({ ...r, priority: i + 1 }));
+    setRules(updated);
   };
 
   const moveRule = (ruleId: string, direction: 'up' | 'down') => {
-    const ruleIndex = rules.findIndex(r => r.id === ruleId);
-    if (ruleIndex === -1) return;
-
-    const newRules = [...rules];
-    const targetIndex = direction === 'up' ? ruleIndex - 1 : ruleIndex + 1;
-
-    if (targetIndex >= 0 && targetIndex < newRules.length) {
-      [newRules[ruleIndex], newRules[targetIndex]] = [newRules[targetIndex], newRules[ruleIndex]];
-      
-      // Update priorities
-      newRules.forEach((rule, index) => {
-        rule.priority = index + 1;
-      });
-      
-      setRules(newRules);
-    }
+    const idx = rules.findIndex(r => r.id === ruleId);
+    if (idx < 0) return;
+    const copy = [...rules];
+    const swap = direction === 'up' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= copy.length) return;
+    [copy[idx], copy[swap]] = [copy[swap], copy[idx]];
+    copy.forEach((r, i) => (r.priority = i + 1));
+    setRules(copy);
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 max-w-none w-auto relative">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-64 w-auto relative">
       <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-orange-50">
         <GitMerge className="w-4 h-4 text-orange-600" />
         <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
         <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700">
           coalesce
         </span>
-
         <Sheet>
           <SheetTrigger asChild>
             <button className="p-1 hover:bg-gray-200 rounded">
               <Edit3 className="w-3 h-3 text-gray-600" />
             </button>
           </SheetTrigger>
-          <SheetContent className="w-[600px] sm:w-[600px] flex flex-col">
+          <SheetContent className="w-[600px] flex flex-col">
             <SheetHeader>
               <SheetTitle>Configure Coalesce Transform</SheetTitle>
             </SheetHeader>
-
             <div className="flex-1 flex flex-col gap-4">
               {/* Default Value */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-2">
                   Default Value (if no inputs have values):
                 </label>
                 <input
                   type="text"
                   value={defaultValue}
-                  onChange={(e) => setDefaultValue(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  onChange={e => setDefaultValue(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
                   placeholder="Enter default value..."
                 />
               </div>
-
-              {/* Rules Configuration */}
+              {/* Rules */}
               <div className="flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Fallback Rules (in priority order):
-                  </label>
+                  <label className="block text-sm font-medium">Fallback Rules:</label>
                   <button
                     onClick={addRule}
-                    className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
+                    className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-white rounded text-sm"
                   >
-                    <Plus className="w-3 h-3" />
-                    Add Rule
+                    <Plus className="w-3 h-3" /> Add Rule
                   </button>
                 </div>
-
-                <div className="flex-1 border rounded min-h-0">
-                  <ScrollArea className="h-full max-h-96">
-                    <div className="space-y-2 p-3">
-                      {rules.map((rule, index) => (
-                        <div key={rule.id} className="border rounded p-3 space-y-2 bg-gray-50">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-600 w-8">
-                              #{rule.priority}
-                            </span>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => moveRule(rule.id, 'up')}
-                                disabled={index === 0}
-                                className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                onClick={() => moveRule(rule.id, 'down')}
-                                disabled={index === rules.length - 1}
-                                className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                              >
-                                ↓
-                              </button>
-                            </div>
-                            <button
-                              onClick={() => deleteRule(rule.id)}
-                              className="p-1 text-red-500 hover:text-red-700 ml-auto"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">
-                              Output Value (returned if this input has data):
-                            </label>
-                            <input
-                              type="text"
-                              value={rule.outputValue}
-                              onChange={(e) => updateRule(rule.id, { outputValue: e.target.value })}
-                              className="w-full border rounded px-2 py-1 text-sm"
-                              placeholder="e.g., ATA, ETA, PTA"
-                            />
-                          </div>
+                <ScrollArea className="h-full max-h-96 border rounded p-3">
+                  {rules.length ? rules.map((rule, idx) => (
+                    <div key={rule.id} className="border rounded p-3 mb-2 bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">#{rule.priority}</span>
+                        <div className="flex gap-1 ml-2">
+                          <button onClick={() => moveRule(rule.id, 'up')} disabled={idx === 0}>↑</button>
+                          <button onClick={() => moveRule(rule.id, 'down')} disabled={idx === rules.length-1}>↓</button>
                         </div>
-                      ))}
-
-                      {rules.length === 0 && (
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                          No rules configured. Add a rule to get started.
-                        </div>
-                      )}
+                        <button onClick={() => deleteRule(rule.id)} className="ml-auto text-red-500">✕</button>
+                      </div>
+                      <input
+                        type="text"
+                        value={rule.outputValue}
+                        onChange={e => updateRule(rule.id, { outputValue: e.target.value })}
+                        className="w-full border rounded px-2 py-1 mt-2"
+                        placeholder="Output Value"
+                      />
                     </div>
-                  </ScrollArea>
-                </div>
+                  )) : (
+                    <div className="text-gray-400 italic">No rules configured.</div>
+                  )}
+                </ScrollArea>
               </div>
             </div>
           </SheetContent>
         </Sheet>
       </div>
 
-      <div className="p-1">
-        <div className="space-y-1">
-          {rules.length > 0 ? (
-            <div className="space-y-1">
-              {rules.map((rule) => {
-                const inputValue = inputValues[rule.id];
-                const hasValue = inputValue !== undefined && inputValue !== null && inputValue !== '';
-                
-                return (
-                  <div key={rule.id} className="relative">
-                    <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 truncate">
-                          #{rule.priority}: {rule.outputValue || 'No output value'}
-                        </div>
-                        <div className={`text-xs truncate ${hasValue ? 'text-green-600' : 'text-gray-400'}`}>
-                          {hasValue ? `Input: ${inputValue}` : 'No input data'}
-                        </div>
-                      </div>
-                      
-                      <Handle
-                        type="target"
-                        position={Position.Left}
-                        id={rule.id}
-                        className="w-3 h-3 bg-orange-500 border-2 border-white group-hover:bg-orange-600 !absolute !left-1"
-                        style={{
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+      <div className="p-2">
+        {rules.map(rule => {
+          const val = inputValues[rule.id];
+          const has = val !== undefined && val !== null && val !== '';
+          return (
+            <div key={rule.id} className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded text-sm relative">
+              <div className="flex-1">
+                <div className="font-medium truncate">#{rule.priority}: {rule.outputValue}</div>
+                <div className={`text-xs truncate ${has ? 'text-green-600' : 'text-gray-400'}`}>
+                  {has ? `Input: ${val}` : 'No input'}
+                </div>
+              </div>
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={rule.id}
+                className="w-3 h-3 bg-orange-500 border-2 border-white absolute left-[-6px]"
+              />
             </div>
-          ) : (
-            <div className="text-xs text-gray-500 italic">No rules configured</div>
-          )}
-          
-          {defaultValue && (
-            <div className="text-xs text-gray-600 mt-2 px-2">
-              Default: "{defaultValue}"
-            </div>
-          )}
-        </div>
+          );
+        })}
+        {defaultValue && <div className="text-xs text-gray-600 mt-2">Default: "{defaultValue}"</div>}
       </div>
 
-      {/* Single Output Handle */}
       <Handle
         type="source"
         position={Position.Right}
