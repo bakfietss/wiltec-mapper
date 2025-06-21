@@ -69,7 +69,10 @@ const DataField: React.FC<{
                     </div>
                     <span 
                         className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer"
-                        onClick={() => onFieldToggle(path)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onFieldToggle(path);
+                        }}
                     >
                         {fieldName}[]
                     </span>
@@ -78,6 +81,7 @@ const DataField: React.FC<{
                         array
                     </span>
                     
+                    {/* Handle for the array itself - always visible */}
                     <Handle
                         type="source"
                         position={Position.Right}
@@ -132,7 +136,10 @@ const DataField: React.FC<{
                     </div>
                     <span 
                         className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer"
-                        onClick={() => onFieldToggle(path)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onFieldToggle(path);
+                        }}
                     >
                         {fieldName}
                     </span>
@@ -143,6 +150,7 @@ const DataField: React.FC<{
                         object
                     </span>
                     
+                    {/* Handle for the object itself - always visible */}
                     <Handle
                         type="source"
                         position={Position.Right}
