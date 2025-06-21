@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -15,6 +14,47 @@
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
+    
+    <script>
+      // Block any Facebook tracking attempts
+      console.log('Blocking Facebook tracking attempts...');
+      
+      // Override fetch to block Facebook requests
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        const url = args[0];
+        if (typeof url === 'string' && url.includes('facebook.com')) {
+          console.warn('Blocked Facebook tracking request:', url);
+          return Promise.resolve(new Response('{}', { status: 200 }));
+        }
+        return originalFetch.apply(this, args);
+      };
+      
+      // Override XMLHttpRequest for Facebook requests
+      const originalXHR = window.XMLHttpRequest.prototype.open;
+      window.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        if (typeof url === 'string' && url.includes('facebook.com')) {
+          console.warn('Blocked Facebook XHR request:', url);
+          return;
+        }
+        return originalXHR.apply(this, [method, url, ...rest]);
+      };
+      
+      // Log all script tags being added
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          mutation.addedNodes.forEach(function(node) {
+            if (node.tagName === 'SCRIPT' || node.tagName === 'LINK') {
+              console.log('Script/Link added:', node.src || node.href || node.innerHTML);
+            }
+          });
+        });
+      });
+      
+      document.addEventListener('DOMContentLoaded', function() {
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+    </script>
   </head>
 
   <body>
@@ -22,4 +62,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
