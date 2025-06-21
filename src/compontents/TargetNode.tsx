@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { FileText, Edit3, Plus, Trash2 } from 'lucide-react';
+import { FileText, Edit3, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
@@ -10,6 +11,7 @@ interface SchemaField {
     name: string;
     type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
     children?: SchemaField[];
+    parent?: string;
 }
 
 interface TargetNodeData {
@@ -34,17 +36,46 @@ const getTypeColor = (type: string) => {
 const TargetField: React.FC<{
     field: SchemaField;
     fieldValues: Record<string, any>;
-}> = ({ field, fieldValues }) => {
-    // Get the value for this specific field
+    level?: number;
+    expandedFields: Set<string>;
+    onFieldExpansionToggle: (fieldId: string) => void;
+}> = ({ field, fieldValues, level = 0, expandedFields, onFieldExpansionToggle }) => {
     const fieldValue = fieldValues[field.id];
+    const isExpanded = expandedFields.has(field.id);
+    const hasChildren = field.children && field.children.length > 0;
     
     console.log(`TargetField ${field.name} (${field.id}) - looking for value in fieldValues:`, fieldValues);
     console.log(`Found value for ${field.name}:`, fieldValue);
 
     return (
         <div className="relative">
-            <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group">
-                <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
+            <div className="flex items-center gap-2 py-1 px-2 pl-8 hover:bg-gray-50 rounded text-sm group"
+                 style={{ paddingLeft: `${8 + level * 12}px` }}>
+                
+                {/* Chevron for expandable fields */}
+                {hasChildren ? (
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onFieldExpansionToggle(field.id);
+                        }}
+                        className="cursor-pointer p-1 -m-1"
+                    >
+                        {isExpanded ? (
+                            <ChevronDown className="w-3 h-3 text-gray-400" />
+                        ) : (
+                            <ChevronRight className="w-3 h-3 text-gray-400" />
+                        )}
+                    </div>
+                ) : (
+                    <div className="w-3 h-3" />
+                )}
+
+                <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                    {field.name}
+                    {field.type === 'array' && '[]'}
+                    {field.type === 'object' && hasChildren && ` (${field.children!.length} fields)`}
+                </span>
                 
                 {/* Value display */}
                 <div className="text-xs min-w-[80px] text-center">
@@ -72,6 +103,22 @@ const TargetField: React.FC<{
                     }}
                 />
             </div>
+            
+            {/* Render children if expanded */}
+            {hasChildren && isExpanded && (
+                <div>
+                    {field.children!.map((childField) => (
+                        <TargetField
+                            key={childField.id}
+                            field={childField}
+                            fieldValues={fieldValues}
+                            level={level + 1}
+                            expandedFields={expandedFields}
+                            onFieldExpansionToggle={onFieldExpansionToggle}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -80,6 +127,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     const [nodeData, setNodeData] = useState<any[]>(data.data || []);
     const [jsonInput, setJsonInput] = useState('');
+    const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
     
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
@@ -89,25 +137,84 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     console.log('Field values received:', data.fieldValues);
     console.log('All fields:', fields?.map(f => ({ id: f.id, name: f.name })));
 
-    const addField = () => {
+    const addField = (parentId?: string) => {
         const newField: SchemaField = {
             id: `field-${Date.now()}`,
             name: 'New Field',
-            type: 'string'
+            type: 'string',
+            parent: parentId
         };
-        setFields([...fields, newField]);
+        
+        if (parentId) {
+            // Add as child field
+            const updatedFields = fields.map(field => {
+                if (field.id === parentId) {
+                    return {
+                        ...field,
+                        children: [...(field.children || []), newField]
+                    };
+                }
+                return field;
+            });
+            setFields(updatedFields);
+        } else {
+            // Add as root field
+            setFields([...fields, newField]);
+        }
     };
 
     const updateField = (fieldId: string, updates: Partial<SchemaField>) => {
-        const updatedFields = fields.map(field => 
-            field.id === fieldId ? { ...field, ...updates } : field
-        );
-        setFields(updatedFields);
+        const updateFieldRecursive = (fieldsArray: SchemaField[]): SchemaField[] => {
+            return fieldsArray.map(field => {
+                if (field.id === fieldId) {
+                    const updatedField = { ...field, ...updates };
+                    // If changing to object/array, ensure children array exists
+                    if ((updates.type === 'object' || updates.type === 'array') && !updatedField.children) {
+                        updatedField.children = [];
+                    }
+                    // If changing away from object/array, remove children
+                    if (updates.type && updates.type !== 'object' && updates.type !== 'array') {
+                        delete updatedField.children;
+                    }
+                    return updatedField;
+                }
+                if (field.children) {
+                    return {
+                        ...field,
+                        children: updateFieldRecursive(field.children)
+                    };
+                }
+                return field;
+            });
+        };
+        
+        setFields(updateFieldRecursive(fields));
     };
 
     const deleteField = (fieldId: string) => {
-        const updatedFields = fields.filter(field => field.id !== fieldId);
-        setFields(updatedFields);
+        const deleteFieldRecursive = (fieldsArray: SchemaField[]): SchemaField[] => {
+            return fieldsArray.filter(field => {
+                if (field.id === fieldId) {
+                    return false;
+                }
+                if (field.children) {
+                    field.children = deleteFieldRecursive(field.children);
+                }
+                return true;
+            });
+        };
+        
+        setFields(deleteFieldRecursive(fields));
+    };
+
+    const handleFieldExpansionToggle = (fieldId: string) => {
+        const newExpanded = new Set(expandedFields);
+        if (expandedFields.has(fieldId)) {
+            newExpanded.delete(fieldId);
+        } else {
+            newExpanded.add(fieldId);
+        }
+        setExpandedFields(newExpanded);
     };
 
     const handleJsonImport = () => {
@@ -119,19 +226,90 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
             
             // Auto-generate fields from first object
             if (dataArray.length > 0 && typeof dataArray[0] === 'object') {
-                const generatedFields: SchemaField[] = Object.keys(dataArray[0]).map((key, index) => ({
-                    id: `field-${Date.now()}-${index}`,
-                    name: key,
-                    type: typeof dataArray[0][key] === 'number' ? 'number' : 
-                          typeof dataArray[0][key] === 'boolean' ? 'boolean' : 'string'
-                }));
-                setFields(generatedFields);
+                const generateFieldsFromObject = (obj: any, parentPath = ''): SchemaField[] => {
+                    return Object.keys(obj).map((key, index) => {
+                        const value = obj[key];
+                        const fieldId = `field-${Date.now()}-${parentPath}-${index}`;
+                        
+                        if (Array.isArray(value)) {
+                            return {
+                                id: fieldId,
+                                name: key,
+                                type: 'array',
+                                children: value.length > 0 && typeof value[0] === 'object' 
+                                    ? generateFieldsFromObject(value[0], `${fieldId}-item`)
+                                    : []
+                            };
+                        } else if (value && typeof value === 'object') {
+                            return {
+                                id: fieldId,
+                                name: key,
+                                type: 'object',
+                                children: generateFieldsFromObject(value, fieldId)
+                            };
+                        } else {
+                            return {
+                                id: fieldId,
+                                name: key,
+                                type: typeof value === 'number' ? 'number' : 
+                                      typeof value === 'boolean' ? 'boolean' : 'string'
+                            };
+                        }
+                    });
+                };
+                
+                setFields(generateFieldsFromObject(dataArray[0]));
             }
         } catch (error) {
             console.error('Invalid JSON:', error);
             alert('Invalid JSON format');
         }
     };
+
+    const renderFieldEditor = (field: SchemaField, level = 0) => (
+        <div key={field.id} className="border rounded p-3 space-y-2" style={{ marginLeft: `${level * 16}px` }}>
+            <div className="flex items-center gap-2">
+                <input
+                    type="text"
+                    value={field.name}
+                    onChange={(e) => updateField(field.id, { name: e.target.value })}
+                    className="flex-1 border rounded px-2 py-1 text-sm"
+                    placeholder="Field name"
+                />
+                <select
+                    value={field.type}
+                    onChange={(e) => updateField(field.id, { type: e.target.value as any })}
+                    className="border rounded px-2 py-1 text-sm"
+                >
+                    <option value="string">String</option>
+                    <option value="number">Number</option>
+                    <option value="boolean">Boolean</option>
+                    <option value="date">Date</option>
+                    <option value="object">Object</option>
+                    <option value="array">Array</option>
+                </select>
+                {(field.type === 'object' || field.type === 'array') && (
+                    <button
+                        onClick={() => addField(field.id)}
+                        className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                    >
+                        <Plus className="w-3 h-3" />
+                        Add Child
+                    </button>
+                )}
+                <button
+                    onClick={() => deleteField(field.id)}
+                    className="p-1 text-red-500 hover:text-red-700"
+                >
+                    <Trash2 className="w-3 h-3" />
+                </button>
+            </div>
+            
+            {field.children && field.children.map(childField => 
+                renderFieldEditor(childField, level + 1)
+            )}
+        </div>
+    );
 
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-80 max-w-96">
@@ -161,13 +339,13 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                                     value={jsonInput}
                                     onChange={(e) => setJsonInput(e.target.value)}
                                     className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono resize-none"
-                                    placeholder='{"field1": "value1", "field2": 123}'
+                                    placeholder='{"field1": "value1", "nested": {"field2": 123}, "items": [{"name": "item1"}]}'
                                 />
                                 <button
                                     onClick={handleJsonImport}
                                     className="mt-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
                                 >
-                                    Import Data
+                                    Import Data & Generate Schema
                                 </button>
                             </div>
 
@@ -193,7 +371,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="font-medium">Schema Fields:</h4>
                                     <button
-                                        onClick={addField}
+                                        onClick={() => addField()}
                                         className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
                                     >
                                         <Plus className="w-3 h-3" />
@@ -204,37 +382,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                                 <div className="flex-1 border rounded min-h-0">
                                     <ScrollArea className="h-full max-h-96">
                                         <div className="space-y-4 p-4">
-                                            {fields.map((field) => (
-                                                <div key={field.id} className="border rounded p-3 space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <input
-                                                            type="text"
-                                                            value={field.name}
-                                                            onChange={(e) => updateField(field.id, { name: e.target.value })}
-                                                            className="flex-1 border rounded px-2 py-1 text-sm"
-                                                            placeholder="Field name"
-                                                        />
-                                                        <select
-                                                            value={field.type}
-                                                            onChange={(e) => updateField(field.id, { type: e.target.value as any })}
-                                                            className="border rounded px-2 py-1 text-sm"
-                                                        >
-                                                            <option value="string">String</option>
-                                                            <option value="number">Number</option>
-                                                            <option value="boolean">Boolean</option>
-                                                            <option value="date">Date</option>
-                                                            <option value="object">Object</option>
-                                                            <option value="array">Array</option>
-                                                        </select>
-                                                        <button
-                                                            onClick={() => deleteField(field.id)}
-                                                            className="p-1 text-red-500 hover:text-red-700"
-                                                        >
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                            {fields.map((field) => renderFieldEditor(field))}
                                         </div>
                                     </ScrollArea>
                                 </div>
@@ -250,6 +398,8 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                         key={field.id}
                         field={field}
                         fieldValues={data.fieldValues || {}}
+                        expandedFields={expandedFields}
+                        onFieldExpansionToggle={handleFieldExpansionToggle}
                     />
                 ))}
                 
