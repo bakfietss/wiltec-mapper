@@ -90,12 +90,13 @@ export const importMappingConfiguration = (
 
       // Create the node with the correct data structure for CoalesceTransformNode
       const nodeData = {
-        label: transformConfig.label,
+        ...transformConfig.nodeData, // <- in case old configs saved it here
+        label: transformConfig.label ?? 'Coalesce',
         transformType: 'coalesce',
-        rules: rules,
-        defaultValue: defaultValue,
-        outputType: outputType,
-        inputValues: inputValues
+        rules: rules || [],
+        defaultValue: defaultValue ?? '',
+        outputType: outputType ?? 'value',
+        inputValues: inputValues || {}
       };
       
       nodes.push({
