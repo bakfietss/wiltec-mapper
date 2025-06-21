@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -45,12 +46,13 @@ export const importMappingConfiguration = (
 
   // 3. Transforms
   config.nodes.transforms.forEach(tx => {
-    // --- Coalesce Transform - simplified structure ---
     if (tx.transformType === 'coalesce') {
+      // Extract rules and defaultValue from config
       const rules = tx.config?.rules || [];
       const defaultValue = tx.config?.defaultValue || '';
 
-      console.log('Importing coalesce node with simplified structure:', { rules, defaultValue });
+      console.log('Importing coalesce node - extracted rules:', rules);
+      console.log('Importing coalesce node - extracted defaultValue:', defaultValue);
 
       nodes.push({
         id: tx.id,
