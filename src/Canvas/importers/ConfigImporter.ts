@@ -60,7 +60,8 @@ export const importMappingConfiguration = (
       
       if (transformConfig.transformType === 'coalesce') {
         // Handle coalesce - data is directly in config, not in config.parameters
-        const configData = transformConfig.config || {};
+        // Use type assertion since coalesce config has additional properties
+        const configData = transformConfig.config as any;
         nodeData = {
           label: transformConfig.label,
           transformType: 'coalesce',
