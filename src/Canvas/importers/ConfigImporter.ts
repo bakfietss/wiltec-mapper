@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -46,7 +47,7 @@ export const importMappingConfiguration = (
   // 3. Transforms
   config.nodes.transforms.forEach(tx => {
     if (tx.transformType === 'coalesce') {
-      // Use standard transform structure like other transform nodes
+      // Handle coalesce transform with proper nested config structure
       nodes.push({
         id: tx.id,
         type: 'transform',
@@ -54,7 +55,10 @@ export const importMappingConfiguration = (
         data: {
           label: tx.label,
           transformType: 'coalesce',
-          config: tx.config || { rules: [], defaultValue: '' }
+          config: {
+            rules: tx.config?.rules || [],
+            defaultValue: tx.config?.defaultValue || ''
+          }
         }
       });
 
