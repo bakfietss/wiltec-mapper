@@ -10,14 +10,6 @@ export const importMappingConfiguration = (
 
   console.log('Starting import with config:', config);
 
-  // First, let's collect all the source handles that have connections
-  const connectedSourceHandles = new Set<string>();
-  config.connections.forEach(conn => {
-    if (conn.sourceHandle) {
-      connectedSourceHandles.add(`${conn.sourceNodeId}:${conn.sourceHandle}`);
-    }
-  });
-
   // Function to get expanded fields for a source node
   const getExpandedFieldsForSource = (sourceNodeId: string): Set<string> => {
     const expandedFields = new Set<string>();
@@ -25,21 +17,26 @@ export const importMappingConfiguration = (
     // Find all connections from this source node
     const sourceConnections = config.connections.filter(conn => conn.sourceNodeId === sourceNodeId);
     
+    console.log(`Found ${sourceConnections.length} connections for source ${sourceNodeId}`);
+    
     sourceConnections.forEach(conn => {
       if (conn.sourceHandle) {
+        console.log(`Processing connection with handle: ${conn.sourceHandle}`);
+        
         // For nested paths like "itinerary.actual_time_of_arrival", we need to expand "itinerary"
         const pathParts = conn.sourceHandle.split('.');
-        if (pathParts.length > 1) {
-          // Add all parent paths to expanded fields
-          let currentPath = '';
-          for (let i = 0; i < pathParts.length - 1; i++) {
-            currentPath = currentPath ? `${currentPath}.${pathParts[i]}` : pathParts[i];
-            expandedFields.add(currentPath);
-          }
+        
+        // Build all parent paths that need to be expanded
+        let currentPath = '';
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          currentPath = currentPath ? `${currentPath}.${pathParts[i]}` : pathParts[i];
+          expandedFields.add(currentPath);
+          console.log(`Adding expanded field: ${currentPath}`);
         }
       }
     });
     
+    console.log(`Final expanded fields for ${sourceNodeId}:`, Array.from(expandedFields));
     return expandedFields;
   };
 
