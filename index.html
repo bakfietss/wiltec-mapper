@@ -16,44 +16,153 @@
     <meta name="twitter:site" content="@lovable_dev" />
     
     <script>
-      // Block any Facebook tracking attempts
-      console.log('Blocking Facebook tracking attempts...');
+      // Enhanced Facebook tracking detection and blocking
+      console.log('🚫 Facebook Blocker: Initializing...');
       
-      // Override fetch to block Facebook requests
+      // Track all network requests
       const originalFetch = window.fetch;
       window.fetch = function(...args) {
         const url = args[0];
-        if (typeof url === 'string' && url.includes('facebook.com')) {
-          console.warn('Blocked Facebook tracking request:', url);
+        const urlString = typeof url === 'string' ? url : (url && url.url) || 'unknown';
+        
+        console.log('🌐 Fetch request to:', urlString);
+        
+        if (urlString.includes('facebook.com') || urlString.includes('fbcdn.net') || urlString.includes('connect.facebook.net')) {
+          console.error('🚫 BLOCKED Facebook tracking request:', urlString);
+          console.trace('🔍 Facebook request stack trace:');
           return Promise.resolve(new Response('{}', { status: 200 }));
         }
         return originalFetch.apply(this, args);
       };
       
-      // Override XMLHttpRequest for Facebook requests
+      // Track XMLHttpRequest
       const originalXHR = window.XMLHttpRequest.prototype.open;
       window.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-        if (typeof url === 'string' && url.includes('facebook.com')) {
-          console.warn('Blocked Facebook XHR request:', url);
+        console.log('📡 XHR request to:', url);
+        
+        if (typeof url === 'string' && (url.includes('facebook.com') || url.includes('fbcdn.net') || url.includes('connect.facebook.net'))) {
+          console.error('🚫 BLOCKED Facebook XHR request:', url);
+          console.trace('🔍 Facebook XHR stack trace:');
           return;
         }
         return originalXHR.apply(this, [method, url, ...rest]);
       };
       
-      // Log all script tags being added
+      // Track all DOM modifications
       const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
           mutation.addedNodes.forEach(function(node) {
-            if (node.tagName === 'SCRIPT' || node.tagName === 'LINK') {
-              console.log('Script/Link added:', node.src || node.href || node.innerHTML);
+            if (node.tagName === 'SCRIPT') {
+              console.log('📜 Script added:', {
+                src: node.src,
+                innerHTML: node.innerHTML ? node.innerHTML.substring(0, 100) + '...' : 'empty',
+                attributes: Array.from(node.attributes || []).map(attr => ({ name: attr.name, value: attr.value }))
+              });
+              
+              if (node.src && (node.src.includes('facebook.com') || node.src.includes('fbcdn.net') || node.src.includes('connect.facebook.net'))) {
+                console.error('🚫 BLOCKED Facebook script:', node.src);
+                console.trace('🔍 Facebook script stack trace:');
+                node.remove();
+              }
+            }
+            
+            if (node.tagName === 'LINK') {
+              console.log('🔗 Link added:', {
+                href: node.href,
+                rel: node.rel,
+                as: node.as,
+                attributes: Array.from(node.attributes || []).map(attr => ({ name: attr.name, value: attr.value }))
+              });
+              
+              if (node.href && (node.href.includes('facebook.com') || node.href.includes('fbcdn.net') || node.href.includes('connect.facebook.net'))) {
+                console.error('🚫 BLOCKED Facebook link:', node.href);
+                console.trace('🔍 Facebook link stack trace:');
+                node.remove();
+              }
+            }
+            
+            if (node.tagName === 'IMG' && node.src && (node.src.includes('facebook.com') || node.src.includes('fbcdn.net'))) {
+              console.error('🚫 BLOCKED Facebook image:', node.src);
+              console.trace('🔍 Facebook image stack trace:');
+              node.remove();
             }
           });
         });
       });
       
-      document.addEventListener('DOMContentLoaded', function() {
-        observer.observe(document.body, { childList: true, subtree: true });
+      // Override Image constructor to catch tracking pixels
+      const originalImage = window.Image;
+      window.Image = function(...args) {
+        const img = new originalImage(...args);
+        const originalSrcSet = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src').set;
+        
+        Object.defineProperty(img, 'src', {
+          set: function(value) {
+            console.log('🖼️ Image src set to:', value);
+            
+            if (value && (value.includes('facebook.com') || value.includes('fbcdn.net') || value.includes('connect.facebook.net'))) {
+              console.error('🚫 BLOCKED Facebook image tracking pixel:', value);
+              console.trace('🔍 Facebook image pixel stack trace:');
+              return;
+            }
+            
+            originalSrcSet.call(this, value);
+          },
+          get: function() {
+            return this.getAttribute('src');
+          }
+        });
+        
+        return img;
+      };
+      
+      // Listen for React state changes that might trigger Facebook requests
+      window.addEventListener('beforeunload', () => {
+        console.log('🔄 Page unloading...');
       });
+      
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('📄 DOM loaded, starting observer...');
+        observer.observe(document.body, { childList: true, subtree: true });
+        
+        // Check for any existing Facebook elements
+        const existingScripts = document.querySelectorAll('script');
+        const existingLinks = document.querySelectorAll('link');
+        
+        existingScripts.forEach(script => {
+          if (script.src && (script.src.includes('facebook.com') || script.src.includes('fbcdn.net') || script.src.includes('connect.facebook.net'))) {
+            console.error('🚫 Found existing Facebook script:', script.src);
+            script.remove();
+          }
+        });
+        
+        existingLinks.forEach(link => {
+          if (link.href && (link.href.includes('facebook.com') || link.href.includes('fbcdn.net') || link.href.includes('connect.facebook.net'))) {
+            console.error('🚫 Found existing Facebook link:', link.href);
+            link.remove();
+          }
+        });
+      });
+      
+      // Override appendChild to catch dynamic additions
+      const originalAppendChild = Node.prototype.appendChild;
+      Node.prototype.appendChild = function(child) {
+        if (child.tagName === 'SCRIPT' && child.src && (child.src.includes('facebook.com') || child.src.includes('fbcdn.net') || child.src.includes('connect.facebook.net'))) {
+          console.error('🚫 BLOCKED appendChild Facebook script:', child.src);
+          console.trace('🔍 appendChild Facebook script stack trace:');
+          return child;
+        }
+        
+        if (child.tagName === 'LINK' && child.href && (child.href.includes('facebook.com') || child.href.includes('fbcdn.net') || child.href.includes('connect.facebook.net'))) {
+          console.error('🚫 BLOCKED appendChild Facebook link:', child.href);
+          console.trace('🔍 appendChild Facebook link stack trace:');
+          return child;
+        }
+        
+        return originalAppendChild.call(this, child);
+      };
+      
+      console.log('🚫 Facebook Blocker: Fully initialized');
     </script>
   </head>
 
