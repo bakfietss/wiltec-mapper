@@ -298,9 +298,9 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 
                 console.log('Final input values for coalesce:', inputValues);
                 
-                if (Object.keys(inputValues).length > 0) {
-                    const config = sourceNode.data || {};
-                    value = applyCoalesceTransform(inputValues, config);
+                if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0) {
+                    // Pass the actual node data instead of just config
+                    value = applyCoalesceTransform(inputValues, sourceNode.data);
                     console.log('Coalesce transform result:', value);
                 }
             } else {
@@ -338,9 +338,9 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                 }
             });
             
-            if (Object.keys(inputValues).length > 0) {
-                const config = sourceNode.data || {};
-                value = applyCoalesceTransform(inputValues, config);
+            if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0) {
+                // Pass the actual node data instead of just config
+                value = applyCoalesceTransform(inputValues, sourceNode.data);
             }
         } else if (sourceNode.type === 'staticValue') {
             // Handle new multi-value static value nodes

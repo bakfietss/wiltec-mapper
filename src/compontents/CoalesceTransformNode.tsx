@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitMerge, Plus, Trash2, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
@@ -26,15 +26,28 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
 
   console.log('=== COALESCE NODE RENDER ===');
   console.log('Node ID:', id);
-  console.log('Rules:', rules);
+  console.log('Local rules state:', rules);
+  console.log('Data rules from props:', data.rules);
   console.log('Default value:', defaultValue);
   console.log('Input values:', inputValues);
 
-  // Sync changes back to React Flow - ensure we sync both rules and defaultValue
+  // Initialize from data if rules are empty but data has rules
+  useEffect(() => {
+    if (rules.length === 0 && data.rules && data.rules.length > 0) {
+      console.log('Initializing rules from data:', data.rules);
+      setRules(data.rules);
+    }
+    if (!defaultValue && data.defaultValue) {
+      console.log('Initializing default value from data:', data.defaultValue);
+      setDefaultValue(data.defaultValue);
+    }
+  }, [data.rules, data.defaultValue]);
+
+  // Sync changes back to React Flow with immediate effect
   useNodeDataSync(id, { 
     rules, 
     defaultValue,
-    transformType: 'coalesce', // Ensure this is always set
+    transformType: 'coalesce',
     label: data.label
   }, [rules, defaultValue]);
 
@@ -45,7 +58,8 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
       outputValue: `Value ${rules.length + 1}`
     };
     console.log('Adding new rule:', newRule);
-    setRules([...rules, newRule]);
+    const updatedRules = [...rules, newRule];
+    setRules(updatedRules);
   };
 
   const updateRule = (ruleId: string, updates: Partial<CoalesceRule>) => {
@@ -53,6 +67,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
       rule.id === ruleId ? { ...rule, ...updates } : rule
     );
     console.log('Updating rule:', ruleId, updates);
+    console.log('Updated rules array:', updatedRules);
     setRules(updatedRules);
   };
 
@@ -60,6 +75,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
     const updatedRules = rules.filter(rule => rule.id !== ruleId)
       .map((rule, index) => ({ ...rule, priority: index + 1 }));
     console.log('Deleting rule:', ruleId);
+    console.log('Rules after deletion:', updatedRules);
     setRules(updatedRules);
   };
 
