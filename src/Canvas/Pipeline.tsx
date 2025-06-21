@@ -170,23 +170,29 @@ const applyCoalesceTransform = (inputValues: Record<string, any>, config: any): 
   const rules = config.rules || [];
   const defaultValue = config.defaultValue || '';
   
-  console.log('Applying coalesce transform with:', { inputValues, rules, defaultValue });
+  console.log('=== COALESCE TRANSFORM DEBUG ===');
+  console.log('Input values received:', inputValues);
+  console.log('Rules configuration:', rules);
+  console.log('Default value:', defaultValue);
   
   // Try each rule in priority order
   for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
-    const inputValue = inputValues[rule.id];
+    console.log(`Checking rule ${rule.priority} (ID: ${rule.id})`);
     
-    console.log(`Checking rule ${rule.priority} (${rule.id}):`, { inputValue, outputValue: rule.outputValue });
+    // Look for input value using the rule ID as the key
+    const inputValue = inputValues[rule.id];
+    console.log(`  - Input value for rule ${rule.id}:`, inputValue);
+    console.log(`  - Rule output value:`, rule.outputValue);
     
     // If this input has a value, return the rule's output value
     if (inputValue !== undefined && inputValue !== null && inputValue !== '') {
-      console.log(`Rule ${rule.priority} matched, returning:`, rule.outputValue);
-      return rule.outputValue || inputValue; // Use outputValue if defined, fallback to input
+      console.log(`  - Rule ${rule.priority} matched! Returning output:`, rule.outputValue);
+      return rule.outputValue || inputValue;
     }
   }
   
   // No input had a value, return default
-  console.log('No rules matched, returning default:', defaultValue);
+  console.log('No rules matched, returning default value:', defaultValue);
   return defaultValue;
 };
 
@@ -267,25 +273,35 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
         } else if (sourceNode.type === 'transform') {
             // Check if this is a coalesce transform
             if (sourceNode.data?.transformType === 'coalesce') {
+                console.log('=== PROCESSING COALESCE TRANSFORM ===');
+                console.log('Coalesce node ID:', sourceNode.id);
+                console.log('Coalesce node data:', sourceNode.data);
+                
                 // Handle coalesce transform node with multiple inputs
                 const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+                console.log('Transform input edges:', transformInputEdges);
                 
                 let inputValues: Record<string, any> = {};
                 
                 transformInputEdges.forEach(inputEdge => {
                     const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                    console.log('Processing input edge:', inputEdge);
+                    console.log('Input source node:', inputSourceNode);
                     
                     if (inputSourceNode && isSourceNode(inputSourceNode)) {
-                      const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
-                      inputValues[inputEdge.targetHandle] = sourceValue;
+                        const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                        // Use targetHandle (rule ID) as the key
+                        inputValues[inputEdge.targetHandle] = sourceValue;
+                        console.log(`Mapped input: ${inputEdge.targetHandle} = ${sourceValue}`);
                     }
                 });
                 
-                console.log('Coalesce transform input values:', inputValues);
+                console.log('Final input values for coalesce:', inputValues);
                 
                 if (Object.keys(inputValues).length > 0) {
                     const config = sourceNode.data || {};
                     value = applyCoalesceTransform(inputValues, config);
+                    console.log('Coalesce transform result:', value);
                 }
             } else {
                 // Regular transform node

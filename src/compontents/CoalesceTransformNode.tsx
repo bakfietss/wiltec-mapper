@@ -24,8 +24,19 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
   const inputValues = data.inputValues || {};
 
-  // Sync changes back to React Flow - simple structure like other nodes
-  useNodeDataSync(id, { rules, defaultValue }, [rules, defaultValue]);
+  console.log('=== COALESCE NODE RENDER ===');
+  console.log('Node ID:', id);
+  console.log('Rules:', rules);
+  console.log('Default value:', defaultValue);
+  console.log('Input values:', inputValues);
+
+  // Sync changes back to React Flow - ensure we sync both rules and defaultValue
+  useNodeDataSync(id, { 
+    rules, 
+    defaultValue,
+    transformType: 'coalesce', // Ensure this is always set
+    label: data.label
+  }, [rules, defaultValue]);
 
   const addRule = () => {
     const newRule: CoalesceRule = {
@@ -33,6 +44,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
       priority: rules.length + 1,
       outputValue: `Value ${rules.length + 1}`
     };
+    console.log('Adding new rule:', newRule);
     setRules([...rules, newRule]);
   };
 
@@ -40,12 +52,14 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
     const updatedRules = rules.map(rule => 
       rule.id === ruleId ? { ...rule, ...updates } : rule
     );
+    console.log('Updating rule:', ruleId, updates);
     setRules(updatedRules);
   };
 
   const deleteRule = (ruleId: string) => {
     const updatedRules = rules.filter(rule => rule.id !== ruleId)
       .map((rule, index) => ({ ...rule, priority: index + 1 }));
+    console.log('Deleting rule:', ruleId);
     setRules(updatedRules);
   };
 
@@ -184,6 +198,8 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
               {rules.map((rule) => {
                 const inputValue = inputValues[rule.id];
                 const hasValue = inputValue !== undefined && inputValue !== null && inputValue !== '';
+                
+                console.log(`Render rule ${rule.id}: inputValue=${inputValue}, hasValue=${hasValue}`);
                 
                 return (
                   <div key={rule.id} className="relative">
