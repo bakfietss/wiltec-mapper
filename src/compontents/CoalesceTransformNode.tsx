@@ -240,4 +240,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   );
 };
 
+console.log('Loaded Coalesce rules:', data.rules);
+
 export default CoalesceTransformNode;
