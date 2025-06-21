@@ -46,16 +46,12 @@ export const importMappingConfiguration = (
 
   // 3. Transforms
   config.nodes.transforms.forEach(tx => {
-    // --- Coalesce Transform ---
+    // --- Coalesce Transform - simplified structure ---
     if (tx.transformType === 'coalesce') {
-      // read directly from tx.config
-      const cfg: any = tx.config ?? {};
-      const rules: any[] = cfg.rules ?? [];
-      const defaultValue: string = cfg.defaultValue ?? '';
-      const outputType: string = cfg.outputType ?? 'value';
-      const inputValues: Record<string, any> = cfg.inputValues ?? {};
+      const rules = tx.config?.rules || [];
+      const defaultValue = tx.config?.defaultValue || '';
 
-      console.log('Importing coalesce node with data:', { rules, defaultValue, outputType, inputValues });
+      console.log('Importing coalesce node with simplified structure:', { rules, defaultValue });
 
       nodes.push({
         id: tx.id,
@@ -63,11 +59,10 @@ export const importMappingConfiguration = (
         position: tx.position,
         data: {
           label: tx.label,
-          transformType: 'coalesce',  // must live in data
+          transformType: 'coalesce',
           rules,
           defaultValue,
-          outputType,
-          inputValues
+          inputValues: {}
         }
       });
 
@@ -153,7 +148,6 @@ export const importMappingConfiguration = (
     const tgt = nodes.find(n => n.id === conn.targetNodeId);
     
     console.log('Importing connection:', conn.id, 'from', conn.sourceNodeId, 'to', conn.targetNodeId);
-    console.log('Source handle:', conn.sourceHandle, 'Target handle:', conn.targetHandle);
     
     if (src && tgt) {
       edges.push({
@@ -174,8 +168,5 @@ export const importMappingConfiguration = (
   });
 
   console.log(`Import complete: ${nodes.length} nodes, ${edges.length} edges`);
-  console.log('Final nodes:', nodes);
-  console.log('Final edges:', edges);
-
   return { nodes, edges };
 };

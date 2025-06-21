@@ -17,46 +17,20 @@ interface CoalesceTransformData {
   rules: CoalesceRule[];
   defaultValue: string;
   inputValues?: Record<string, any>;
-  // Support legacy config structure from imports
-  config?: {
-    rules?: CoalesceRule[];
-    defaultValue?: string;
-  };
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
-  // Initialize rules from either data.rules or data.config.rules (for imported configs)
-  const initialRules = data.rules || data.config?.rules || [];
-  const initialDefaultValue = data.defaultValue || data.config?.defaultValue || '';
-  
-  const [rules, setRules] = useState<CoalesceRule[]>(initialRules);
-  const [defaultValue, setDefaultValue] = useState(initialDefaultValue);
+  const [rules, setRules] = useState<CoalesceRule[]>(data.rules || []);
+  const [defaultValue, setDefaultValue] = useState(data.defaultValue || '');
   const inputValues = data.inputValues || {};
 
   console.log('=== COALESCE NODE RENDER ===');
   console.log('Node ID:', id);
-  console.log('Initial rules from data:', initialRules);
-  console.log('Local rules state:', rules);
+  console.log('Rules:', rules);
   console.log('Default value:', defaultValue);
   console.log('Input values:', inputValues);
 
-  // Initialize rules and default value from data on mount and when data changes
-  useEffect(() => {
-    const dataRules = data.rules || data.config?.rules || [];
-    const dataDefaultValue = data.defaultValue || data.config?.defaultValue || '';
-    
-    if (dataRules.length > 0 && rules.length === 0) {
-      console.log('Initializing rules from data:', dataRules);
-      setRules(dataRules);
-    }
-    
-    if (dataDefaultValue && !defaultValue) {
-      console.log('Initializing default value from data:', dataDefaultValue);
-      setDefaultValue(dataDefaultValue);
-    }
-  }, [data.rules, data.config?.rules, data.defaultValue, data.config?.defaultValue]);
-
-  // Sync changes back to React Flow with immediate effect
+  // Sync changes back to React Flow
   useNodeDataSync(id, { 
     rules, 
     defaultValue,
@@ -80,7 +54,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
       rule.id === ruleId ? { ...rule, ...updates } : rule
     );
     console.log('Updating rule:', ruleId, updates);
-    console.log('Updated rules array:', updatedRules);
     setRules(updatedRules);
   };
 
@@ -88,7 +61,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
     const updatedRules = rules.filter(rule => rule.id !== ruleId)
       .map((rule, index) => ({ ...rule, priority: index + 1 }));
     console.log('Deleting rule:', ruleId);
-    console.log('Rules after deletion:', updatedRules);
     setRules(updatedRules);
   };
 
@@ -227,8 +199,6 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
               {rules.map((rule) => {
                 const inputValue = inputValues[rule.id];
                 const hasValue = inputValue !== undefined && inputValue !== null && inputValue !== '';
-                
-                console.log(`Render rule ${rule.id}: inputValue=${inputValue}, hasValue=${hasValue}`);
                 
                 return (
                   <div key={rule.id} className="relative">
