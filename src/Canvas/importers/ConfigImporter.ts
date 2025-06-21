@@ -58,12 +58,13 @@ export const importMappingConfiguration = (
       nodeType = 'transform';
       
       if (transformConfig.transformType === 'coalesce') {
-        // Handle coalesce with simple structure like other nodes
+        // Handle coalesce with simple structure - access from parameters
+        const params = transformConfig.config?.parameters || {};
         nodeData = {
           label: transformConfig.label,
           transformType: 'coalesce',
-          rules: transformConfig.config?.rules || [],
-          defaultValue: transformConfig.config?.defaultValue || '',
+          rules: params.rules || [],
+          defaultValue: params.defaultValue || '',
         };
       } else {
         // Regular transform node
