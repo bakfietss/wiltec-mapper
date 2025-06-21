@@ -4,161 +4,176 @@ import { MappingConfiguration } from '../types/MappingTypes';
 
 export const importMappingConfiguration = (
   config: MappingConfiguration
-): { nodes: Node[], edges: Edge[] } => {
+): { nodes: Node[]; edges: Edge[] } => {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   console.log('Starting import with config:', config);
 
-  // Import source nodes with complete data preservation
-  config.nodes.sources.forEach(sourceConfig => {
+  // 1. Sources
+  config.nodes.sources.forEach(src => {
     nodes.push({
-      id: sourceConfig.id,
+      id: src.id,
       type: 'source',
-      position: sourceConfig.position,
+      position: src.position,
       data: {
-        label: sourceConfig.label,
-        fields: sourceConfig.schema.fields,
-        data: sourceConfig.sampleData,
+        label: src.label,
+        fields: src.schema.fields,
+        data: src.sampleData,
         schemaType: 'source'
       }
     });
   });
 
-  // Import target nodes with complete data preservation including fieldValues
-  config.nodes.targets.forEach(targetConfig => {
+  // 2. Targets
+  config.nodes.targets.forEach(tgt => {
     const nodeData: any = {
-      label: targetConfig.label,
-      fields: targetConfig.schema.fields,
-      data: targetConfig.outputData || [],
+      label: tgt.label,
+      fields: tgt.schema.fields,
+      data: tgt.outputData ?? [],
       schemaType: 'target'
     };
-    
-    // Restore fieldValues if they exist
-    if ((targetConfig as any).fieldValues) {
-      nodeData.fieldValues = (targetConfig as any).fieldValues;
+    if ((tgt as any).fieldValues) {
+      nodeData.fieldValues = (tgt as any).fieldValues;
     }
-    
     nodes.push({
-      id: targetConfig.id,
+      id: tgt.id,
       type: 'target',
-      position: targetConfig.position,
+      position: tgt.position,
       data: nodeData
     });
   });
 
-  // Import transform nodes with simple structure matching other nodes
-  config.nodes.transforms.forEach(transformConfig => {
-    let nodeType = transformConfig.type;
-    let nodeData: any = {
-      label: transformConfig.label,
-      transformType: transformConfig.transformType
-    };
+  // 3. Transforms
+  config.nodes.transforms.forEach(tx => {
+    // --- Coalesce Transform ---
+    if (tx.transformType === 'coalesce') {
+      // read directly from tx.config
+      const cfg: any = tx.config ?? {};
+      const rules: any[] = cfg.rules ?? [];
+      const defaultValue: string = cfg.defaultValue ?? '';
+      const outputType: string = cfg.outputType ?? 'value';
+      const inputValues: Record<string, any> = cfg.inputValues ?? {};
 
-    if (transformConfig.transformType === 'coalesce' || transformConfig.type === 'transform') {
-      nodeType = 'transform';
-      
-      if (transformConfig.transformType === 'coalesce') {
-        // Handle coalesce - data is directly in config, not in config.parameters
-        // Use type assertion since coalesce config has additional properties
-        const configData = transformConfig.config as any;
-        nodeData = {
-          label: transformConfig.label,
-          transformType: 'coalesce',
-          rules: configData.rules || [],
-          defaultValue: configData.defaultValue || '',
-        };
-        
-        console.log('Importing coalesce node with data:', nodeData);
-      } else {
-        // Regular transform node
-        nodeData = {
-          label: transformConfig.label,
-          transformType: transformConfig.transformType,
-          config: transformConfig.config
-        };
-      }
-      
-    } else if (transformConfig.transformType === 'IF THEN' || transformConfig.type === 'ifThen') {
-      nodeType = 'ifThen';
-      const params = transformConfig.config?.parameters || {};
-      nodeData = {
-        label: transformConfig.label,
-        operator: params.operator || '=',
-        compareValue: params.compareValue || '',
-        thenValue: params.thenValue || '',
-        elseValue: params.elseValue || ''
+      console.log('Importing coalesce node with data:', { rules, defaultValue, outputType, inputValues });
+
+      nodes.push({
+        id: tx.id,
+        type: 'transform',
+        position: tx.position,
+        data: {
+          label: tx.label,
+          transformType: 'coalesce',  // must live in data
+          rules,
+          defaultValue,
+          outputType,
+          inputValues
+        }
+      });
+
+    // --- IF THEN Transform ---
+    } else if (tx.transformType === 'ifThen' || tx.transformType === 'IF THEN') {
+      const params = (tx.config?.parameters as any) ?? {};
+      const nodeData = {
+        label: tx.label,
+        operator: params.operator ?? '=',
+        compareValue: params.compareValue ?? '',
+        thenValue: params.thenValue ?? '',
+        elseValue: params.elseValue ?? ''
       };
-    } else if (transformConfig.transformType === 'Static Value' || transformConfig.type === 'staticValue') {
-      nodeType = 'staticValue';
-      const params = transformConfig.config?.parameters || {};
-      nodeData = {
-        label: transformConfig.label,
-        values: params.values || []
+      nodes.push({
+        id: tx.id,
+        type: 'ifThen',
+        position: tx.position,
+        data: nodeData
+      });
+
+    // --- Static Value Transform ---
+    } else if (tx.transformType === 'staticValue' || tx.transformType === 'Static Value') {
+      const params = (tx.config?.parameters as any) ?? {};
+      const nodeData: any = {
+        label: tx.label,
+        values: params.values ?? []
       };
-    } else if (transformConfig.transformType === 'Text Splitter' || transformConfig.type === 'splitterTransform') {
-      nodeType = 'splitterTransform';
-      const params = transformConfig.config?.parameters || {};
-      nodeData = {
-        label: transformConfig.label,
-        delimiter: params.delimiter || ',',
-        splitIndex: params.splitIndex || 0,
-        config: transformConfig.config
+      nodes.push({
+        id: tx.id,
+        type: 'staticValue',
+        position: tx.position,
+        data: nodeData
+      });
+
+    // --- Text Splitter Transform ---
+    } else if (tx.transformType === 'splitterTransform' || tx.transformType === 'Text Splitter') {
+      const params = (tx.config?.parameters as any) ?? {};
+      const nodeData: any = {
+        label: tx.label,
+        delimiter: params.delimiter ?? ',',
+        splitIndex: params.splitIndex ?? 0,
+        config: tx.config
       };
+      nodes.push({
+        id: tx.id,
+        type: 'splitterTransform',
+        position: tx.position,
+        data: nodeData
+      });
+
+    // --- Generic Transform ---
+    } else {
+      nodes.push({
+        id: tx.id,
+        type: 'transform',
+        position: tx.position,
+        data: {
+          label: tx.label,
+          transformType: tx.transformType,
+          config: tx.config
+        }
+      });
     }
-
-    nodes.push({
-      id: transformConfig.id,
-      type: nodeType,
-      position: transformConfig.position,
-      data: nodeData
-    });
   });
 
-  // Import mapping nodes
-  config.nodes.mappings.forEach(mappingConfig => {
+  // 4. Conversion Mappings
+  config.nodes.mappings.forEach(mp => {
     nodes.push({
-      id: mappingConfig.id,
+      id: mp.id,
       type: 'conversionMapping',
-      position: mappingConfig.position,
+      position: mp.position,
       data: {
-        label: mappingConfig.label,
-        mappings: mappingConfig.mappings,
+        label: mp.label,
+        mappings: mp.mappings,
         isExpanded: false
       }
     });
   });
 
-  // Import connections
-  config.connections.forEach(connectionConfig => {
-    const sourceExists = nodes.some(n => n.id === connectionConfig.sourceNodeId);
-    const targetExists = nodes.some(n => n.id === connectionConfig.targetNodeId);
+  // 5. Connections
+  config.connections.forEach(conn => {
+    const src = nodes.find(n => n.id === conn.sourceNodeId);
+    const tgt = nodes.find(n => n.id === conn.targetNodeId);
     
-    console.log('Importing connection:', connectionConfig.id, 'from', connectionConfig.sourceNodeId, 'to', connectionConfig.targetNodeId);
-    console.log('Source handle:', connectionConfig.sourceHandle, 'Target handle:', connectionConfig.targetHandle);
+    console.log('Importing connection:', conn.id, 'from', conn.sourceNodeId, 'to', conn.targetNodeId);
+    console.log('Source handle:', conn.sourceHandle, 'Target handle:', conn.targetHandle);
     
-    if (sourceExists && targetExists) {
+    if (src && tgt) {
       edges.push({
-        id: connectionConfig.id,
-        source: connectionConfig.sourceNodeId,
-        target: connectionConfig.targetNodeId,
-        sourceHandle: connectionConfig.sourceHandle || undefined,
-        targetHandle: connectionConfig.targetHandle || undefined,
+        id: conn.id,
+        source: conn.sourceNodeId,
+        target: conn.targetNodeId,
+        sourceHandle: conn.sourceHandle || undefined,
+        targetHandle: conn.targetHandle || undefined,
         type: 'smoothstep',
         animated: true,
-        style: { 
-          strokeWidth: 2.0,
-          stroke: '#3b82f6'
-        }
+        style: { strokeWidth: 2, stroke: '#3b82f6' }
       });
       
-      console.log('Added edge:', connectionConfig.id);
+      console.log('Added edge:', conn.id);
     } else {
-      console.warn('Skipping edge - source or target node not found:', connectionConfig);
+      console.warn('Skipping edge - source or target node not found:', conn);
     }
   });
 
-  console.log('Import completed - Nodes:', nodes.length, 'Edges:', edges.length);
+  console.log(`Import complete: ${nodes.length} nodes, ${edges.length} edges`);
   console.log('Final nodes:', nodes);
   console.log('Final edges:', edges);
 
