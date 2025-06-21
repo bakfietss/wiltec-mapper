@@ -17,6 +17,7 @@ interface SourceNodeData {
     label: string;
     fields: SchemaField[];
     data?: any[];
+    initialExpandedFields?: Set<string>;
 }
 
 const getTypeColor = (type: string) => {
@@ -244,6 +245,14 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [jsonInput, setJsonInput] = useState('');
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+
+    // Initialize expanded fields from import data
+    useEffect(() => {
+        if (data.initialExpandedFields && data.initialExpandedFields.size > 0) {
+            console.log('Setting initial expanded fields for source node:', data.initialExpandedFields);
+            setExpandedFields(new Set(data.initialExpandedFields));
+        }
+    }, [data.initialExpandedFields]);
 
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
