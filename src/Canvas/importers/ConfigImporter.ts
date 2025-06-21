@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -58,14 +59,16 @@ export const importMappingConfiguration = (
       nodeType = 'transform';
       
       if (transformConfig.transformType === 'coalesce') {
-        // Handle coalesce with simple structure - access from parameters
-        const params = transformConfig.config?.parameters || {};
+        // Handle coalesce - data is directly in config, not in config.parameters
+        const configData = transformConfig.config || {};
         nodeData = {
           label: transformConfig.label,
           transformType: 'coalesce',
-          rules: params.rules || [],
-          defaultValue: params.defaultValue || '',
+          rules: configData.rules || [],
+          defaultValue: configData.defaultValue || '',
         };
+        
+        console.log('Importing coalesce node with data:', nodeData);
       } else {
         // Regular transform node
         nodeData = {
