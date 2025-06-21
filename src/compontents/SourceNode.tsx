@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Handle, Position, useStoreState } from '@xyflow/react';
+import { Handle, Position, useStore } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
@@ -247,7 +248,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
 
     // Get all edges from React Flow store and auto-expand connected fields
-    const allEdges = useStoreState((store) => store.edges);
+    const allEdges = useStore((store) => store.edges);
 
     useEffect(() => {
         const connectedPaths = new Set<string>();
