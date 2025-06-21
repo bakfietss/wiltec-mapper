@@ -98,13 +98,12 @@ export const exportExecutionMapping = (
             console.log('PROCESSING COALESCE TRANSFORM NODE FOR EXECUTION:', sourceNode.id);
             const sourceData = sourceNode.data as any;
             
-            // Get coalesce configuration from the node's config
-            const coalesceConfig = sourceData?.config || {};
-            const rules = coalesceConfig?.rules || [];
-            const defaultValue = coalesceConfig?.defaultValue || '';
+            // Get coalesce configuration directly from the node data
+            const rules = sourceData?.rules || [];
+            const defaultValue = sourceData?.defaultValue || '';
             
-            console.log('Coalesce rules from config:', rules);
-            console.log('Coalesce defaultValue from config:', defaultValue);
+            console.log('Coalesce rules from data:', rules);
+            console.log('Coalesce defaultValue from data:', defaultValue);
             
             // Find all inputs to the coalesce node and build the coalesce mapping
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
@@ -231,8 +230,10 @@ export const exportExecutionMapping = (
             return;
           }
           
-          console.log('Generated mapping:', mapping);
-          mappings.push(mapping);
+          if (mapping!) {
+            console.log('Generated mapping:', mapping);
+            mappings.push(mapping);
+          }
         });
       });
     }

@@ -170,17 +170,23 @@ const applyCoalesceTransform = (inputValues: Record<string, any>, config: any): 
   const rules = config.rules || [];
   const defaultValue = config.defaultValue || '';
   
+  console.log('Applying coalesce transform with:', { inputValues, rules, defaultValue });
+  
   // Try each rule in priority order
   for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
     const inputValue = inputValues[rule.id];
     
+    console.log(`Checking rule ${rule.priority} (${rule.id}):`, { inputValue, outputValue: rule.outputValue });
+    
     // If this input has a value, return the rule's output value
     if (inputValue !== undefined && inputValue !== null && inputValue !== '') {
+      console.log(`Rule ${rule.priority} matched, returning:`, rule.outputValue);
       return rule.outputValue || inputValue; // Use outputValue if defined, fallback to input
     }
   }
   
   // No input had a value, return default
+  console.log('No rules matched, returning default:', defaultValue);
   return defaultValue;
 };
 
@@ -274,6 +280,8 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
                       inputValues[inputEdge.targetHandle] = sourceValue;
                     }
                 });
+                
+                console.log('Coalesce transform input values:', inputValues);
                 
                 if (Object.keys(inputValues).length > 0) {
                     const config = sourceNode.data || {};
