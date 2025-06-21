@@ -1,5 +1,3 @@
-
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -53,49 +51,49 @@ export const importMappingConfiguration = (
   config.nodes.transforms.forEach(transformConfig => {
     console.log('Importing transform node:', transformConfig.id, 'type:', transformConfig.type, 'transformType:', transformConfig.transformType);
 
-    // Handle coalesce transforms with proper data extraction
+    // Handle coalesce transforms with improved data extraction
     if (transformConfig.transformType === 'coalesce') {
       console.log('Processing coalesce transform node:', transformConfig.id);
       console.log('Transform config:', transformConfig);
       
-      // Extract coalesce data - it's inside the config object in the JSON
+      // Extract coalesce data from multiple possible locations
       let rules: any[] = [];
       let defaultValue = '';
       let outputType = 'value';
       let inputValues: Record<string, any> = {};
       
-      // The data is stored inside config in the JSON - cast to any to access dynamic properties
+      // Check the config object first
       if (transformConfig.config) {
         const configAny = transformConfig.config as any;
-        if (configAny.rules) {
-          rules = configAny.rules;
-        }
-        if (configAny.defaultValue !== undefined) {
-          defaultValue = configAny.defaultValue;
-        }
-        if (configAny.outputType) {
-          outputType = configAny.outputType;
-        }
-        if (configAny.inputValues) {
-          inputValues = configAny.inputValues;
-        }
         
-        // Also check if they're nested under parameters
+        // Direct properties on config
+        rules = configAny.rules || [];
+        defaultValue = configAny.defaultValue || '';
+        outputType = configAny.outputType || 'value';
+        inputValues = configAny.inputValues || {};
+        
+        // Check nested parameters
         if (configAny.parameters) {
           const params = configAny.parameters;
-          if (!rules.length && params.rules) {
-            rules = params.rules;
-          }
-          if (!defaultValue && params.defaultValue) {
-            defaultValue = params.defaultValue;
-          }
-          if (params.outputType) {
-            outputType = params.outputType;
-          }
-          if (params.inputValues) {
-            inputValues = params.inputValues;
-          }
+          rules = rules.length ? rules : (params.rules || []);
+          defaultValue = defaultValue || params.defaultValue || '';
+          outputType = params.outputType || outputType;
+          inputValues = Object.keys(inputValues).length ? inputValues : (params.inputValues || {});
         }
+      }
+      
+      // Also check if data is stored directly on the transform config (for some export formats)
+      if ((transformConfig as any).rules) {
+        rules = (transformConfig as any).rules;
+      }
+      if ((transformConfig as any).defaultValue !== undefined) {
+        defaultValue = (transformConfig as any).defaultValue;
+      }
+      if ((transformConfig as any).outputType) {
+        outputType = (transformConfig as any).outputType;
+      }
+      if ((transformConfig as any).inputValues) {
+        inputValues = (transformConfig as any).inputValues;
       }
 
       // Create the node with the correct data structure for CoalesceTransformNode
@@ -108,7 +106,7 @@ export const importMappingConfiguration = (
         inputValues: inputValues
       };
       
-      console.log('Final coalesce node data:', nodeData);
+      console.log('Final coalesce node data with rules:', nodeData.rules);
       
       nodes.push({
         id: transformConfig.id,
@@ -244,4 +242,3 @@ export const importMappingConfiguration = (
 
   return { nodes, edges };
 };
-
