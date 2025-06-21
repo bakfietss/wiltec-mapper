@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useStore } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
@@ -38,9 +37,10 @@ const DataField: React.FC<{
     value: any;
     level: number;
     onFieldToggle: (path: string) => void;
+    onFieldExpansionToggle: (path: string) => void;
     selectedFields: Set<string>;
     expandedFields: Set<string>;
-}> = ({ path, value, level, onFieldToggle, selectedFields, expandedFields }) => {
+}> = ({ path, value, level, onFieldToggle, onFieldExpansionToggle, selectedFields, expandedFields }) => {
     const fieldName = path.split('.').pop() || path;
     const isExpanded = expandedFields.has(path);
     const isSelected = selectedFields.has(path);
@@ -53,14 +53,24 @@ const DataField: React.FC<{
                         isSelected ? 'bg-blue-50' : ''
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
-                    onClick={() => onFieldToggle(path)}
                 >
-                    {isExpanded ? (
-                        <ChevronDown className="w-3 h-3 text-gray-400" />
-                    ) : (
-                        <ChevronRight className="w-3 h-3 text-gray-400" />
-                    )}
-                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onFieldExpansionToggle(path);
+                        }}
+                        className="cursor-pointer p-1 -m-1"
+                    >
+                        {isExpanded ? (
+                            <ChevronDown className="w-3 h-3 text-gray-400" />
+                        ) : (
+                            <ChevronRight className="w-3 h-3 text-gray-400" />
+                        )}
+                    </div>
+                    <span 
+                        className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer"
+                        onClick={() => onFieldToggle(path)}
+                    >
                         {fieldName}[]
                     </span>
                     <span className="text-xs text-gray-500">({value.length} items)</span>
@@ -89,6 +99,7 @@ const DataField: React.FC<{
                         value={item}
                         level={level + 1}
                         onFieldToggle={onFieldToggle}
+                        onFieldExpansionToggle={onFieldExpansionToggle}
                         selectedFields={selectedFields}
                         expandedFields={expandedFields}
                     />
@@ -105,14 +116,24 @@ const DataField: React.FC<{
                         isSelected ? 'bg-blue-50' : ''
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
-                    onClick={() => onFieldToggle(path)}
                 >
-                    {isExpanded ? (
-                        <ChevronDown className="w-3 h-3 text-gray-400" />
-                    ) : (
-                        <ChevronRight className="w-3 h-3 text-gray-400" />
-                    )}
-                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onFieldExpansionToggle(path);
+                        }}
+                        className="cursor-pointer p-1 -m-1"
+                    >
+                        {isExpanded ? (
+                            <ChevronDown className="w-3 h-3 text-gray-400" />
+                        ) : (
+                            <ChevronRight className="w-3 h-3 text-gray-400" />
+                        )}
+                    </div>
+                    <span 
+                        className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer"
+                        onClick={() => onFieldToggle(path)}
+                    >
                         {fieldName}
                     </span>
                     <span className="text-xs text-gray-500">
@@ -143,6 +164,7 @@ const DataField: React.FC<{
                         value={val}
                         level={level + 1}
                         onFieldToggle={onFieldToggle}
+                        onFieldExpansionToggle={onFieldExpansionToggle}
                         selectedFields={selectedFields}
                         expandedFields={expandedFields}
                     />
@@ -335,23 +357,27 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
 
     const handleDataFieldToggle = (path: string) => {
         const newSelected = new Set(selectedFields);
-        const newExpanded = new Set(expandedFields);
         
-        // Toggle selection
+        // Only toggle selection, not expansion
         if (selectedFields.has(path)) {
             newSelected.delete(path);
         } else {
             newSelected.add(path);
         }
         
-        // Toggle expansion for objects and arrays (manual toggle)
+        setSelectedFields(newSelected);
+    };
+
+    const handleFieldExpansionToggle = (path: string) => {
+        const newExpanded = new Set(expandedFields);
+        
+        // Only toggle expansion
         if (expandedFields.has(path)) {
             newExpanded.delete(path);
         } else {
             newExpanded.add(path);
         }
         
-        setSelectedFields(newSelected);
         setExpandedFields(newExpanded);
     };
 
@@ -542,6 +568,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                                 value={value}
                                 level={0}
                                 onFieldToggle={handleDataFieldToggle}
+                                onFieldExpansionToggle={handleFieldExpansionToggle}
                                 selectedFields={selectedFields}
                                 expandedFields={expandedFields}
                             />
