@@ -82,7 +82,6 @@ const DataField: React.FC<{
                     </span>
                 </div>
                 
-                {/* Handle for the array itself - always visible, positioned outside the expansion logic */}
                 <Handle
                     type="source"
                     position={Position.Right}
@@ -152,7 +151,6 @@ const DataField: React.FC<{
                     </span>
                 </div>
                 
-                {/* Handle for the object itself - always visible, positioned outside the expansion logic */}
                 <Handle
                     type="source"
                     position={Position.Right}
@@ -279,17 +277,14 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
 
-    // Get all edges from React Flow store and auto-expand connected fields
     const allEdges = useStore((store) => store.edges);
 
     useEffect(() => {
         const connectedPaths = new Set<string>();
 
-        // Find all edges connected to this source node
         allEdges.forEach((edge) => {
             if (edge.source === id && edge.sourceHandle) {
                 console.log(`Found connected handle: ${edge.sourceHandle}`);
-                // Split path and add all parent paths that need to be expanded
                 const segments = edge.sourceHandle.split('.');
                 for (let i = 1; i <= segments.length; i++) {
                     const path = segments.slice(0, i).join('.');
@@ -303,12 +298,9 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
         setExpandedFields(connectedPaths);
     }, [allEdges, id]);
 
-    // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
 
     const { label } = data;
-
-    // Check if we have data to show
     const hasData = nodeData.length > 0 && nodeData[0];
 
     const addField = () => {
@@ -332,7 +324,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
         const updatedFields = fields.filter(field => field.id !== fieldId);
         setFields(updatedFields);
         
-        // Also remove from selected fields
         const newSelected = new Set(selectedFields);
         newSelected.delete(fieldId);
         setSelectedFields(newSelected);
@@ -344,8 +335,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             const dataArray = Array.isArray(parsed) ? parsed : [parsed];
             setNodeData(dataArray);
             setJsonInput('');
-            
-            // Clear existing selections when new data is imported
             setSelectedFields(new Set());
         } catch (error) {
             console.error('Invalid JSON:', error);
@@ -368,7 +357,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const handleDataFieldToggle = (path: string) => {
         const newSelected = new Set(selectedFields);
         
-        // Only toggle selection, not expansion
         if (selectedFields.has(path)) {
             newSelected.delete(path);
         } else {
@@ -381,7 +369,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const handleFieldExpansionToggle = (path: string) => {
         const newExpanded = new Set(expandedFields);
         
-        // Only toggle expansion
         if (expandedFields.has(path)) {
             newExpanded.delete(path);
         } else {
@@ -448,27 +435,26 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 
                 <NodeEditSheet title={`Configure Source: ${label}`}>
                     <div className="flex-1 flex flex-col space-y-4 mt-6">
-                        {/* JSON Data Import */}
+                        {/* JSON Data Import - Direct input without button */}
                         <div className="flex-shrink-0">
                             <h4 className="font-medium mb-2">Import JSON Data:</h4>
                             <textarea
                                 value={jsonInput}
                                 onChange={(e) => setJsonInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && e.ctrlKey) {
+                                        handleJsonImport();
+                                    }
+                                }}
                                 className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono resize-none"
-                                placeholder='{"field1": "value1", "field2": 123}'
+                                placeholder='{"field1": "value1", "field2": 123} - Press Ctrl+Enter to import'
                             />
-                            <button
-                                onClick={handleJsonImport}
-                                className="mt-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                            >
-                                Import Data
-                            </button>
                         </div>
 
                         {/* Current Data Preview */}
                         <div className="flex-shrink-0">
                             <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                            <div className="h-32 border rounded p-2 bg-gray-50">
+                            <div className="h-40 border rounded p-2 bg-gray-50">
                                 <ScrollArea className="h-full">
                                     {nodeData.length > 0 ? (
                                         <pre className="text-xs">
