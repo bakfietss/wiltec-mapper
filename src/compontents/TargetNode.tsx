@@ -389,7 +389,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     );
 
     return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-96 max-w-[500px]">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-[500px] max-w-[600px]">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-green-50">
                 <FileText className="w-4 h-4 text-green-600" />
                 <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
@@ -403,12 +403,12 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                             <Edit3 className="w-3 h-3 text-gray-600" />
                         </button>
                     </SheetTrigger>
-                    <SheetContent className="w-[600px] sm:w-[600px] flex flex-col">
+                    <SheetContent className="w-[800px] sm:w-[800px] flex flex-col max-w-[90vw]">
                         <SheetHeader>
                             <SheetTitle>Edit {data.label} - Target Schema</SheetTitle>
                         </SheetHeader>
                         
-                        <div className="flex-1 flex flex-col space-y-4 mt-6">
+                        <div className="flex-1 flex flex-col space-y-6 mt-6 min-h-0">
                             {/* JSON Data Import */}
                             <div className="flex-shrink-0">
                                 <h4 className="font-medium mb-2">Import JSON Data:</h4>
@@ -445,21 +445,27 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
 
                             {/* Schema Fields */}
                             <div className="flex-1 flex flex-col min-h-0">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center justify-between mb-3">
                                     <h4 className="font-medium">Schema Fields:</h4>
                                     <button
                                         onClick={() => addField()}
-                                        className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                        className="flex items-center gap-1 px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600"
                                     >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-4 h-4" />
                                         Add Field
                                     </button>
                                 </div>
                                 
-                                <div className="flex-1 border rounded min-h-0">
-                                    <ScrollArea className="h-full max-h-96">
+                                <div className="flex-1 border rounded min-h-0 bg-gray-50">
+                                    <ScrollArea className="h-full">
                                         <div className="space-y-4 p-4">
-                                            {fields.map((field) => renderFieldEditor(field))}
+                                            {fields.length > 0 ? (
+                                                fields.map((field) => renderFieldEditor(field))
+                                            ) : (
+                                                <div className="text-center py-8 text-gray-500">
+                                                    No fields defined. Click "Add Field" to create your first field.
+                                                </div>
+                                            )}
                                         </div>
                                     </ScrollArea>
                                 </div>
