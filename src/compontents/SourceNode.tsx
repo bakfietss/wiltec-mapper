@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useStore } from '@xyflow/react';
-import { ChevronDown, ChevronRight, Database, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Database, Plus, Trash2, Upload } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
 import NodeEditSheet from './NodeEditSheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Button } from '../components/ui/button';
 
 interface SchemaField {
     id: string;
@@ -276,6 +278,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [jsonInput, setJsonInput] = useState('');
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+    const [isJsonDialogOpen, setIsJsonDialogOpen] = useState(false);
 
     const allEdges = useStore((store) => store.edges);
 
@@ -336,6 +339,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             setNodeData(dataArray);
             setJsonInput('');
             setSelectedFields(new Set());
+            setIsJsonDialogOpen(false);
         } catch (error) {
             console.error('Invalid JSON:', error);
             alert('Invalid JSON format');
@@ -435,26 +439,10 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 
                 <NodeEditSheet title={`Configure Source: ${label}`}>
                     <div className="flex-1 flex flex-col space-y-4 mt-6">
-                        {/* JSON Data Import - Direct input without button */}
-                        <div className="flex-shrink-0">
-                            <h4 className="font-medium mb-2">Import JSON Data:</h4>
-                            <textarea
-                                value={jsonInput}
-                                onChange={(e) => setJsonInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && e.ctrlKey) {
-                                        handleJsonImport();
-                                    }
-                                }}
-                                className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono resize-none"
-                                placeholder='{"field1": "value1", "field2": 123} - Press Ctrl+Enter to import'
-                            />
-                        </div>
-
                         {/* Current Data Preview */}
                         <div className="flex-shrink-0">
                             <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                            <div className="h-40 border rounded p-2 bg-gray-50">
+                            <div className="h-48 border rounded p-2 bg-gray-50">
                                 <ScrollArea className="h-full">
                                     {nodeData.length > 0 ? (
                                         <pre className="text-xs">
@@ -472,13 +460,55 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                         <div className="flex-1 flex flex-col min-h-0">
                             <div className="flex items-center justify-between mb-2">
                                 <h4 className="font-medium">Manual Schema Fields:</h4>
-                                <button
-                                    onClick={addField}
-                                    className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                    Add Field
-                                </button>
+                                <div className="flex gap-2">
+                                    <Dialog open={isJsonDialogOpen} onOpenChange={setIsJsonDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="flex items-center gap-1"
+                                            >
+                                                <Upload className="w-3 h-3" />
+                                                Import JSON
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-2xl">
+                                            <DialogHeader>
+                                                <DialogTitle>Import JSON Data</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-4">
+                                                <textarea
+                                                    value={jsonInput}
+                                                    onChange={(e) => setJsonInput(e.target.value)}
+                                                    className="w-full h-64 border border-gray-300 rounded-md p-3 text-sm font-mono resize-none"
+                                                    placeholder='Enter your JSON data here...'
+                                                />
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => setIsJsonDialogOpen(false)}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        onClick={handleJsonImport}
+                                                        disabled={!jsonInput.trim()}
+                                                    >
+                                                        Import Data
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+                                    
+                                    <button
+                                        onClick={addField}
+                                        className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                        Add Field
+                                    </button>
+                                </div>
                             </div>
                             
                             <div className="flex-1 border rounded min-h-0">
@@ -528,47 +558,45 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </NodeEditSheet>
             </div>
 
-            <div className="p-1">
-                {/* Manual Schema Fields */}
-                {fields.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                        <div className="text-xs font-medium text-gray-500 px-2 py-1">Manual Fields:</div>
-                        {fields.map((field) => (
-                            <ManualField
-                                key={field.id}
-                                field={field}
-                                onFieldToggle={handleFieldToggle}
-                                selectedFields={selectedFields}
-                            />
-                        ))}
-                    </div>
-                )}
-                
-                {/* Data Structure Display */}
-                {hasData && (
-                    <div className="space-y-1">
-                        {fields.length > 0 && <div className="text-xs font-medium text-gray-500 px-2 py-1">Data Fields:</div>}
-                        {Object.entries(nodeData[0]).map(([key, value]) => (
-                            <DataField
-                                key={key}
-                                path={key}
-                                value={value}
-                                level={0}
-                                onFieldToggle={handleDataFieldToggle}
-                                onFieldExpansionToggle={handleFieldExpansionToggle}
-                                selectedFields={selectedFields}
-                                expandedFields={expandedFields}
-                            />
-                        ))}
-                    </div>
-                )}
-                
-                {!hasData && fields.length === 0 && (
-                    <div className="text-center py-3 text-gray-500 text-xs">
-                        No data available. Click edit to import JSON data or add manual fields.
-                    </div>
-                )}
-            </div>
+            {/* Manual Schema Fields */}
+            {fields.length > 0 && (
+                <div className="space-y-1 mb-2">
+                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Manual Fields:</div>
+                    {fields.map((field) => (
+                        <ManualField
+                            key={field.id}
+                            field={field}
+                            onFieldToggle={handleFieldToggle}
+                            selectedFields={selectedFields}
+                        />
+                    ))}
+                </div>
+            )}
+            
+            {/* Data Structure Display */}
+            {hasData && (
+                <div className="space-y-1">
+                    {fields.length > 0 && <div className="text-xs font-medium text-gray-500 px-2 py-1">Data Fields:</div>}
+                    {Object.entries(nodeData[0]).map(([key, value]) => (
+                        <DataField
+                            key={key}
+                            path={key}
+                            value={value}
+                            level={0}
+                            onFieldToggle={handleDataFieldToggle}
+                            onFieldExpansionToggle={handleFieldExpansionToggle}
+                            selectedFields={selectedFields}
+                            expandedFields={expandedFields}
+                        />
+                    ))}
+                </div>
+            )}
+            
+            {!hasData && fields.length === 0 && (
+                <div className="text-center py-3 text-gray-500 text-xs">
+                    No data available. Click edit to import JSON data or add manual fields.
+                </div>
+            )}
         </div>
     );
 };
