@@ -403,7 +403,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                             <Edit3 className="w-3 h-3 text-gray-600" />
                         </button>
                     </SheetTrigger>
-                    <SheetContent className="w-[800px] sm:w-[800px] flex flex-col max-w-[90vw]">
+                    <SheetContent className="!w-[95vw] !max-w-[1200px] flex flex-col">
                         <SheetHeader>
                             <SheetTitle>Edit {data.label} - Target Schema</SheetTitle>
                         </SheetHeader>
