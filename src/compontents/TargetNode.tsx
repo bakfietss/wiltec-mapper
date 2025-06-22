@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { FileText, Edit3, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
+import NodeEditSheet from './NodeEditSheet';
 
 interface SchemaField {
     id: string;
@@ -397,82 +396,71 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                     target
                 </span>
                 
-                <Sheet>
-                    <SheetTrigger asChild>
-                        <button className="p-1 hover:bg-gray-200 rounded">
-                            <Edit3 className="w-3 h-3 text-gray-600" />
-                        </button>
-                    </SheetTrigger>
-                    <SheetContent className="!w-[95vw] !max-w-[1200px] flex flex-col">
-                        <SheetHeader>
-                            <SheetTitle>Edit {data.label} - Target Schema</SheetTitle>
-                        </SheetHeader>
-                        
-                        <div className="flex-1 flex flex-col space-y-6 mt-6 min-h-0">
-                            {/* JSON Data Import */}
-                            <div className="flex-shrink-0">
-                                <h4 className="font-medium mb-2">Import JSON Data:</h4>
-                                <textarea
-                                    value={jsonInput}
-                                    onChange={(e) => setJsonInput(e.target.value)}
-                                    className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono resize-none"
-                                    placeholder='{"field1": "value1", "nested": {"field2": 123}, "items": [{"name": "item1"}]}'
-                                />
-                                <button
-                                    onClick={handleJsonImport}
-                                    className="mt-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                                >
-                                    Import Data & Generate Schema
-                                </button>
-                            </div>
+                <NodeEditSheet title={`Edit ${data.label} - Target Schema`}>
+                    <div className="flex-1 flex flex-col space-y-6 mt-6 min-h-0">
+                        {/* JSON Data Import */}
+                        <div className="flex-shrink-0">
+                            <h4 className="font-medium mb-2">Import JSON Data:</h4>
+                            <textarea
+                                value={jsonInput}
+                                onChange={(e) => setJsonInput(e.target.value)}
+                                className="w-full h-24 border border-gray-300 rounded-md p-2 text-sm font-mono resize-none"
+                                placeholder='{"field1": "value1", "nested": {"field2": 123}, "items": [{"name": "item1"}]}'
+                            />
+                            <button
+                                onClick={handleJsonImport}
+                                className="mt-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                            >
+                                Import Data & Generate Schema
+                            </button>
+                        </div>
 
-                            {/* Current Data Preview */}
-                            <div className="flex-shrink-0">
-                                <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                                <div className="h-32 border rounded p-2 bg-gray-50">
-                                    <ScrollArea className="h-full">
-                                        {nodeData.length > 0 ? (
-                                            <pre className="text-xs">
-                                                {JSON.stringify(nodeData.slice(0, 3), null, 2)}
-                                                {nodeData.length > 3 && '\n... and more'}
-                                            </pre>
-                                        ) : (
-                                            <p className="text-gray-500 text-sm">No data available</p>
-                                        )}
-                                    </ScrollArea>
-                                </div>
-                            </div>
-
-                            {/* Schema Fields */}
-                            <div className="flex-1 flex flex-col min-h-0">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="font-medium">Schema Fields:</h4>
-                                    <button
-                                        onClick={() => addField()}
-                                        className="flex items-center gap-1 px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        Add Field
-                                    </button>
-                                </div>
-                                
-                                <div className="flex-1 border rounded min-h-0 bg-gray-50">
-                                    <ScrollArea className="h-full">
-                                        <div className="space-y-4 p-4">
-                                            {fields.length > 0 ? (
-                                                fields.map((field) => renderFieldEditor(field))
-                                            ) : (
-                                                <div className="text-center py-8 text-gray-500">
-                                                    No fields defined. Click "Add Field" to create your first field.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
+                        {/* Current Data Preview */}
+                        <div className="flex-shrink-0">
+                            <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
+                            <div className="h-32 border rounded p-2 bg-gray-50">
+                                <ScrollArea className="h-full">
+                                    {nodeData.length > 0 ? (
+                                        <pre className="text-xs">
+                                            {JSON.stringify(nodeData.slice(0, 3), null, 2)}
+                                            {nodeData.length > 3 && '\n... and more'}
+                                        </pre>
+                                    ) : (
+                                        <p className="text-gray-500 text-sm">No data available</p>
+                                    )}
+                                </ScrollArea>
                             </div>
                         </div>
-                    </SheetContent>
-                </Sheet>
+
+                        {/* Schema Fields */}
+                        <div className="flex-1 flex flex-col min-h-0">
+                            <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-medium">Schema Fields:</h4>
+                                <button
+                                    onClick={() => addField()}
+                                    className="flex items-center gap-1 px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Add Field
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 border rounded min-h-0 bg-gray-50">
+                                <ScrollArea className="h-full">
+                                    <div className="space-y-4 p-4">
+                                        {fields.length > 0 ? (
+                                            fields.map((field) => renderFieldEditor(field))
+                                        ) : (
+                                            <div className="text-center py-8 text-gray-500">
+                                                No fields defined. Click "Add Field" to create your first field.
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        </div>
+                    </div>
+                </NodeEditSheet>
             </div>
 
             <div className="p-1">
