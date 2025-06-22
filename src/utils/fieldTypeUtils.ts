@@ -11,48 +11,16 @@ export const getTypeColor = (type: string) => {
     }
 };
 
-export const getExampleValueInput = (field: any, updateField: (id: string, updates: any) => void) => {
-    switch (field.type) {
-        case 'number':
-            return (
-                <input
-                    type="number"
-                    value={field.exampleValue || ''}
-                    onChange={(e) => updateField(field.id, { exampleValue: parseFloat(e.target.value) || '' })}
-                    className="flex-1 border rounded px-2 py-1 text-sm"
-                    placeholder="123"
-                />
-            );
-        case 'boolean':
-            return (
-                <select
-                    value={field.exampleValue?.toString() || ''}
-                    onChange={(e) => updateField(field.id, { exampleValue: e.target.value === 'true' })}
-                    className="flex-1 border rounded px-2 py-1 text-sm"
-                >
-                    <option value="">Select...</option>
-                    <option value="true">true</option>
-                    <option value="false">false</option>
-                </select>
-            );
-        case 'date':
-            return (
-                <input
-                    type="date"
-                    value={field.exampleValue || ''}
-                    onChange={(e) => updateField(field.id, { exampleValue: e.target.value })}
-                    className="flex-1 border rounded px-2 py-1 text-sm"
-                />
-            );
-        default:
-            return (
-                <input
-                    type="text"
-                    value={field.exampleValue || ''}
-                    onChange={(e) => updateField(field.id, { exampleValue: e.target.value })}
-                    className="flex-1 border rounded px-2 py-1 text-sm"
-                    placeholder="Example value"
-                />
-            );
+export const getFieldType = (value: any): 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array' => {
+    if (Array.isArray(value)) {
+        return 'array';
+    } else if (value && typeof value === 'object') {
+        return 'object';
+    } else if (typeof value === 'number') {
+        return 'number';
+    } else if (typeof value === 'boolean') {
+        return 'boolean';
+    } else {
+        return 'string';
     }
 };
