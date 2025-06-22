@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useStore } from '@xyflow/react';
-import { ChevronDown, ChevronRight, Database, Edit3, Plus, Trash2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { ChevronDown, ChevronRight, Database, Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
+import NodeEditSheet from './NodeEditSheet';
 
 interface SchemaField {
     id: string;
@@ -446,17 +446,8 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                     source
                 </span>
                 
-                <Sheet>
-                    <SheetTrigger asChild>
-                        <button className="p-1 hover:bg-gray-200 rounded">
-                            <Edit3 className="w-3 h-3 text-gray-600" />
-                        </button>
-                    </SheetTrigger>
-                    <SheetContent className="w-[700px] sm:w-[700px] flex flex-col">
-                        <SheetHeader>
-                            <SheetTitle>Configure Source: {label}</SheetTitle>
-                        </SheetHeader>
-
+                <NodeEditSheet title={`Configure Source: ${label}`}>
+                    <div className="flex-1 flex flex-col space-y-4 mt-6">
                         {/* JSON Data Import */}
                         <div className="flex-shrink-0">
                             <h4 className="font-medium mb-2">Import JSON Data:</h4>
@@ -547,8 +538,8 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                                 </ScrollArea>
                             </div>
                         </div>
-                    </SheetContent>
-                </Sheet>
+                    </div>
+                </NodeEditSheet>
             </div>
 
             <div className="p-1">
