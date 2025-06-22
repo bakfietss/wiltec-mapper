@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { FileText, Edit3, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
@@ -46,31 +47,19 @@ const TargetField: React.FC<{
     console.log(`TargetField ${field.name} (${field.id}) - looking for value in fieldValues:`, fieldValues);
     console.log(`Found value for ${field.name}:`, fieldValue);
 
-    return (
-        <div className="relative">
-            <div className="flex items-center gap-2 py-2 px-2 pl-8 hover:bg-gray-50 rounded text-sm group min-h-[32px]"
-                 style={{ paddingLeft: `${8 + level * 16}px` }}>
-                
-                {/* Handle - positioned to avoid overlap */}
-                <Handle
-                    type="target"
-                    position={Position.Left}
-                    id={field.id}
-                    className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !left-1"
-                    style={{
-                        top: `${6 + level * 2}px`,
-                        transform: 'none',
-                    }}
-                />
-                
-                {/* Chevron for expandable fields */}
-                {hasChildren ? (
+    if (field.type === 'array') {
+        return (
+            <div>
+                <div 
+                    className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
+                    style={{ paddingLeft: `${8 + level * 12}px` }}
+                >
                     <div
                         onClick={(e) => {
                             e.stopPropagation();
                             onFieldExpansionToggle(field.id);
                         }}
-                        className="cursor-pointer p-1 -m-1 flex-shrink-0"
+                        className="cursor-pointer p-1 -m-1"
                     >
                         {isExpanded ? (
                             <ChevronDown className="w-3 h-3 text-gray-400" />
@@ -78,51 +67,135 @@ const TargetField: React.FC<{
                             <ChevronRight className="w-3 h-3 text-gray-400" />
                         )}
                     </div>
-                ) : (
-                    <div className="w-5 h-5 flex-shrink-0" />
-                )}
-
-                {/* Field name - with proper flex allocation */}
-                <div className="flex-1 min-w-0 mr-2">
-                    <span className="font-medium text-gray-900 truncate block">
-                        {field.name}
-                        {field.type === 'array' && '[]'}
-                        {field.type === 'object' && hasChildren && ` (${field.children!.length})`}
+                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                        {field.name}[]
+                    </span>
+                    {hasChildren && (
+                        <span className="text-xs text-gray-500">({field.children!.length} items)</span>
+                    )}
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('array')}`}>
+                        array
                     </span>
                 </div>
                 
-                {/* Value display - fixed width */}
-                <div className="text-xs w-20 text-center flex-shrink-0">
-                    {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium truncate block">
-                            {String(fieldValue)}
+                {/* Handle for the array itself */}
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={field.id}
+                    className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
+                    style={{
+                        top: `${(level * 20) + 10}px`,
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
+                
+                {isExpanded && hasChildren && field.children!.map((childField) => (
+                    <TargetField
+                        key={childField.id}
+                        field={childField}
+                        fieldValues={fieldValues}
+                        level={level + 1}
+                        expandedFields={expandedFields}
+                        onFieldExpansionToggle={onFieldExpansionToggle}
+                    />
+                ))}
+            </div>
+        );
+    }
+    
+    if (field.type === 'object') {
+        return (
+            <div>
+                <div 
+                    className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
+                    style={{ paddingLeft: `${8 + level * 12}px` }}
+                >
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onFieldExpansionToggle(field.id);
+                        }}
+                        className="cursor-pointer p-1 -m-1"
+                    >
+                        {isExpanded ? (
+                            <ChevronDown className="w-3 h-3 text-gray-400" />
+                        ) : (
+                            <ChevronRight className="w-3 h-3 text-gray-400" />
+                        )}
+                    </div>
+                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                        {field.name}
+                    </span>
+                    {hasChildren && (
+                        <span className="text-xs text-gray-500">
+                            ({field.children!.length} fields)
                         </span>
-                    ) : (
-                        <span className="text-gray-400 italic">no value</span>
                     )}
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('object')}`}>
+                        object
+                    </span>
                 </div>
                 
-                {/* Type badge - fixed width */}
-                <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 w-16 text-center ${getTypeColor(field.type)}`}>
-                    {field.type}
-                </span>
+                {/* Handle for the object itself */}
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={field.id}
+                    className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
+                    style={{
+                        top: `${(level * 20) + 10}px`,
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
+                
+                {isExpanded && hasChildren && field.children!.map((childField) => (
+                    <TargetField
+                        key={childField.id}
+                        field={childField}
+                        fieldValues={fieldValues}
+                        level={level + 1}
+                        expandedFields={expandedFields}
+                        onFieldExpansionToggle={onFieldExpansionToggle}
+                    />
+                ))}
             </div>
+        );
+    }
+    
+    // Primitive field
+    return (
+        <div 
+            className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
+            style={{ paddingLeft: `${8 + level * 12}px` }}
+        >
+            <div className="w-3 h-3" />
+            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
+            <div className="text-xs min-w-[80px] text-center">
+                {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                        {String(fieldValue)}
+                    </span>
+                ) : (
+                    <span className="text-gray-400 italic">no value</span>
+                )}
+            </div>
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
+                {field.type}
+            </span>
             
-            {/* Render children if expanded */}
-            {hasChildren && isExpanded && (
-                <div>
-                    {field.children!.map((childField) => (
-                        <TargetField
-                            key={childField.id}
-                            field={childField}
-                            fieldValues={fieldValues}
-                            level={level + 1}
-                            expandedFields={expandedFields}
-                            onFieldExpansionToggle={onFieldExpansionToggle}
-                        />
-                    ))}
-                </div>
-            )}
+            <Handle
+                type="target"
+                position={Position.Left}
+                id={field.id}
+                className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
+                style={{
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                }}
+            />
         </div>
     );
 };
