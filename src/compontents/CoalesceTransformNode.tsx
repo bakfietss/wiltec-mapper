@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { GitMerge, Plus, Trash2, Edit3 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { GitMerge, Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
+import NodeEditSheet from './NodeEditSheet';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface CoalesceRule {
@@ -96,105 +95,94 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
           coalesce
         </span>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <button className="p-1 hover:bg-gray-200 rounded">
-              <Edit3 className="w-3 h-3 text-gray-600" />
-            </button>
-          </SheetTrigger>
-          <SheetContent className="w-[600px] sm:w-[600px] flex flex-col">
-            <SheetHeader>
-              <SheetTitle>Configure Coalesce Transform</SheetTitle>
-            </SheetHeader>
+        <NodeEditSheet title="Configure Coalesce Transform">
+          <div className="flex-1 flex flex-col gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Default Value (if no inputs have values):
+              </label>
+              <input
+                type="text"
+                value={defaultValue}
+                onChange={(e) => setDefaultValue(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="Enter default value..."
+              />
+            </div>
 
-            <div className="flex-1 flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Default Value (if no inputs have values):
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Fallback Rules (in priority order):
                 </label>
-                <input
-                  type="text"
-                  value={defaultValue}
-                  onChange={(e) => setDefaultValue(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  placeholder="Enter default value..."
-                />
+                <button
+                  onClick={addRule}
+                  className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Rule
+                </button>
               </div>
 
-              <div className="flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Fallback Rules (in priority order):
-                  </label>
-                  <button
-                    onClick={addRule}
-                    className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add Rule
-                  </button>
-                </div>
-
-                <div className="flex-1 border rounded min-h-0">
-                  <ScrollArea className="h-full max-h-96">
-                    <div className="space-y-2 p-3">
-                      {rules.map((rule, index) => (
-                        <div key={rule.id} className="border rounded p-3 space-y-2 bg-gray-50">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-600 w-8">
-                              #{rule.priority}
-                            </span>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => moveRule(rule.id, 'up')}
-                                disabled={index === 0}
-                                className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                onClick={() => moveRule(rule.id, 'down')}
-                                disabled={index === rules.length - 1}
-                                className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                              >
-                                ↓
-                              </button>
-                            </div>
+              <div className="flex-1 border rounded min-h-0">
+                <ScrollArea className="h-full max-h-96">
+                  <div className="space-y-2 p-3">
+                    {rules.map((rule, index) => (
+                      <div key={rule.id} className="border rounded p-3 space-y-2 bg-gray-50">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-600 w-8">
+                            #{rule.priority}
+                          </span>
+                          <div className="flex gap-1">
                             <button
-                              onClick={() => deleteRule(rule.id)}
-                              className="p-1 text-red-500 hover:text-red-700 ml-auto"
+                              onClick={() => moveRule(rule.id, 'up')}
+                              disabled={index === 0}
+                              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              ↑
+                            </button>
+                            <button
+                              onClick={() => moveRule(rule.id, 'down')}
+                              disabled={index === rules.length - 1}
+                              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                            >
+                              ↓
                             </button>
                           </div>
-
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">
-                              Output Value (returned if this input has data):
-                            </label>
-                            <input
-                              type="text"
-                              value={rule.outputValue}
-                              onChange={(e) => updateRule(rule.id, { outputValue: e.target.value })}
-                              className="w-full border rounded px-2 py-1 text-sm"
-                              placeholder="e.g., ATA, ETA, PTA"
-                            />
-                          </div>
+                          <button
+                            onClick={() => deleteRule(rule.id)}
+                            className="p-1 text-red-500 hover:text-red-700 ml-auto"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
-                      ))}
 
-                      {rules.length === 0 && (
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                          No rules configured. Add a rule to get started.
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            Output Value (returned if this input has data):
+                          </label>
+                          <input
+                            type="text"
+                            value={rule.outputValue}
+                            onChange={(e) => updateRule(rule.id, { outputValue: e.target.value })}
+                            className="w-full border rounded px-2 py-1 text-sm"
+                            placeholder="e.g., ATA, ETA, PTA"
+                          />
                         </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
+                      </div>
+                    ))}
+
+                    {rules.length === 0 && (
+                      <div className="text-center py-4 text-gray-500 text-sm">
+                        No rules configured. Add a rule to get started.
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
-          </SheetContent>
-        </Sheet>
+          </div>
+        </NodeEditSheet>
       </div>
 
       <div className="p-1">

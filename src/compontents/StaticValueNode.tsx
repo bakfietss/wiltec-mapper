@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Hash, Edit3, Plus, Trash2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { Hash, Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
+import NodeEditSheet from './NodeEditSheet';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface StaticValue {
@@ -67,88 +66,77 @@ const StaticValueNode: React.FC<{ data: StaticValueNodeData; id: string }> = ({ 
           static values
         </span>
         
-        <Sheet>
-          <SheetTrigger asChild>
-            <button className="p-1 hover:bg-gray-200 rounded">
-              <Edit3 className="w-3 h-3 text-gray-600" />
-            </button>
-          </SheetTrigger>
-          <SheetContent className="w-[500px] sm:w-[500px] flex flex-col">
-            <SheetHeader>
-              <SheetTitle>Edit Static Values - {data.label}</SheetTitle>
-            </SheetHeader>
-            
-            <div className="flex-1 flex flex-col space-y-4 mt-6">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Static Values:</h4>
-                <button
-                  onClick={addValue}
-                  className="flex items-center gap-1 px-2 py-1 bg-indigo-500 text-white rounded text-sm hover:bg-indigo-600"
-                >
-                  <Plus className="w-3 h-3" />
-                  Add Value
-                </button>
-              </div>
-              
-              <div className="flex-1 border rounded min-h-0">
-                <ScrollArea className="h-full max-h-96">
-                  <div className="space-y-4 p-4">
-                    {values.map((value) => (
-                      <div key={value.id} className="border rounded p-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={value.valueType}
-                            onChange={(e) => updateValue(value.id, { valueType: e.target.value as any })}
-                            className="border rounded px-2 py-1 text-sm"
-                          >
-                            <option value="string">String</option>
-                            <option value="number">Number</option>
-                            <option value="boolean">Boolean</option>
-                          </select>
-                          <button
-                            onClick={() => deleteValue(value.id)}
-                            className="p-1 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium mb-1">Value:</label>
-                          {value.valueType === 'boolean' ? (
-                            <select
-                              value={value.value}
-                              onChange={(e) => updateValue(value.id, { value: e.target.value })}
-                              className="w-full border rounded px-2 py-1 text-sm"
-                            >
-                              <option value="">Select...</option>
-                              <option value="true">true</option>
-                              <option value="false">false</option>
-                            </select>
-                          ) : (
-                            <input
-                              type={value.valueType === 'number' ? 'number' : 'text'}
-                              value={value.value}
-                              onChange={(e) => updateValue(value.id, { value: e.target.value })}
-                              className="w-full border rounded px-2 py-1 text-sm"
-                              placeholder={`Enter ${value.valueType} value`}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {values.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        No static values yet. Add some values to get started.
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
+        <NodeEditSheet title={`Edit Static Values - ${data.label}`}>
+          <div className="flex-1 flex flex-col space-y-4 mt-6">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Static Values:</h4>
+              <button
+                onClick={addValue}
+                className="flex items-center gap-1 px-2 py-1 bg-indigo-500 text-white rounded text-sm hover:bg-indigo-600"
+              >
+                <Plus className="w-3 h-3" />
+                Add Value
+              </button>
             </div>
-          </SheetContent>
-        </Sheet>
+            
+            <div className="flex-1 border rounded min-h-0">
+              <ScrollArea className="h-full max-h-96">
+                <div className="space-y-4 p-4">
+                  {values.map((value) => (
+                    <div key={value.id} className="border rounded p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={value.valueType}
+                          onChange={(e) => updateValue(value.id, { valueType: e.target.value as any })}
+                          className="border rounded px-2 py-1 text-sm"
+                        >
+                          <option value="string">String</option>
+                          <option value="number">Number</option>
+                          <option value="boolean">Boolean</option>
+                        </select>
+                        <button
+                          onClick={() => deleteValue(value.id)}
+                          className="p-1 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Value:</label>
+                        {value.valueType === 'boolean' ? (
+                          <select
+                            value={value.value}
+                            onChange={(e) => updateValue(value.id, { value: e.target.value })}
+                            className="w-full border rounded px-2 py-1 text-sm"
+                          >
+                            <option value="">Select...</option>
+                            <option value="true">true</option>
+                            <option value="false">false</option>
+                          </select>
+                        ) : (
+                          <input
+                            type={value.valueType === 'number' ? 'number' : 'text'}
+                            value={value.value}
+                            onChange={(e) => updateValue(value.id, { value: e.target.value })}
+                            className="w-full border rounded px-2 py-1 text-sm"
+                            placeholder={`Enter ${value.valueType} value`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {values.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      No static values yet. Add some values to get started.
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        </NodeEditSheet>
       </div>
 
       <div className="p-1 max-h-96 relative">
