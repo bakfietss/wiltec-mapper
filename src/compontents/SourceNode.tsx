@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useStore, NodeResizer } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Plus, Trash2 } from 'lucide-react';
@@ -440,7 +441,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                         {/* Current Data Preview */}
                         <div className="flex-shrink-0">
                             <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                            <div className="h-64 border rounded p-2 bg-gray-50">
+                            <div className="h-80 border rounded p-2 bg-gray-50">
                                 <ScrollArea className="h-full">
                                     {nodeData.length > 0 ? (
                                         <pre className="text-xs">

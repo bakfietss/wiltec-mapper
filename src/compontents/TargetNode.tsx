@@ -53,14 +53,9 @@ const TargetField: React.FC<{
                 <div 
                     className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
+                    onClick={() => onFieldExpansionToggle(field.id)}
                 >
-                    <div
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onFieldExpansionToggle(field.id);
-                        }}
-                        className="cursor-pointer p-1 -m-1"
-                    >
+                    <div className="cursor-pointer p-1 -m-1">
                         {isExpanded ? (
                             <ChevronDown className="w-3 h-3 text-gray-400" />
                         ) : (
@@ -110,14 +105,9 @@ const TargetField: React.FC<{
                 <div 
                     className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
+                    onClick={() => onFieldExpansionToggle(field.id)}
                 >
-                    <div
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onFieldExpansionToggle(field.id);
-                        }}
-                        className="cursor-pointer p-1 -m-1"
-                    >
+                    <div className="cursor-pointer p-1 -m-1">
                         {isExpanded ? (
                             <ChevronDown className="w-3 h-3 text-gray-400" />
                         ) : (
