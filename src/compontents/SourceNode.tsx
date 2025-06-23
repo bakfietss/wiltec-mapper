@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Handle, Position, useStore } from '@xyflow/react';
-import { ChevronDown, ChevronRight, Database, Plus, Trash2, Upload } from 'lucide-react';
+import { Handle, Position, useStore, NodeResizer } from '@xyflow/react';
+import { ChevronDown, ChevronRight, Database, Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
 import NodeEditSheet from './NodeEditSheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Button } from '../components/ui/button';
+import JsonImportDialog from './JsonImportDialog';
 
 interface SchemaField {
     id: string;
@@ -226,7 +225,6 @@ const DataField: React.FC<{
     );
 };
 
-// Manual field component for schema fields
 const ManualField: React.FC<{
     field: SchemaField;
     onFieldToggle: (fieldId: string) => void;
@@ -278,7 +276,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     const [jsonInput, setJsonInput] = useState('');
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
-    const [isJsonDialogOpen, setIsJsonDialogOpen] = useState(false);
 
     const allEdges = useStore((store) => store.edges);
 
@@ -339,7 +336,6 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             setNodeData(dataArray);
             setJsonInput('');
             setSelectedFields(new Set());
-            setIsJsonDialogOpen(false);
         } catch (error) {
             console.error('Invalid JSON:', error);
             alert('Invalid JSON format');
@@ -429,7 +425,9 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     };
 
     return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-80 max-w-none w-auto">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-w-80 max-w-none w-auto relative">
+            <NodeResizer minWidth={300} minHeight={200} />
+            
             <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-2 bg-blue-50">
                 <Database className="w-4 h-4 text-blue-600" />
                 <span className="font-semibold text-gray-900 flex-1">{data.label}</span>
@@ -442,7 +440,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                         {/* Current Data Preview */}
                         <div className="flex-shrink-0">
                             <h4 className="font-medium mb-2">Current Data ({nodeData.length} records):</h4>
-                            <div className="h-48 border rounded p-2 bg-gray-50">
+                            <div className="h-64 border rounded p-2 bg-gray-50">
                                 <ScrollArea className="h-full">
                                     {nodeData.length > 0 ? (
                                         <pre className="text-xs">
@@ -461,45 +459,11 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                             <div className="flex items-center justify-between mb-2">
                                 <h4 className="font-medium">Manual Schema Fields:</h4>
                                 <div className="flex gap-2">
-                                    <Dialog open={isJsonDialogOpen} onOpenChange={setIsJsonDialogOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex items-center gap-1"
-                                            >
-                                                <Upload className="w-3 h-3" />
-                                                Import JSON
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-2xl">
-                                            <DialogHeader>
-                                                <DialogTitle>Import JSON Data</DialogTitle>
-                                            </DialogHeader>
-                                            <div className="space-y-4">
-                                                <textarea
-                                                    value={jsonInput}
-                                                    onChange={(e) => setJsonInput(e.target.value)}
-                                                    className="w-full h-64 border border-gray-300 rounded-md p-3 text-sm font-mono resize-none"
-                                                    placeholder='Enter your JSON data here...'
-                                                />
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => setIsJsonDialogOpen(false)}
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                    <Button
-                                                        onClick={handleJsonImport}
-                                                        disabled={!jsonInput.trim()}
-                                                    >
-                                                        Import Data
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
+                                    <JsonImportDialog
+                                        jsonInput={jsonInput}
+                                        setJsonInput={setJsonInput}
+                                        onImport={handleJsonImport}
+                                    />
                                     
                                     <button
                                         onClick={addField}
