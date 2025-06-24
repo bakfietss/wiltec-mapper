@@ -15,7 +15,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { nodeTypes } from './NodeFactories';
+import { nodeTypes, useNodeFactories } from './NodeFactories';
 import { useFieldStore } from '../store/fieldStore';
 import DataSidebar from '../compontents/DataSidebar';
 import MappingToolbar from '../compontents/MappingToolbar';
@@ -46,8 +46,10 @@ const Pipeline = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [currentMappingName, setCurrentMappingName] = useState<string>('Untitled Mapping');
+  const [sampleData, setSampleData] = useState<any[]>([]);
 
   const fieldStore = useFieldStore();
+  const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -148,7 +150,12 @@ const Pipeline = () => {
   return (
     <ReactFlowProvider>
       <div className="flex h-screen bg-gray-50">
-        <DataSidebar />
+        <DataSidebar 
+          side="left"
+          title="Sample Data"
+          data={sampleData}
+          onDataChange={setSampleData}
+        />
         <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
@@ -167,7 +174,13 @@ const Pipeline = () => {
             <Controls />
           </ReactFlow>
           
-          <MappingToolbar />
+          <MappingToolbar 
+            onAddTransform={addTransformNode}
+            onAddMappingNode={addMappingNode}
+            onAddSchemaNode={addSchemaNode}
+            isExpanded={false}
+            onToggleExpanded={() => {}}
+          />
           
           <MappingManager 
             onExportMapping={handleExportMapping}
