@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface TreeNode {
@@ -23,6 +23,28 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
   selectedFields 
 }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  // Auto-expand root level nodes when data changes
+  useEffect(() => {
+    if (data && typeof data === 'object') {
+      const rootKeys = Object.keys(data);
+      const newExpanded = new Set(expandedNodes);
+      
+      // Auto-expand first level to show structure
+      rootKeys.forEach(key => {
+        if (Array.isArray(data[key]) || (data[key] && typeof data[key] === 'object')) {
+          newExpanded.add(key);
+          
+          // If it's an array with objects, also expand the first item
+          if (Array.isArray(data[key]) && data[key].length > 0) {
+            newExpanded.add(`${key}[0]`);
+          }
+        }
+      });
+      
+      setExpandedNodes(newExpanded);
+    }
+  }, [data]);
 
   const toggleNode = (path: string) => {
     const newExpanded = new Set(expandedNodes);
@@ -54,24 +76,35 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
           children: []
         };
 
-        // Add indexed items for arrays
-        value.forEach((item, index) => {
-          const indexPath = `${currentPath}[${index}]`;
+        // Add indexed items for arrays (show first few items)
+        const itemsToShow = Math.min(value.length, 5); // Limit to first 5 items
+        for (let i = 0; i < itemsToShow; i++) {
+          const item = value[i];
+          const indexPath = `${currentPath}[${i}]`;
           if (item && typeof item === 'object') {
             arrayNode.children!.push({
-              name: `[${index}]`,
+              name: `[${i}]`,
               path: indexPath,
               type: 'object',
               children: buildTreeFromData(item, indexPath)
             });
           } else {
             arrayNode.children!.push({
-              name: `[${index}]`,
+              name: `[${i}] = ${String(item).substring(0, 30)}${String(item).length > 30 ? '...' : ''}`,
               path: indexPath,
               type: typeof item,
             });
           }
-        });
+        }
+
+        // Add "..." indicator if there are more items
+        if (value.length > 5) {
+          arrayNode.children!.push({
+            name: `... (${value.length - 5} more items)`,
+            path: `${currentPath}[...]`,
+            type: 'placeholder',
+          });
+        }
 
         nodes.push(arrayNode);
       } else if (value && typeof value === 'object') {
@@ -84,8 +117,9 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
         });
       } else {
         // Handle primitive values
+        const displayValue = String(value).substring(0, 30);
         nodes.push({
-          name: key,
+          name: `${key} = ${displayValue}${String(value).length > 30 ? '...' : ''}`,
           path: currentPath,
           type: typeof value,
         });
@@ -99,17 +133,17 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
     const isExpanded = expandedNodes.has(node.path);
     const hasChildren = node.children && node.children.length > 0;
     const isSelected = selectedFields.has(node.path);
-    const canSelect = !hasChildren || node.type !== 'object';
+    const canSelect = node.type !== 'placeholder' && (!hasChildren || node.type !== 'object');
 
     return (
       <div key={node.path} className="select-none">
         <div 
           className={`flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded cursor-pointer group ${
             isSelected ? 'bg-blue-50 text-blue-700' : ''
-          }`}
+          } ${!canSelect ? 'cursor-default' : ''}`}
           style={{ paddingLeft: `${8 + level * 16}px` }}
           onClick={() => {
-            if (hasChildren) {
+            if (hasChildren && node.type !== 'placeholder') {
               toggleNode(node.path);
             }
             if (canSelect) {
@@ -117,7 +151,7 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
             }
           }}
         >
-          {hasChildren ? (
+          {hasChildren && node.type !== 'placeholder' ? (
             isExpanded ? (
               <ChevronDown className="w-3 h-3 text-gray-400" />
             ) : (
@@ -127,7 +161,7 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
             <div className="w-3 h-3" />
           )}
           
-          <span className="font-medium text-gray-900 flex-1">
+          <span className={`font-medium flex-1 ${node.type === 'placeholder' ? 'text-gray-400 italic' : 'text-gray-900'}`}>
             {node.name}
             {node.isArray && (
               <span className="text-xs text-gray-500 ml-1">
@@ -136,12 +170,14 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
             )}
           </span>
           
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(node.type)}`}>
-            {node.type}
-          </span>
+          {node.type !== 'placeholder' && (
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(node.type)}`}>
+              {node.type}
+            </span>
+          )}
         </div>
         
-        {hasChildren && isExpanded && (
+        {hasChildren && isExpanded && node.type !== 'placeholder' && (
           <div>
             {node.children!.map(child => renderTreeNode(child, level + 1))}
           </div>

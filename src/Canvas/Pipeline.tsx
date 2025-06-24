@@ -1,5 +1,5 @@
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -47,9 +47,35 @@ const Pipeline = () => {
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [currentMappingName, setCurrentMappingName] = useState<string>('Untitled Mapping');
   const [sampleData, setSampleData] = useState<any[]>([]);
+  const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
+  const [isManagerExpanded, setIsManagerExpanded] = useState(false);
 
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
+
+  // Click outside to close functionality
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is outside toolbar
+      const toolbarElement = document.querySelector('[data-toolbar="mapping-toolbar"]');
+      if (toolbarElement && !toolbarElement.contains(target)) {
+        setIsToolbarExpanded(false);
+      }
+      
+      // Check if click is outside manager
+      const managerElement = document.querySelector('[data-toolbar="mapping-manager"]');
+      if (managerElement && !managerElement.contains(target)) {
+        setIsManagerExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -178,8 +204,8 @@ const Pipeline = () => {
             onAddTransform={addTransformNode}
             onAddMappingNode={addMappingNode}
             onAddSchemaNode={addSchemaNode}
-            isExpanded={false}
-            onToggleExpanded={() => {}}
+            isExpanded={isToolbarExpanded}
+            onToggleExpanded={setIsToolbarExpanded}
           />
           
           <MappingManager 
@@ -189,6 +215,8 @@ const Pipeline = () => {
             onSaveMapping={handleSaveMapping}
             onExportDocumentation={handleExportDocumentation}
             currentMappingName={currentMappingName}
+            isExpanded={isManagerExpanded}
+            onToggleExpanded={setIsManagerExpanded}
           />
         </div>
       </div>
