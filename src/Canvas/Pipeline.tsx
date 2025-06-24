@@ -1,4 +1,3 @@
-
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -53,20 +52,26 @@ const Pipeline = () => {
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Click outside to close functionality
+  // Click outside to close functionality - improved to target canvas specifically
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       
+      // Check if click is on ReactFlow canvas area
+      const reactFlowElement = reactFlowWrapper.current?.querySelector('.react-flow');
+      const isCanvasClick = reactFlowElement && reactFlowElement.contains(target);
+      
       // Check if click is outside toolbar
       const toolbarElement = document.querySelector('[data-toolbar="mapping-toolbar"]');
-      if (toolbarElement && !toolbarElement.contains(target)) {
-        setIsToolbarExpanded(false);
-      }
+      const isToolbarClick = toolbarElement && toolbarElement.contains(target);
       
       // Check if click is outside manager
       const managerElement = document.querySelector('[data-toolbar="mapping-manager"]');
-      if (managerElement && !managerElement.contains(target)) {
+      const isManagerClick = managerElement && managerElement.contains(target);
+      
+      // Close toolbars if clicking on canvas or outside both toolbars
+      if (isCanvasClick || (!isToolbarClick && !isManagerClick)) {
+        setIsToolbarExpanded(false);
         setIsManagerExpanded(false);
       }
     };

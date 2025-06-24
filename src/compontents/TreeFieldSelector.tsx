@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -24,23 +23,46 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
 }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
-  // Auto-expand root level nodes when data changes
+  // More comprehensive auto-expansion when data changes
   useEffect(() => {
     if (data && typeof data === 'object') {
-      const rootKeys = Object.keys(data);
-      const newExpanded = new Set(expandedNodes);
+      const newExpanded = new Set<string>();
       
-      // Auto-expand first level to show structure
-      rootKeys.forEach(key => {
-        if (Array.isArray(data[key]) || (data[key] && typeof data[key] === 'object')) {
-          newExpanded.add(key);
+      // Recursive function to auto-expand all containers
+      const autoExpandContainers = (obj: any, parentPath: string = '', depth: number = 0) => {
+        if (!obj || typeof obj !== 'object' || depth > 10) return; // Prevent infinite loops
+        
+        Object.keys(obj).forEach(key => {
+          const value = obj[key];
+          const currentPath = parentPath ? `${parentPath}.${key}` : key;
           
-          // If it's an array with objects, also expand the first item
-          if (Array.isArray(data[key]) && data[key].length > 0) {
-            newExpanded.add(`${key}[0]`);
+          if (Array.isArray(value)) {
+            // Auto-expand array containers
+            newExpanded.add(currentPath);
+            
+            // Auto-expand first few array items that are objects
+            const itemsToExpand = Math.min(value.length, 3);
+            for (let i = 0; i < itemsToExpand; i++) {
+              const item = value[i];
+              const indexPath = `${currentPath}[${i}]`;
+              if (item && typeof item === 'object') {
+                newExpanded.add(indexPath);
+                // Recursively expand nested objects within array items
+                autoExpandContainers(item, indexPath, depth + 1);
+              }
+            }
+          } else if (value && typeof value === 'object') {
+            // Auto-expand object containers
+            newExpanded.add(currentPath);
+            // Recursively expand nested objects
+            autoExpandContainers(value, currentPath, depth + 1);
           }
-        }
-      });
+        });
+      };
+      
+      console.log('Auto-expanding containers for data:', data);
+      autoExpandContainers(data);
+      console.log('Expanded paths:', Array.from(newExpanded));
       
       setExpandedNodes(newExpanded);
     }
@@ -77,7 +99,7 @@ const TreeFieldSelector: React.FC<TreeFieldSelectorProps> = ({
         };
 
         // Add indexed items for arrays (show first few items)
-        const itemsToShow = Math.min(value.length, 5); // Limit to first 5 items
+        const itemsToShow = Math.min(value.length, 5);
         for (let i = 0; i < itemsToShow; i++) {
           const item = value[i];
           const indexPath = `${currentPath}[${i}]`;
