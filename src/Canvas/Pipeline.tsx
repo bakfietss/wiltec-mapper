@@ -1,3 +1,4 @@
+
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -16,8 +17,8 @@ import '@xyflow/react/dist/style.css';
 
 import { nodeTypes } from './NodeFactories';
 import { useFieldStore } from '../store/fieldStore';
-import { DataSidebar } from '../compontents/DataSidebar';
-import { MappingToolbar } from '../compontents/MappingToolbar';
+import DataSidebar from '../compontents/DataSidebar';
+import MappingToolbar from '../compontents/MappingToolbar';
 import MappingManager from '../compontents/MappingManager';
 import { 
   exportUIMappingConfiguration, 
@@ -70,10 +71,12 @@ const Pipeline = () => {
         return;
       }
 
-      const position = reactFlowInstance.project({
+      // Calculate position relative to the ReactFlow viewport
+      const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
+      
       const newNode: Node = {
         id: `${type}_${Date.now()}`,
         position,
@@ -146,7 +149,7 @@ const Pipeline = () => {
     <ReactFlowProvider>
       <div className="flex h-screen bg-gray-50">
         <DataSidebar />
-        <div className="flex-1 relative">
+        <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
