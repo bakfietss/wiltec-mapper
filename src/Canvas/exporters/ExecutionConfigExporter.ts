@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -98,49 +99,58 @@ export const exportExecutionMapping = (
             console.log('PROCESSING COALESCE TRANSFORM NODE FOR EXECUTION:', sourceNode.id);
             const sourceData = sourceNode.data as any;
             
-            // Get coalesce configuration directly from the node data
-            const rules = sourceData?.rules || [];
-            const defaultValue = sourceData?.defaultValue || '';
+            // Get coalesce configuration from the node data
+            const coalesceConfig = sourceData?.config || {};
+            const rules = coalesceConfig?.rules || [];
+            const defaultValue = coalesceConfig?.defaultValue || '';
             
-            console.log('Coalesce rules from data:', rules);
-            console.log('Coalesce defaultValue from data:', defaultValue);
+            console.log('Coalesce rules from config:', rules);
+            console.log('Coalesce defaultValue from config:', defaultValue);
             
-            // Find all inputs to the coalesce node and build the coalesce mapping
+            // Find all inputs to the coalesce node and map them to rules
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
-            const inputSources: string[] = [];
             
             console.log('Coalesce input edges:', coalesceInputEdges.length);
             
-            coalesceInputEdges.forEach(inputEdge => {
-              const inputNode = nodes.find(n => n.id === inputEdge.source);
-              if (inputNode && inputNode.type === 'source') {
-                const inputData = inputNode.data as any;
-                const inputFields = inputData?.fields;
-                const inputField = Array.isArray(inputFields) ? 
-                  inputFields.find((f: any) => f.id === inputEdge.sourceHandle) : null;
-                if (inputField) {
-                  inputSources.push(inputField.name);
-                  console.log('Added input source:', inputField.name);
+            // Build enhanced rules with source paths
+            const enhancedRules = rules.map((rule: any) => {
+              // Find the edge that connects to this specific rule
+              const ruleInputEdge = coalesceInputEdges.find(edge => edge.targetHandle === rule.id);
+              let sourcePath = '';
+              
+              if (ruleInputEdge) {
+                const inputNode = nodes.find(n => n.id === ruleInputEdge.source);
+                if (inputNode && inputNode.type === 'source') {
+                  const inputData = inputNode.data as any;
+                  const inputFields = inputData?.fields;
+                  const inputField = Array.isArray(inputFields) ? 
+                    inputFields.find((f: any) => f.id === ruleInputEdge.sourceHandle) : null;
+                  sourcePath = inputField?.name || '';
+                  console.log(`Rule ${rule.priority} connected to source field: ${sourcePath}`);
                 }
               }
+              
+              return {
+                priority: rule.priority,
+                outputValue: rule.outputValue,
+                sourcePath: sourcePath
+              };
             });
             
             mapping = {
-              from: inputSources.length > 0 ? inputSources[0] : null,
+              from: '', // Keep empty for coalesce as it has multiple sources
               to: targetField.name,
               type: 'transform',
               transform: {
                 type: 'coalesce',
-                operation: 'coalesce',
                 parameters: {
-                  sources: inputSources,
-                  rules: rules,
+                  rules: enhancedRules,
                   defaultValue: defaultValue
                 }
               }
             };
             
-            console.log('Created coalesce execution mapping:', mapping);
+            console.log('Created enhanced coalesce execution mapping:', mapping);
             
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
