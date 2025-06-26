@@ -1,4 +1,5 @@
 
+
 import { Node, Edge } from '@xyflow/react';
 
 export interface DocumentationConfig {
@@ -37,6 +38,7 @@ interface MappingRuleDoc {
   targetNode: string;
   mappingType: 'direct' | 'transformed' | 'static' | 'conditional';
   transformationId?: string;
+  sourcePath?: string; // Added source path for better traceability
 }
 
 interface TransformationDoc {
@@ -45,6 +47,7 @@ interface TransformationDoc {
   description: string;
   rules?: any;
   configuration?: any;
+  inputSources?: string[]; // Added to track input source paths
 }
 
 const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
@@ -53,6 +56,22 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
   const transformNodes = nodes.filter(node => 
     ['transform', 'splitterTransform', 'ifThen', 'staticValue', 'conversionMapping'].includes(node.type || '')
   );
+
+  // Helper function to get source path from a node and handle
+  const getSourcePath = (nodeId: string, handleId: string | null): string => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || !handleId) return '';
+    
+    if (node.type === 'source') {
+      const nodeData = node.data as any;
+      const fields = nodeData?.fields;
+      if (Array.isArray(fields)) {
+        const field = fields.find((f: any) => f.id === handleId);
+        return field?.name || '';
+      }
+    }
+    return '';
+  };
 
   // Get used source fields by analyzing edges
   const getUsedSourceFields = (sourceNodeId: string): string[] => {
@@ -92,20 +111,27 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
     })) : []
   }));
 
-  // Extract transformations
+  // Extract transformations with enhanced source path tracking
   const transformations: TransformationDoc[] = transformNodes.map(node => {
     let description = '';
     let rules: any = {};
     let configuration: any = {};
+    let inputSources: string[] = [];
+
+    // Find all input edges to this transform node
+    const inputEdges = edges.filter(e => e.target === node.id);
+    inputSources = inputEdges.map(edge => getSourcePath(edge.source, edge.sourceHandle)).filter(path => path);
 
     switch (node.type) {
       case 'ifThen':
-        description = `IF-THEN conditional logic: IF field ${node.data?.operator || '='} "${node.data?.compareValue || ''}" THEN "${node.data?.thenValue || ''}" ELSE "${node.data?.elseValue || ''}"`;
+        const inputSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
+        description = `IF-THEN conditional logic on "${inputSource}": IF field ${node.data?.operator || '='} "${node.data?.compareValue || ''}" THEN "${node.data?.thenValue || ''}" ELSE "${node.data?.elseValue || ''}"`;
         rules = {
           operator: node.data?.operator,
           compareValue: node.data?.compareValue,
           thenValue: node.data?.thenValue,
-          elseValue: node.data?.elseValue
+          elseValue: node.data?.elseValue,
+          sourcePath: inputSource
         };
         break;
       case 'staticValue':
@@ -116,25 +142,51 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
         };
         break;
       case 'splitterTransform':
-        description = `Text splitting using delimiter "${node.data?.delimiter || ','}" at index ${node.data?.splitIndex || 0}`;
+        const splitSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
+        description = `Text splitting of "${splitSource}" using delimiter "${node.data?.delimiter || ','}" at index ${node.data?.splitIndex || 0}`;
         configuration = {
           delimiter: node.data?.delimiter,
-          splitIndex: node.data?.splitIndex
+          splitIndex: node.data?.splitIndex,
+          sourcePath: splitSource
         };
         break;
       case 'conversionMapping':
         const mappings = Array.isArray(node.data?.mappings) ? node.data.mappings : [];
-        description = `Value conversion mapping with ${mappings.length} rules`;
+        const conversionSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
+        description = `Value conversion mapping on "${conversionSource}" with ${mappings.length} rules`;
         rules = {
-          mappings: mappings
+          mappings: mappings,
+          sourcePath: conversionSource
         };
         break;
       case 'transform':
-        description = `Generic transformation: ${node.data?.transformType || 'Unknown'}`;
-        configuration = node.data?.config || {};
+        if (node.data?.transformType === 'coalesce') {
+          const coalesceRules = node.data?.config?.rules || [];
+          const coalesceInputs = inputEdges.map((edge, index) => {
+            const sourcePath = getSourcePath(edge.source, edge.sourceHandle);
+            const rule = coalesceRules.find((r: any) => r.id === edge.targetHandle);
+            return {
+              priority: rule?.priority || index + 1,
+              sourcePath: sourcePath,
+              outputValue: rule?.outputValue || ''
+            };
+          });
+          description = `Coalesce transformation with ${coalesceInputs.length} input sources: ${coalesceInputs.map(input => input.sourcePath).join(', ')}`;
+          rules = {
+            rules: coalesceInputs,
+            defaultValue: node.data?.config?.defaultValue || ''
+          };
+        } else {
+          const transformSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
+          description = `${node.data?.transformType || 'Generic'} transformation on "${transformSource}"`;
+          configuration = {
+            ...node.data?.config || {},
+            sourcePath: transformSource
+          };
+        }
         break;
       default:
-        description = `${node.type} transformation`;
+        description = `${node.type} transformation with inputs: ${inputSources.join(', ')}`;
     }
 
     return {
@@ -142,11 +194,12 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
       type: node.type || 'unknown',
       description,
       rules,
-      configuration
+      configuration,
+      inputSources
     };
   });
 
-  // Extract mapping rules
+  // Extract mapping rules with enhanced source path tracking
   const mappingRules: MappingRuleDoc[] = [];
   
   edges.forEach(edge => {
@@ -166,6 +219,7 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
 
       const sourceFieldName = getFieldName(sourceNode, edge.sourceHandle);
       const targetFieldName = getFieldName(targetNode, edge.targetHandle);
+      const sourcePath = getSourcePath(edge.source, edge.sourceHandle);
 
       let mappingType: 'direct' | 'transformed' | 'static' | 'conditional' = 'direct';
       let transformationId: string | undefined;
@@ -197,7 +251,8 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
               targetNode: (finalTarget.data?.label as string) || 'Unnamed Target',
               mappingType: targetNode.type === 'staticValue' ? 'static' : 
                           ['ifThen'].includes(targetNode.type || '') ? 'conditional' : 'transformed',
-              transformationId: targetNode.id
+              transformationId: targetNode.id,
+              sourcePath: sourcePath
             });
           }
         });
@@ -208,7 +263,8 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
           targetField: targetFieldName,
           targetNode: (targetNode.data?.label as string) || 'Unnamed Target',
           mappingType,
-          transformationId
+          transformationId,
+          sourcePath: sourcePath
         });
       }
     }
@@ -218,7 +274,7 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
     name: 'Mapping Documentation',
     version: '1.0.0',
     createdAt: new Date().toISOString(),
-    description: 'Generated mapping documentation',
+    description: 'Generated mapping documentation with enhanced source path tracking',
     sourceSchemas,
     mappingRules,
     transformations,
@@ -283,19 +339,20 @@ const generateMarkdownDocumentation = (config: DocumentationConfig): string => {
     lines.push('');
   });
 
-  // Mapping Rules
+  // Mapping Rules with enhanced source path information
   lines.push('## Mapping Rules');
   lines.push('');
-  lines.push('| Source | Source Field | Target | Target Field | Type | Transformation |');
-  lines.push('|--------|--------------|--------|--------------|------|----------------|');
+  lines.push('| Source | Source Field | Source Path | Target | Target Field | Type | Transformation |');
+  lines.push('|--------|--------------|-------------|--------|--------------|------|----------------|');
   config.mappingRules.forEach(rule => {
     const transformationRef = rule.transformationId ? 
       `[${rule.mappingType}](#${rule.transformationId})` : rule.mappingType;
-    lines.push(`| ${rule.sourceNode} | ${rule.sourceField} | ${rule.targetNode} | ${rule.targetField} | ${rule.mappingType} | ${transformationRef} |`);
+    const sourcePath = rule.sourcePath || 'N/A';
+    lines.push(`| ${rule.sourceNode} | ${rule.sourceField} | \`${sourcePath}\` | ${rule.targetNode} | ${rule.targetField} | ${rule.mappingType} | ${transformationRef} |`);
   });
   lines.push('');
 
-  // Transformations
+  // Transformations with enhanced source information
   if (config.transformations.length > 0) {
     lines.push('## Transformations');
     lines.push('');
@@ -304,6 +361,9 @@ const generateMarkdownDocumentation = (config: DocumentationConfig): string => {
       lines.push('');
       lines.push(`**Type:** ${transform.type}`);
       lines.push(`**Description:** ${transform.description}`);
+      if (transform.inputSources && transform.inputSources.length > 0) {
+        lines.push(`**Input Sources:** ${transform.inputSources.map(src => `\`${src}\``).join(', ')}`);
+      }
       lines.push('');
       
       if (Object.keys(transform.rules || {}).length > 0) {
@@ -350,5 +410,6 @@ export const exportMappingDocumentation = (
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
   
-  console.log('Documentation exported:', config);
+  console.log('Enhanced documentation exported with source paths:', config);
 };
+

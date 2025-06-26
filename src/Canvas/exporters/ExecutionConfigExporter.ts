@@ -1,4 +1,5 @@
 
+
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -15,6 +16,22 @@ export const exportExecutionMapping = (
   const targetNodes = nodes.filter(node => node.type === 'target');
   
   console.log('Target nodes:', targetNodes.length);
+
+  // Helper function to get source path from a node and handle
+  const getSourcePath = (nodeId: string, handleId: string | null): string => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || !handleId) return '';
+    
+    if (node.type === 'source') {
+      const nodeData = node.data as any;
+      const fields = nodeData?.fields;
+      if (Array.isArray(fields)) {
+        const field = fields.find((f: any) => f.id === handleId);
+        return field?.name || '';
+      }
+    }
+    return '';
+  };
 
   // Process each target node to find its incoming mappings
   targetNodes.forEach(targetNode => {
@@ -49,7 +66,8 @@ export const exportExecutionMapping = (
             mapping = {
               from: sourceField?.name || edge.sourceHandle || '',
               to: targetField.name,
-              type: 'direct'
+              type: 'direct',
+              sourcePath: sourceField?.name || ''
             };
             
           } else if (sourceNode.type === 'staticValue') {
@@ -63,7 +81,8 @@ export const exportExecutionMapping = (
               from: null,
               to: targetField.name,
               type: 'static',
-              value: staticValue?.value || ''
+              value: staticValue?.value || '',
+              sourcePath: '' // Static values don't have source paths
             };
             
           } else if (sourceNode.type === 'ifThen') {
@@ -76,14 +95,10 @@ export const exportExecutionMapping = (
             
             // Find the input to the IF THEN node
             const ifThenInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
-            const inputData = inputSourceNode?.data as any;
-            const inputFields = inputData?.fields;
-            const inputField = Array.isArray(inputFields) ? 
-              inputFields.find((f: any) => f.id === ifThenInputEdge?.sourceHandle) : null;
+            const inputSourcePath = ifThenInputEdge ? getSourcePath(ifThenInputEdge.source, ifThenInputEdge.sourceHandle) : '';
             
             mapping = {
-              from: inputField?.name || '',
+              from: inputSourcePath,
               to: targetField.name,
               type: 'ifThen',
               if: {
@@ -91,7 +106,8 @@ export const exportExecutionMapping = (
                 value: compareValue
               },
               then: thenValue,
-              else: elseValue
+              else: elseValue,
+              sourcePath: inputSourcePath
             };
             
           } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
@@ -119,15 +135,8 @@ export const exportExecutionMapping = (
               let sourcePath = '';
               
               if (ruleInputEdge) {
-                const inputNode = nodes.find(n => n.id === ruleInputEdge.source);
-                if (inputNode && inputNode.type === 'source') {
-                  const inputData = inputNode.data as any;
-                  const inputFields = inputData?.fields;
-                  const inputField = Array.isArray(inputFields) ? 
-                    inputFields.find((f: any) => f.id === ruleInputEdge.sourceHandle) : null;
-                  sourcePath = inputField?.name || '';
-                  console.log(`Rule ${rule.priority} connected to source field: ${sourcePath}`);
-                }
+                sourcePath = getSourcePath(ruleInputEdge.source, ruleInputEdge.sourceHandle);
+                console.log(`Rule ${rule.priority} connected to source field: ${sourcePath}`);
               }
               
               return {
@@ -147,7 +156,8 @@ export const exportExecutionMapping = (
                   rules: enhancedRules,
                   defaultValue: defaultValue
                 }
-              }
+              },
+              sourcePath: '' // Multiple source paths are in the rules
             };
             
             console.log('Created enhanced coalesce execution mapping:', mapping);
@@ -166,33 +176,21 @@ export const exportExecutionMapping = (
             
             // Find the input to the conversion mapping node
             const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
-            
-            let originalSourceField: string = '';
+            let originalSourcePath: string = '';
             let transformInfo: any = null;
             
-            if (inputNode) {
-              if (inputNode.type === 'source') {
-                // Direct source to conversion mapping
-                const inputData = inputNode.data as any;
-                const inputFields = inputData?.fields;
-                const inputField = Array.isArray(inputFields) ? 
-                  inputFields.find((f: any) => f.id === conversionInputEdge?.sourceHandle) : null;
-                originalSourceField = inputField?.name || '';
-              } else if (inputNode.type === 'transform' || inputNode.type === 'splitterTransform') {
-                // Transform node feeding into conversion mapping
+            if (conversionInputEdge) {
+              originalSourcePath = getSourcePath(conversionInputEdge.source, conversionInputEdge.sourceHandle);
+              
+              // Check if there's a transform node in the chain
+              const inputNode = nodes.find(n => n.id === conversionInputEdge.source);
+              if (inputNode && (inputNode.type === 'transform' || inputNode.type === 'splitterTransform')) {
                 const transformData = inputNode.data as any;
                 
-                // Find the input to the transform node
+                // Find the input to the transform node to get the original source
                 const transformInputEdge = edges.find(e => e.target === inputNode.id);
-                const transformSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
-                
-                if (transformSourceNode && transformSourceNode.type === 'source') {
-                  const transformSourceData = transformSourceNode.data as any;
-                  const transformSourceFields = transformSourceData?.fields;
-                  const transformSourceField = Array.isArray(transformSourceFields) ? 
-                    transformSourceFields.find((f: any) => f.id === transformInputEdge?.sourceHandle) : null;
-                  originalSourceField = transformSourceField?.name || '';
+                if (transformInputEdge) {
+                  originalSourcePath = getSourcePath(transformInputEdge.source, transformInputEdge.sourceHandle);
                   
                   // Extract transform information
                   if (inputNode.type === 'transform') {
@@ -223,11 +221,12 @@ export const exportExecutionMapping = (
             }
             
             mapping = {
-              from: originalSourceField,
+              from: originalSourcePath,
               to: targetField.name,
               type: 'map',
               map: mapObject,
-              defaultValue: 'NotMapped' // Ensure default value is always added for map type
+              defaultValue: 'NotMapped',
+              sourcePath: originalSourcePath
             };
             
             // Add transform information if present
@@ -265,3 +264,4 @@ export const exportExecutionMapping = (
   
   return config;
 };
+
