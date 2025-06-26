@@ -1,5 +1,4 @@
 
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -48,7 +47,6 @@ export interface ExecutionMapping {
     end?: number;
     start?: number;
   };
-  sourcePath?: string; // Added source path for better traceability
 }
 
 export interface ExecutionMappingConfig {
@@ -70,7 +68,6 @@ export interface ExecutionStep {
     fieldId: string;
     fieldName: string;
     value?: any;
-    sourcePath?: string; // Added source path for traceability
   };
   target: {
     nodeId: string;
@@ -129,7 +126,6 @@ export interface TransformNodeConfig {
       id: string;
       priority: number;
       outputValue: string;
-      sourcePath?: string; // Added source path for rules
     }>;
     defaultValue?: string;
   };
@@ -144,7 +140,6 @@ export interface MappingNodeConfig {
     from: string;
     to: string;
     transformation?: string;
-    sourcePath?: string; // Added source path for mappings
   }>;
 }
 
@@ -155,7 +150,6 @@ export interface ConnectionConfig {
   sourceHandle: string;
   targetHandle: string;
   type: 'direct' | 'transform' | 'mapping';
-  sourcePath?: string; // Added source path for connections
 }
 
 export interface SchemaField {
@@ -165,4 +159,3 @@ export interface SchemaField {
   exampleValue?: any;
   children?: SchemaField[];
 }
-
