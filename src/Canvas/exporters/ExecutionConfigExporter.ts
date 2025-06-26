@@ -1,5 +1,3 @@
-
-
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -139,6 +137,7 @@ export const exportExecutionMapping = (
                 console.log(`Rule ${rule.priority} connected to source field: ${sourcePath}`);
               }
               
+              // Remove the id property from the rule since it's internal
               return {
                 priority: rule.priority,
                 outputValue: rule.outputValue,
@@ -264,4 +263,3 @@ export const exportExecutionMapping = (
   
   return config;
 };
-
