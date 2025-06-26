@@ -1,3 +1,4 @@
+
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -20,7 +21,8 @@ import DataSidebar from '../compontents/DataSidebar';
 import MappingToolbar from '../compontents/MappingToolbar';
 import MappingManager from '../compontents/MappingManager';
 import { downloadBothMappingFiles } from './utils/FileDownloader';
-import { importMappingConfiguration, type MappingConfiguration } from './importers/ConfigImporter';
+import { importMappingConfiguration } from './importers/ConfigImporter';
+import { MappingConfiguration } from './types/MappingTypes';
 import { exportMappingDocumentation } from './DocumentationExporter';
 import { toast } from 'sonner';
 
