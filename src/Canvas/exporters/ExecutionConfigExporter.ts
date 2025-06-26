@@ -51,7 +51,9 @@ export const exportExecutionMapping = (
           const sourceNode = nodes.find(n => n.id === edge.source);
           if (!sourceNode) return;
           
-          console.log(`Processing edge from ${sourceNode.type} (${sourceNode.id}) to ${targetField.name}`);
+          console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
+          console.log('Source node ID:', sourceNode.id);
+          console.log('Source node type:', sourceNode.type);
           console.log('Source node data:', sourceNode.data);
           console.log('Source node transformType:', sourceNode.data?.transformType);
           
