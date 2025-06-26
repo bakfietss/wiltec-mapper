@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -110,7 +111,10 @@ export const exportExecutionMapping = (
             
           } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
             // Coalesce transform mapping
-            console.log('PROCESSING COALESCE TRANSFORM NODE FOR EXECUTION:', sourceNode.id);
+            console.log('=== PROCESSING COALESCE TRANSFORM NODE ===');
+            console.log('Coalesce node ID:', sourceNode.id);
+            console.log('Coalesce node data:', sourceNode.data);
+            
             const sourceData = sourceNode.data as any;
             
             // Get coalesce configuration from the node data
@@ -118,26 +122,29 @@ export const exportExecutionMapping = (
             const rules = coalesceConfig?.rules || [];
             const defaultValue = coalesceConfig?.defaultValue || '';
             
-            console.log('Coalesce rules from config:', rules);
+            console.log('Original coalesce rules from config:', rules);
             console.log('Coalesce defaultValue from config:', defaultValue);
             
-            // Find all inputs to the coalesce node and map them to rules
+            // Find all input edges to the coalesce node
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
+            console.log('Coalesce input edges:', coalesceInputEdges);
             
-            console.log('Coalesce input edges:', coalesceInputEdges.length);
+            // Create a map of rule ID to source path
+            const ruleSourcePaths: Record<string, string> = {};
+            coalesceInputEdges.forEach(inputEdge => {
+              const sourcePath = getSourcePath(inputEdge.source, inputEdge.sourceHandle);
+              if (inputEdge.targetHandle && sourcePath) {
+                ruleSourcePaths[inputEdge.targetHandle] = sourcePath;
+                console.log(`Mapped rule ${inputEdge.targetHandle} to source path: ${sourcePath}`);
+              }
+            });
+            
+            console.log('Rule source paths map:', ruleSourcePaths);
             
             // Build enhanced rules with source paths - REMOVE id property and add sourcePath
             const enhancedRules = rules.map((rule: any) => {
-              // Find the edge that connects to this specific rule
-              const ruleInputEdge = coalesceInputEdges.find(edge => edge.targetHandle === rule.id);
-              let sourcePath = '';
-              
-              if (ruleInputEdge) {
-                sourcePath = getSourcePath(ruleInputEdge.source, ruleInputEdge.sourceHandle);
-                console.log(`Rule ${rule.priority} connected to source field: ${sourcePath}`);
-              } else {
-                console.log(`No input edge found for rule ${rule.id} (priority ${rule.priority})`);
-              }
+              const sourcePath = ruleSourcePaths[rule.id] || '';
+              console.log(`Rule ${rule.id} (priority ${rule.priority}) -> sourcePath: ${sourcePath}`);
               
               // Return rule WITHOUT the id property and WITH sourcePath
               return {
@@ -147,7 +154,7 @@ export const exportExecutionMapping = (
               };
             });
             
-            console.log('Enhanced coalesce rules for export:', enhancedRules);
+            console.log('Final enhanced coalesce rules for export:', enhancedRules);
             
             mapping = {
               from: '', // Keep empty for coalesce as it has multiple sources
