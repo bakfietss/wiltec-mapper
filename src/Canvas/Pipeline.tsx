@@ -19,12 +19,8 @@ import { useFieldStore } from '../store/fieldStore';
 import DataSidebar from '../compontents/DataSidebar';
 import MappingToolbar from '../compontents/MappingToolbar';
 import MappingManager from '../compontents/MappingManager';
-import { 
-  exportUIMappingConfiguration, 
-  importMappingConfiguration,
-  downloadBothMappingFiles,
-  type MappingConfiguration 
-} from './MappingExporter';
+import { downloadBothMappingFiles } from './utils/FileDownloader';
+import { importMappingConfiguration, type MappingConfiguration } from './importers/ConfigImporter';
 import { exportMappingDocumentation } from './DocumentationExporter';
 import { toast } from 'sonner';
 
