@@ -52,10 +52,12 @@ export const exportExecutionMapping = (
           if (!sourceNode) return;
           
           console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
+          console.log('=== DETAILED SOURCE NODE INFO ===');
           console.log('Source node ID:', sourceNode.id);
           console.log('Source node type:', sourceNode.type);
           console.log('Source node data:', sourceNode.data);
           console.log('Source node transformType:', sourceNode.data?.transformType);
+          console.log('=== END DETAILED INFO ===');
           
           let mapping: ExecutionMapping;
           
@@ -116,6 +118,7 @@ export const exportExecutionMapping = (
           } else if (sourceNode.type === 'transform') {
             console.log('=== FOUND TRANSFORM NODE ===');
             console.log('Transform type:', sourceNode.data?.transformType);
+            console.log('Full transform data:', JSON.stringify(sourceNode.data, null, 2));
             
             // Check if this is a coalesce transform
             if (sourceNode.data?.transformType === 'coalesce') {
