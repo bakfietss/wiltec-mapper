@@ -52,12 +52,7 @@ export const exportExecutionMapping = (
           if (!sourceNode) return;
           
           console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
-          console.log('=== DETAILED SOURCE NODE INFO ===');
-          console.log('Source node ID:', sourceNode.id);
-          console.log('Source node type:', sourceNode.type);
           console.log('Source node data:', sourceNode.data);
-          console.log('Source node transformType:', sourceNode.data?.transformType);
-          console.log('=== END DETAILED INFO ===');
           
           let mapping: ExecutionMapping;
           
@@ -115,16 +110,14 @@ export const exportExecutionMapping = (
               sourcePath: inputSourcePath
             };
             
-          } else if (sourceNode.type === 'transform') {
-            console.log('=== FOUND TRANSFORM NODE ===');
+          } else if (sourceNode.type === 'transform' || sourceNode.data?.transformType === 'coalesce') {
+            console.log('=== PROCESSING TRANSFORM NODE ===');
+            console.log('Node type:', sourceNode.type);
             console.log('Transform type:', sourceNode.data?.transformType);
-            console.log('Full transform data:', JSON.stringify(sourceNode.data, null, 2));
             
-            // Check if this is a coalesce transform
-            if (sourceNode.data?.transformType === 'coalesce') {
-              console.log('=== PROCESSING COALESCE TRANSFORM NODE ===');
-              console.log('Coalesce node ID:', sourceNode.id);
-              console.log('Coalesce node data:', sourceNode.data);
+            // Check if this is a coalesce transform - check both type and transformType
+            if (sourceNode.data?.transformType === 'coalesce' || sourceNode.type === 'coalesce') {
+              console.log('=== FOUND COALESCE TRANSFORM ===');
               
               const sourceData = sourceNode.data as any;
               
@@ -133,8 +126,8 @@ export const exportExecutionMapping = (
               const rules = coalesceConfig?.rules || [];
               const defaultValue = coalesceConfig?.defaultValue || '';
               
-              console.log('Original coalesce rules from config:', rules);
-              console.log('Coalesce defaultValue from config:', defaultValue);
+              console.log('Coalesce rules from config:', rules);
+              console.log('Coalesce defaultValue:', defaultValue);
               
               // Find all input edges to the coalesce node
               const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
@@ -155,7 +148,7 @@ export const exportExecutionMapping = (
               // Build enhanced rules with source paths - REMOVE id property and add sourcePath
               const enhancedRules = rules.map((rule: any) => {
                 const sourcePath = ruleSourcePaths[rule.id] || '';
-                console.log(`Rule ${rule.id} (priority ${rule.priority}) -> sourcePath: ${sourcePath}`);
+                console.log(`Processing rule ${rule.id} -> sourcePath: ${sourcePath}`);
                 
                 // Return rule WITHOUT the id property and WITH sourcePath
                 return {
@@ -165,7 +158,7 @@ export const exportExecutionMapping = (
                 };
               });
               
-              console.log('Final enhanced coalesce rules for export:', enhancedRules);
+              console.log('Final enhanced coalesce rules:', enhancedRules);
               
               mapping = {
                 from: '', // Keep empty for coalesce as it has multiple sources
@@ -181,7 +174,7 @@ export const exportExecutionMapping = (
                 sourcePath: '' // Multiple source paths are in the rules
               };
               
-              console.log('Created enhanced coalesce execution mapping:', mapping);
+              console.log('Created coalesce execution mapping:', mapping);
             } else {
               // Generic transform mapping
               const sourceData = sourceNode.data as any;
