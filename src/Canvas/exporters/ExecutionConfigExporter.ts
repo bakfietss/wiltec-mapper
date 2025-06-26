@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -107,12 +106,14 @@ export const exportExecutionMapping = (
             console.log('Coalesce rules from config:', rules);
             console.log('Coalesce defaultValue from config:', defaultValue);
             
-            // Find all inputs to the coalesce node and build the coalesce mapping
+            // Find all inputs to the coalesce node and build the source field mappings
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
             const inputSources: string[] = [];
+            const sourceFieldMappings: Record<string, string> = {};
             
             console.log('Coalesce input edges:', coalesceInputEdges.length);
             
+            // Build mapping of rule IDs to their corresponding source fields
             coalesceInputEdges.forEach(inputEdge => {
               const inputNode = nodes.find(n => n.id === inputEdge.source);
               if (inputNode && inputNode.type === 'source') {
@@ -120,29 +121,43 @@ export const exportExecutionMapping = (
                 const inputFields = inputData?.fields;
                 const inputField = Array.isArray(inputFields) ? 
                   inputFields.find((f: any) => f.id === inputEdge.sourceHandle) : null;
-                if (inputField) {
+                
+                if (inputField && inputEdge.targetHandle) {
+                  // Map the target handle (rule ID) to the source field name
+                  sourceFieldMappings[inputEdge.targetHandle] = inputField.name;
                   inputSources.push(inputField.name);
-                  console.log('Added input source:', inputField.name);
+                  console.log(`Mapped rule ${inputEdge.targetHandle} to source field: ${inputField.name}`);
                 }
               }
             });
             
+            // Build ordered sources array based on rule priority
+            const orderedSources: string[] = [];
+            rules.forEach((rule: any) => {
+              const sourceField = sourceFieldMappings[rule.id];
+              if (sourceField) {
+                orderedSources.push(sourceField);
+              } else {
+                orderedSources.push(''); // Empty if no source connected to this rule
+              }
+            });
+            
             mapping = {
-              from: inputSources.length > 0 ? inputSources[0] : null,
+              from: orderedSources.length > 0 ? orderedSources[0] : null,
               to: targetField.name,
               type: 'transform',
               transform: {
                 type: 'coalesce',
                 operation: 'coalesce',
                 parameters: {
-                  sources: inputSources,
+                  sources: orderedSources, // Now properly ordered based on rule priority
                   rules: rules,
                   defaultValue: defaultValue
                 }
               }
             };
             
-            console.log('Created coalesce execution mapping:', mapping);
+            console.log('Created coalesce execution mapping with ordered sources:', mapping);
             
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
