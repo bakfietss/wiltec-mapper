@@ -1,5 +1,3 @@
-
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface DocumentationConfig {
@@ -122,20 +120,24 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
     const inputEdges = edges.filter(e => e.target === node.id);
     inputSources = inputEdges.map(edge => getSourcePath(edge.source, edge.sourceHandle)).filter(path => path);
 
+    // Safely access node data properties
+    const nodeData = node.data as any;
+    const config = nodeData?.config || {};
+
     switch (node.type) {
       case 'ifThen':
         const inputSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
-        description = `IF-THEN conditional logic on "${inputSource}": IF field ${node.data?.operator || '='} "${node.data?.compareValue || ''}" THEN "${node.data?.thenValue || ''}" ELSE "${node.data?.elseValue || ''}"`;
+        description = `IF-THEN conditional logic on "${inputSource}": IF field ${nodeData?.operator || '='} "${nodeData?.compareValue || ''}" THEN "${nodeData?.thenValue || ''}" ELSE "${nodeData?.elseValue || ''}"`;
         rules = {
-          operator: node.data?.operator,
-          compareValue: node.data?.compareValue,
-          thenValue: node.data?.thenValue,
-          elseValue: node.data?.elseValue,
+          operator: nodeData?.operator,
+          compareValue: nodeData?.compareValue,
+          thenValue: nodeData?.thenValue,
+          elseValue: nodeData?.elseValue,
           sourcePath: inputSource
         };
         break;
       case 'staticValue':
-        const values = Array.isArray(node.data?.values) ? node.data.values : [];
+        const values = Array.isArray(nodeData?.values) ? nodeData.values : [];
         description = `Static value assignment with ${values.length} predefined values`;
         configuration = {
           values: values
@@ -143,15 +145,15 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
         break;
       case 'splitterTransform':
         const splitSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
-        description = `Text splitting of "${splitSource}" using delimiter "${node.data?.delimiter || ','}" at index ${node.data?.splitIndex || 0}`;
+        description = `Text splitting of "${splitSource}" using delimiter "${nodeData?.delimiter || ','}" at index ${nodeData?.splitIndex || 0}`;
         configuration = {
-          delimiter: node.data?.delimiter,
-          splitIndex: node.data?.splitIndex,
+          delimiter: nodeData?.delimiter,
+          splitIndex: nodeData?.splitIndex,
           sourcePath: splitSource
         };
         break;
       case 'conversionMapping':
-        const mappings = Array.isArray(node.data?.mappings) ? node.data.mappings : [];
+        const mappings = Array.isArray(nodeData?.mappings) ? nodeData.mappings : [];
         const conversionSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
         description = `Value conversion mapping on "${conversionSource}" with ${mappings.length} rules`;
         rules = {
@@ -160,8 +162,8 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
         };
         break;
       case 'transform':
-        if (node.data?.transformType === 'coalesce') {
-          const coalesceRules = node.data?.config?.rules || [];
+        if (nodeData?.transformType === 'coalesce') {
+          const coalesceRules = Array.isArray(config.rules) ? config.rules : [];
           const coalesceInputs = inputEdges.map((edge, index) => {
             const sourcePath = getSourcePath(edge.source, edge.sourceHandle);
             const rule = coalesceRules.find((r: any) => r.id === edge.targetHandle);
@@ -174,13 +176,13 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
           description = `Coalesce transformation with ${coalesceInputs.length} input sources: ${coalesceInputs.map(input => input.sourcePath).join(', ')}`;
           rules = {
             rules: coalesceInputs,
-            defaultValue: node.data?.config?.defaultValue || ''
+            defaultValue: config.defaultValue || ''
           };
         } else {
           const transformSource = inputSources.length > 0 ? inputSources[0] : 'Unknown';
-          description = `${node.data?.transformType || 'Generic'} transformation on "${transformSource}"`;
+          description = `${nodeData?.transformType || 'Generic'} transformation on "${transformSource}"`;
           configuration = {
-            ...node.data?.config || {},
+            ...(config && typeof config === 'object' ? config : {}),
             sourcePath: transformSource
           };
         }
@@ -412,4 +414,3 @@ export const exportMappingDocumentation = (
   
   console.log('Enhanced documentation exported with source paths:', config);
 };
-
