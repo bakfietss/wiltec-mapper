@@ -10,6 +10,8 @@ export const exportExecutionMapping = (
   
   console.log('=== GENERATING EXECUTION MAPPINGS ===');
   console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
+  console.log('All edges:', edges);
+  console.log('All nodes:', nodes.map(n => ({ id: n.id, type: n.type, data: n.data })));
 
   const targetNodes = nodes.filter(node => node.type === 'target');
   
@@ -28,13 +30,14 @@ export const exportExecutionMapping = (
           edge.target === targetNode.id && edge.targetHandle === targetField.id
         );
         
-        console.log(`Target field ${targetField.name} has ${incomingEdges.length} incoming edges`);
+        console.log(`Target field ${targetField.name} (${targetField.id}) has ${incomingEdges.length} incoming edges`);
         
         incomingEdges.forEach(edge => {
           const sourceNode = nodes.find(n => n.id === edge.source);
           if (!sourceNode) return;
           
           console.log(`Processing edge from ${sourceNode.type} (${sourceNode.id}) to ${targetField.name}`);
+          console.log('Edge details:', edge);
           
           let mapping: ExecutionMapping;
           
@@ -95,7 +98,10 @@ export const exportExecutionMapping = (
             
           } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
             // Coalesce transform mapping
-            console.log('PROCESSING COALESCE TRANSFORM NODE FOR EXECUTION:', sourceNode.id);
+            console.log('=== PROCESSING COALESCE TRANSFORM NODE ===');
+            console.log('Coalesce node ID:', sourceNode.id);
+            console.log('Coalesce node data:', sourceNode.data);
+            
             const sourceData = sourceNode.data as any;
             
             // Get coalesce configuration from the node data config
@@ -108,28 +114,35 @@ export const exportExecutionMapping = (
             
             // Find all inputs to the coalesce node and build the source field mappings
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
-            const inputSources: string[] = [];
-            const sourceFieldMappings: Record<string, string> = {};
+            console.log('=== COALESCE INPUT EDGES ===');
+            console.log('All edges going to coalesce node:', coalesceInputEdges);
             
-            console.log('Coalesce input edges:', coalesceInputEdges.length);
+            const sourceFieldMappings: Record<string, string> = {};
             
             // Build mapping of rule IDs to their corresponding source fields
             coalesceInputEdges.forEach(inputEdge => {
+              console.log('Processing coalesce input edge:', inputEdge);
               const inputNode = nodes.find(n => n.id === inputEdge.source);
+              console.log('Input node found:', inputNode);
+              
               if (inputNode && inputNode.type === 'source') {
                 const inputData = inputNode.data as any;
                 const inputFields = inputData?.fields;
                 const inputField = Array.isArray(inputFields) ? 
                   inputFields.find((f: any) => f.id === inputEdge.sourceHandle) : null;
                 
+                console.log('Source field found:', inputField);
+                console.log('Target handle (rule ID):', inputEdge.targetHandle);
+                
                 if (inputField && inputEdge.targetHandle) {
                   // Map the target handle (rule ID) to the source field name
                   sourceFieldMappings[inputEdge.targetHandle] = inputField.name;
-                  inputSources.push(inputField.name);
-                  console.log(`Mapped rule ${inputEdge.targetHandle} to source field: ${inputField.name}`);
+                  console.log(`Successfully mapped rule ${inputEdge.targetHandle} to source field: ${inputField.name}`);
                 }
               }
             });
+            
+            console.log('Final source field mappings:', sourceFieldMappings);
             
             // Build ordered sources array based on rule priority
             const orderedSources: string[] = [];
@@ -137,10 +150,14 @@ export const exportExecutionMapping = (
               const sourceField = sourceFieldMappings[rule.id];
               if (sourceField) {
                 orderedSources.push(sourceField);
+                console.log(`Rule ${rule.id} (priority ${rule.priority}) mapped to source: ${sourceField}`);
               } else {
                 orderedSources.push(''); // Empty if no source connected to this rule
+                console.log(`Rule ${rule.id} (priority ${rule.priority}) has no source connection`);
               }
             });
+            
+            console.log('Final ordered sources array:', orderedSources);
             
             mapping = {
               from: orderedSources.length > 0 ? orderedSources[0] : null,
@@ -157,6 +174,7 @@ export const exportExecutionMapping = (
               }
             };
             
+            console.log('=== FINAL COALESCE MAPPING ===');
             console.log('Created coalesce execution mapping with ordered sources:', mapping);
             
           } else if (sourceNode.type === 'conversionMapping') {
