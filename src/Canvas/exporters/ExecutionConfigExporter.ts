@@ -52,6 +52,8 @@ export const exportExecutionMapping = (
           if (!sourceNode) return;
           
           console.log(`Processing edge from ${sourceNode.type} (${sourceNode.id}) to ${targetField.name}`);
+          console.log('Source node data:', sourceNode.data);
+          console.log('Source node transformType:', sourceNode.data?.transformType);
           
           let mapping: ExecutionMapping;
           
@@ -109,68 +111,107 @@ export const exportExecutionMapping = (
               sourcePath: inputSourcePath
             };
             
-          } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
-            // Coalesce transform mapping
-            console.log('=== PROCESSING COALESCE TRANSFORM NODE ===');
-            console.log('Coalesce node ID:', sourceNode.id);
-            console.log('Coalesce node data:', sourceNode.data);
+          } else if (sourceNode.type === 'transform') {
+            console.log('=== FOUND TRANSFORM NODE ===');
+            console.log('Transform type:', sourceNode.data?.transformType);
             
-            const sourceData = sourceNode.data as any;
-            
-            // Get coalesce configuration from the node data
-            const coalesceConfig = sourceData?.config || {};
-            const rules = coalesceConfig?.rules || [];
-            const defaultValue = coalesceConfig?.defaultValue || '';
-            
-            console.log('Original coalesce rules from config:', rules);
-            console.log('Coalesce defaultValue from config:', defaultValue);
-            
-            // Find all input edges to the coalesce node
-            const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
-            console.log('Coalesce input edges:', coalesceInputEdges);
-            
-            // Create a map of rule ID to source path
-            const ruleSourcePaths: Record<string, string> = {};
-            coalesceInputEdges.forEach(inputEdge => {
-              const sourcePath = getSourcePath(inputEdge.source, inputEdge.sourceHandle);
-              if (inputEdge.targetHandle && sourcePath) {
-                ruleSourcePaths[inputEdge.targetHandle] = sourcePath;
-                console.log(`Mapped rule ${inputEdge.targetHandle} to source path: ${sourcePath}`);
-              }
-            });
-            
-            console.log('Rule source paths map:', ruleSourcePaths);
-            
-            // Build enhanced rules with source paths - REMOVE id property and add sourcePath
-            const enhancedRules = rules.map((rule: any) => {
-              const sourcePath = ruleSourcePaths[rule.id] || '';
-              console.log(`Rule ${rule.id} (priority ${rule.priority}) -> sourcePath: ${sourcePath}`);
+            // Check if this is a coalesce transform
+            if (sourceNode.data?.transformType === 'coalesce') {
+              console.log('=== PROCESSING COALESCE TRANSFORM NODE ===');
+              console.log('Coalesce node ID:', sourceNode.id);
+              console.log('Coalesce node data:', sourceNode.data);
               
-              // Return rule WITHOUT the id property and WITH sourcePath
-              return {
-                priority: rule.priority,
-                outputValue: rule.outputValue,
-                sourcePath: sourcePath
-              };
-            });
-            
-            console.log('Final enhanced coalesce rules for export:', enhancedRules);
-            
-            mapping = {
-              from: '', // Keep empty for coalesce as it has multiple sources
-              to: targetField.name,
-              type: 'transform',
-              transform: {
-                type: 'coalesce',
-                parameters: {
-                  rules: enhancedRules,
-                  defaultValue: defaultValue
+              const sourceData = sourceNode.data as any;
+              
+              // Get coalesce configuration from the node data
+              const coalesceConfig = sourceData?.config || {};
+              const rules = coalesceConfig?.rules || [];
+              const defaultValue = coalesceConfig?.defaultValue || '';
+              
+              console.log('Original coalesce rules from config:', rules);
+              console.log('Coalesce defaultValue from config:', defaultValue);
+              
+              // Find all input edges to the coalesce node
+              const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
+              console.log('Coalesce input edges:', coalesceInputEdges);
+              
+              // Create a map of rule ID to source path
+              const ruleSourcePaths: Record<string, string> = {};
+              coalesceInputEdges.forEach(inputEdge => {
+                const sourcePath = getSourcePath(inputEdge.source, inputEdge.sourceHandle);
+                if (inputEdge.targetHandle && sourcePath) {
+                  ruleSourcePaths[inputEdge.targetHandle] = sourcePath;
+                  console.log(`Mapped rule ${inputEdge.targetHandle} to source path: ${sourcePath}`);
                 }
-              },
-              sourcePath: '' // Multiple source paths are in the rules
-            };
-            
-            console.log('Created enhanced coalesce execution mapping:', mapping);
+              });
+              
+              console.log('Rule source paths map:', ruleSourcePaths);
+              
+              // Build enhanced rules with source paths - REMOVE id property and add sourcePath
+              const enhancedRules = rules.map((rule: any) => {
+                const sourcePath = ruleSourcePaths[rule.id] || '';
+                console.log(`Rule ${rule.id} (priority ${rule.priority}) -> sourcePath: ${sourcePath}`);
+                
+                // Return rule WITHOUT the id property and WITH sourcePath
+                return {
+                  priority: rule.priority,
+                  outputValue: rule.outputValue,
+                  sourcePath: sourcePath
+                };
+              });
+              
+              console.log('Final enhanced coalesce rules for export:', enhancedRules);
+              
+              mapping = {
+                from: '', // Keep empty for coalesce as it has multiple sources
+                to: targetField.name,
+                type: 'transform',
+                transform: {
+                  type: 'coalesce',
+                  parameters: {
+                    rules: enhancedRules,
+                    defaultValue: defaultValue
+                  }
+                },
+                sourcePath: '' // Multiple source paths are in the rules
+              };
+              
+              console.log('Created enhanced coalesce execution mapping:', mapping);
+            } else {
+              // Generic transform mapping
+              const sourceData = sourceNode.data as any;
+              const transformConfig = sourceData?.config || {};
+              
+              // Find the input to the transform node
+              const transformInputEdge = edges.find(e => e.target === sourceNode.id);
+              const inputSourcePath = transformInputEdge ? getSourcePath(transformInputEdge.source, transformInputEdge.sourceHandle) : '';
+              
+              const operation = transformConfig?.stringOperation || transformConfig?.operation || 'unknown';
+              let transformInfo: any = {
+                type: sourceData?.transformType || 'unknown',
+                operation,
+                parameters: transformConfig
+              };
+              
+              // Handle substring operation specifically for cleaner output
+              if (operation === 'substring') {
+                transformInfo = {
+                  type: 'substring',
+                  start: transformConfig.substringStart || 0
+                };
+                if (transformConfig.substringEnd !== undefined) {
+                  transformInfo.end = transformConfig.substringEnd;
+                }
+              }
+              
+              mapping = {
+                from: inputSourcePath,
+                to: targetField.name,
+                type: 'transform',
+                transform: transformInfo,
+                sourcePath: inputSourcePath
+              };
+            }
             
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
