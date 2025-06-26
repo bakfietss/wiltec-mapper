@@ -126,7 +126,7 @@ export const exportExecutionMapping = (
             
             console.log('Coalesce input edges:', coalesceInputEdges.length);
             
-            // Build enhanced rules with source paths
+            // Build enhanced rules with source paths - REMOVE id property and add sourcePath
             const enhancedRules = rules.map((rule: any) => {
               // Find the edge that connects to this specific rule
               const ruleInputEdge = coalesceInputEdges.find(edge => edge.targetHandle === rule.id);
@@ -135,15 +135,19 @@ export const exportExecutionMapping = (
               if (ruleInputEdge) {
                 sourcePath = getSourcePath(ruleInputEdge.source, ruleInputEdge.sourceHandle);
                 console.log(`Rule ${rule.priority} connected to source field: ${sourcePath}`);
+              } else {
+                console.log(`No input edge found for rule ${rule.id} (priority ${rule.priority})`);
               }
               
-              // Remove the id property from the rule since it's internal
+              // Return rule WITHOUT the id property and WITH sourcePath
               return {
                 priority: rule.priority,
                 outputValue: rule.outputValue,
                 sourcePath: sourcePath
               };
             });
+            
+            console.log('Enhanced coalesce rules for export:', enhancedRules);
             
             mapping = {
               from: '', // Keep empty for coalesce as it has multiple sources
