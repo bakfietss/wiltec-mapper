@@ -15,10 +15,16 @@ export const exportExecutionMapping = (
   
   // Debug: Log all nodes and their types
   nodes.forEach(node => {
-    console.log(`Node ${node.id}: type="${node.type}", transformType="${node.data?.transformType}"`);
-    if (node.type === 'transform' || node.data?.transformType === 'coalesce') {
-      console.log('  → Transform node data:', node.data);
-    }
+    console.log(`Node ${node.id}:`);
+    console.log('  type:', node.type);
+    console.log('  data.transformType:', node.data?.transformType);
+    console.log('  data.label:', node.data?.label);
+    console.log('  full data:', node.data);
+  });
+
+  // Debug: Log all edges
+  edges.forEach(edge => {
+    console.log(`Edge ${edge.id}: ${edge.source} -> ${edge.target}`);
   });
 
   const targetNodes = nodes.filter(node => node.type === 'target');
@@ -64,7 +70,8 @@ export const exportExecutionMapping = (
           }
           
           console.log(`  → Processing edge from ${sourceNode.type} node (${sourceNode.id})`);
-          console.log('    Source node data:', sourceNode.data);
+          console.log(`    Source node data:`, sourceNode.data);
+          console.log(`    Source node transformType:`, sourceNode.data?.transformType);
           
           let mapping: ExecutionMapping;
           
@@ -122,13 +129,14 @@ export const exportExecutionMapping = (
               sourcePath: inputSourcePath
             };
             
-          } else if (sourceNode.type === 'transform') {
+          } else if (sourceNode.type === 'transform' || sourceNode.data?.transformType === 'coalesce') {
             const sourceData = sourceNode.data as any;
             const transformType = sourceData?.transformType;
             
-            console.log(`    → Transform type: "${transformType}"`);
+            console.log(`    → Transform detected! Type: "${transformType}"`);
+            console.log(`    → Node type: "${sourceNode.type}"`);
             
-            // COALESCE TRANSFORM - Specific handling
+            // Check specifically for coalesce
             if (transformType === 'coalesce') {
               console.log('    → PROCESSING COALESCE TRANSFORM');
               
