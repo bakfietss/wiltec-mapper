@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -10,12 +11,33 @@ export const exportExecutionMapping = (
   
   console.log('=== GENERATING EXECUTION MAPPINGS ===');
   console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
-  console.log('All edges:', edges);
-  console.log('All nodes:', nodes.map(n => ({ id: n.id, type: n.type, data: n.data })));
 
   const targetNodes = nodes.filter(node => node.type === 'target');
   
   console.log('Target nodes:', targetNodes.length);
+
+  // Helper function to find source field by handle (supports nested field names)
+  const findSourceFieldByHandle = (sourceFields: any[], handleId: string): any => {
+    if (!Array.isArray(sourceFields)) return null;
+    
+    // First try exact ID match
+    let field = sourceFields.find((f: any) => f.id === handleId);
+    if (field) return field;
+    
+    // Then try exact name match
+    field = sourceFields.find((f: any) => f.name === handleId);
+    if (field) return field;
+    
+    // For nested fields, recursively search children
+    for (const sourceField of sourceFields) {
+      if (sourceField.children && Array.isArray(sourceField.children)) {
+        const nestedField = findSourceFieldByHandle(sourceField.children, handleId);
+        if (nestedField) return nestedField;
+      }
+    }
+    
+    return null;
+  };
 
   // Process each target node to find its incoming mappings
   targetNodes.forEach(targetNode => {
@@ -37,7 +59,6 @@ export const exportExecutionMapping = (
           if (!sourceNode) return;
           
           console.log(`Processing edge from ${sourceNode.type} (${sourceNode.id}) to ${targetField.name}`);
-          console.log('Edge details:', edge);
           
           let mapping: ExecutionMapping;
           
@@ -45,8 +66,11 @@ export const exportExecutionMapping = (
             // Direct mapping from source to target
             const sourceData = sourceNode.data as any;
             const sourceFields = sourceData?.fields;
-            const sourceField = Array.isArray(sourceFields) ? 
-              sourceFields.find((f: any) => f.id === edge.sourceHandle) : null;
+            const sourceField = findSourceFieldByHandle(sourceFields, edge.sourceHandle || '');
+            
+            console.log(`Looking for source field with handle: "${edge.sourceHandle}"`);
+            console.log('Available source fields:', sourceFields);
+            console.log('Found source field:', sourceField);
             
             mapping = {
               from: sourceField?.name || edge.sourceHandle || '',
@@ -81,8 +105,7 @@ export const exportExecutionMapping = (
             const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
             const inputData = inputSourceNode?.data as any;
             const inputFields = inputData?.fields;
-            const inputField = Array.isArray(inputFields) ? 
-              inputFields.find((f: any) => f.id === ifThenInputEdge?.sourceHandle) : null;
+            const inputField = findSourceFieldByHandle(inputFields, ifThenInputEdge?.sourceHandle || '');
             
             mapping = {
               from: inputField?.name || '',
@@ -128,16 +151,19 @@ export const exportExecutionMapping = (
               if (inputNode && inputNode.type === 'source') {
                 const inputData = inputNode.data as any;
                 const inputFields = inputData?.fields;
-                const inputField = Array.isArray(inputFields) ? 
-                  inputFields.find((f: any) => f.id === inputEdge.sourceHandle) : null;
+                const inputField = findSourceFieldByHandle(inputFields, inputEdge.sourceHandle || '');
                 
-                console.log('Source field found:', inputField);
+                console.log(`Looking for input field with handle: "${inputEdge.sourceHandle}"`);
+                console.log('Available input fields:', inputFields);
+                console.log('Found input field:', inputField);
                 console.log('Target handle (rule ID):', inputEdge.targetHandle);
                 
                 if (inputField && inputEdge.targetHandle) {
                   // Map the target handle (rule ID) to the source field name
                   sourceFieldMappings[inputEdge.targetHandle] = inputField.name;
                   console.log(`Successfully mapped rule ${inputEdge.targetHandle} to source field: ${inputField.name}`);
+                } else {
+                  console.log(`Failed to map rule ${inputEdge.targetHandle} - inputField:`, inputField, 'targetHandle:', inputEdge.targetHandle);
                 }
               }
             });
@@ -201,8 +227,7 @@ export const exportExecutionMapping = (
                 // Direct source to conversion mapping
                 const inputData = inputNode.data as any;
                 const inputFields = inputData?.fields;
-                const inputField = Array.isArray(inputFields) ? 
-                  inputFields.find((f: any) => f.id === conversionInputEdge?.sourceHandle) : null;
+                const inputField = findSourceFieldByHandle(inputFields, conversionInputEdge?.sourceHandle || '');
                 originalSourceField = inputField?.name || '';
               } else if (inputNode.type === 'transform' || inputNode.type === 'splitterTransform') {
                 // Transform node feeding into conversion mapping
@@ -215,8 +240,7 @@ export const exportExecutionMapping = (
                 if (transformSourceNode && transformSourceNode.type === 'source') {
                   const transformSourceData = transformSourceNode.data as any;
                   const transformSourceFields = transformSourceData?.fields;
-                  const transformSourceField = Array.isArray(transformSourceFields) ? 
-                    transformSourceFields.find((f: any) => f.id === transformInputEdge?.sourceHandle) : null;
+                  const transformSourceField = findSourceFieldByHandle(transformSourceFields, transformInputEdge?.sourceHandle || '');
                   originalSourceField = transformSourceField?.name || '';
                   
                   // Extract transform information
