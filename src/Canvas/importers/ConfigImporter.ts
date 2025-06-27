@@ -166,7 +166,7 @@ export const importMappingConfiguration = (
           const coalesceNodeId = step.target.nodeId;
           const coalesceNode = nodeMap.get(coalesceNodeId);
           
-          if (coalesceNode && coalesceNode.data) {
+          if (coalesceNode) {
             // Update the coalesce node with the rules from execution mapping
             const enhancedRules = parameters.rules.map((rule: any) => ({
               id: rule.id || `rule_${Date.now()}_${Math.random()}`,
@@ -176,16 +176,19 @@ export const importMappingConfiguration = (
               sourceHandle: rule.sourceHandle || ''
             }));
             
-            // Update the node's config with enhanced rules - ensure config exists
-            const existingConfig = coalesceNode.data.config || {};
-            coalesceNode.data = {
-              ...coalesceNode.data,
-              config: {
-                ...existingConfig,
-                rules: enhancedRules,
-                defaultValue: parameters.defaultValue || ''
-              }
-            };
+            // Ensure coalesceNode.data exists and has proper structure
+            if (!coalesceNode.data) {
+              coalesceNode.data = {};
+            }
+            
+            // Ensure config is an object
+            if (!coalesceNode.data.config || typeof coalesceNode.data.config !== 'object') {
+              coalesceNode.data.config = {};
+            }
+            
+            // Update the config
+            coalesceNode.data.config.rules = enhancedRules;
+            coalesceNode.data.config.defaultValue = parameters.defaultValue || '';
             
             // Create input edges for each rule
             enhancedRules.forEach((rule: any) => {
