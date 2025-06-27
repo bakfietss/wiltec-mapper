@@ -176,11 +176,12 @@ export const importMappingConfiguration = (
               sourceHandle: rule.sourceHandle || ''
             }));
             
-            // Update the node's config with enhanced rules
+            // Update the node's config with enhanced rules - ensure config exists
+            const existingConfig = coalesceNode.data.config || {};
             coalesceNode.data = {
               ...coalesceNode.data,
               config: {
-                ...coalesceNode.data.config,
+                ...existingConfig,
                 rules: enhancedRules,
                 defaultValue: parameters.defaultValue || ''
               }
