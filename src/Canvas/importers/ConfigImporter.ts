@@ -181,14 +181,15 @@ export const importMappingConfiguration = (
               coalesceNode.data = {};
             }
             
-            // Ensure config is an object
-            if (!coalesceNode.data.config || typeof coalesceNode.data.config !== 'object') {
+            // Ensure config exists and is properly typed
+            if (!coalesceNode.data.config) {
               coalesceNode.data.config = {};
             }
             
-            // Update the config
-            coalesceNode.data.config.rules = enhancedRules;
-            coalesceNode.data.config.defaultValue = parameters.defaultValue || '';
+            // Update the config with proper typing
+            const nodeConfig = coalesceNode.data.config as any;
+            nodeConfig.rules = enhancedRules;
+            nodeConfig.defaultValue = parameters.defaultValue || '';
             
             // Create input edges for each rule
             enhancedRules.forEach((rule: any) => {
