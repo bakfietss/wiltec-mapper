@@ -172,7 +172,7 @@ export const importMappingConfiguration = (
               if (rule.sourceField && rule.sourceHandle) {
                 // Find the source node that has this field
                 const sourceNode = Array.from(nodeMap.values()).find(node => {
-                  if (node.type === 'source' && node.data?.fields) {
+                  if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
                     // Check if this source has the field we're looking for
                     return findFieldInSource(node.data.fields, rule.sourceHandle);
                   }
