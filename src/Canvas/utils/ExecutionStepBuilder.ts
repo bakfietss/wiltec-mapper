@@ -12,17 +12,12 @@ export const buildExecutionSteps = (
   // Create maps for O(1) lookups instead of O(n) finds
   const nodeMap = new Map(nodes.map(node => [node.id, node]));
   const edgesBySource = new Map<string, Edge[]>();
-  const edgesByTarget = new Map<string, Edge[]>();
   
-  // Group edges by source and target for faster lookup
+  // Group edges by source for faster lookup
   edges.forEach(edge => {
     const sourceEdges = edgesBySource.get(edge.source) || [];
     sourceEdges.push(edge);
     edgesBySource.set(edge.source, sourceEdges);
-    
-    const targetEdges = edgesByTarget.get(edge.target) || [];
-    targetEdges.push(edge);
-    edgesByTarget.set(edge.target, targetEdges);
   });
 
   const getFieldInfo = (node: Node, handleId: string) => {
@@ -46,84 +41,7 @@ export const buildExecutionSteps = (
     return undefined;
   };
 
-  // Handle coalesce transforms specially - they need comprehensive rule information
-  const processedCoalesceNodes = new Set<string>();
-  
-  nodes.forEach(node => {
-    if ((node.type === 'transform' && node.data?.transformType === 'coalesce') || 
-        node.type === 'coalesceTransform') {
-      
-      if (processedCoalesceNodes.has(node.id)) return;
-      processedCoalesceNodes.add(node.id);
-      
-      const nodeData = node.data as any;
-      const inputEdges = edgesByTarget.get(node.id) || [];
-      const outputEdges = edgesBySource.get(node.id) || [];
-      
-      // Build rules from input edges and node configuration
-      const rules: any[] = [];
-      
-      // Get rules from node data if available
-      const existingRules = nodeData?.rules || nodeData?.config?.rules || [];
-      
-      // Merge with input edges to create comprehensive rules
-      inputEdges.forEach((edge, index) => {
-        const sourceNode = nodeMap.get(edge.source);
-        if (!sourceNode || sourceNode.type !== 'source') return;
-        
-        const sourceField = getFieldInfo(sourceNode, edge.sourceHandle || '');
-        const ruleId = edge.targetHandle || `rule_${index}_${Date.now()}`;
-        
-        // Find existing rule or create new one
-        let rule = existingRules.find((r: any) => r.id === ruleId);
-        if (!rule) {
-          rule = {
-            id: ruleId,
-            priority: index + 1,
-            outputValue: '', // Will be determined by the transform logic
-            sourceField: edge.sourceHandle || sourceField.name,
-            sourceHandle: edge.sourceHandle || sourceField.name
-          };
-        }
-        
-        rules.push(rule);
-      });
-      
-      // Create execution step for each output edge
-      outputEdges.forEach(outputEdge => {
-        const finalTargetNode = nodeMap.get(outputEdge.target);
-        if (!finalTargetNode || finalTargetNode.type !== 'target') return;
-        
-        const finalTargetField = getFieldInfo(finalTargetNode, outputEdge.targetHandle || '');
-        
-        steps.push({
-          stepId: `step_${stepCounter++}`,
-          type: 'transform',
-          source: {
-            nodeId: node.id, // The coalesce node itself as the source
-            fieldId: 'output',
-            fieldName: 'output'
-          },
-          target: {
-            nodeId: finalTargetNode.id,
-            fieldId: finalTargetField.id,
-            fieldName: finalTargetField.name
-          },
-          transform: {
-            type: 'coalesce',
-            operation: 'coalesce',
-            parameters: {
-              rules: rules,
-              defaultValue: nodeData?.defaultValue || nodeData?.config?.defaultValue || '',
-              outputType: nodeData?.outputType || nodeData?.config?.outputType || 'value'
-            }
-          }
-        });
-      });
-    }
-  });
-
-  // Process regular edges for non-coalesce transforms
+  // Process each edge to create execution steps
   edges.forEach(edge => {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
@@ -132,14 +50,6 @@ export const buildExecutionSteps = (
 
     const sourceField = getFieldInfo(sourceNode, edge.sourceHandle || '');
     const targetField = getFieldInfo(targetNode, edge.targetHandle || '');
-
-    // Skip if this is a coalesce-related edge (already processed above)
-    if ((targetNode.type === 'transform' && targetNode.data?.transformType === 'coalesce') || 
-        targetNode.type === 'coalesceTransform' ||
-        (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') ||
-        sourceNode.type === 'coalesceTransform') {
-      return;
-    }
 
     // Direct mapping (source to target)
     if (sourceNode.type === 'source' && targetNode.type === 'target') {
@@ -160,11 +70,12 @@ export const buildExecutionSteps = (
       });
     }
 
-    // Transform step (source to transform, then transform to target) - for non-coalesce transforms
+    // Transform step (source to transform, then transform to target)
     if (sourceNode.type === 'source' && 
         (targetNode.type === 'transform' || targetNode.type === 'splitterTransform' || 
          targetNode.type === 'ifThen' || targetNode.type === 'staticValue')) {
       
+      // Use the edge map for faster lookup
       const transformToTargetEdges = edgesBySource.get(targetNode.id) || [];
       const transformToTargetEdge = transformToTargetEdges.find(e => {
         const finalTarget = nodeMap.get(e.target);
