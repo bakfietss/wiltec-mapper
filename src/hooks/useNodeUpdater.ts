@@ -23,20 +23,24 @@ export const useNodeUpdater = (nodeId: string) => {
 
     const updateNodeConfig = useCallback((configUpdates: Record<string, any>) => {
         setNodes((nodes) =>
-            nodes.map((node) =>
-                node.id === nodeId
-                    ? {
+            nodes.map((node) => {
+                if (node.id === nodeId) {
+                    const currentConfig = node.data?.config;
+                    const safeConfig = currentConfig && typeof currentConfig === 'object' ? currentConfig : {};
+                    
+                    return {
                         ...node,
                         data: {
                             ...node.data,
                             config: {
-                                ...(node.data.config || {}),
+                                ...safeConfig,
                                 ...configUpdates,
                             },
                         },
-                    }
-                    : node
-            )
+                    };
+                }
+                return node;
+            })
         );
     }, [nodeId, setNodes]);
 
