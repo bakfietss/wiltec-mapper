@@ -23,8 +23,8 @@ interface CoalesceTransformData {
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
   const [rules, setRules] = useState<CoalesceRule[]>(() => {
-    // Initialize rules from either config.rules or direct rules property
-    const initialRules = data.config?.rules || data.rules || [];
+    // Initialize rules from config.rules
+    const initialRules = data.config?.rules || [];
     console.log('=== COALESCE NODE INITIALIZATION ===');
     console.log('Node ID:', id);
     console.log('Initial rules from data:', initialRules);
@@ -32,7 +32,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   });
   
   const [defaultValue, setDefaultValue] = useState(() => {
-    const initial = data.config?.defaultValue || data.defaultValue || '';
+    const initial = data.config?.defaultValue || '';
     console.log('Initial default value:', initial);
     return initial;
   });
