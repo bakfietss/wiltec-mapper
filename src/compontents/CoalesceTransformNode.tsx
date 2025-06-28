@@ -37,13 +37,14 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
     return initial;
   });
   
+  // Use ONLY the centralized input values from data.inputValues (set by the centralized system)
   const inputValues = data.inputValues || {};
 
   console.log('=== COALESCE NODE RENDER ===');
   console.log('Node ID:', id);
   console.log('Current rules:', rules);
   console.log('Current default value:', defaultValue);
-  console.log('Input values:', inputValues);
+  console.log('Input values from centralized system:', inputValues);
 
   // Sync changes back to React Flow - update both config and direct properties
   useNodeDataSync(id, { 

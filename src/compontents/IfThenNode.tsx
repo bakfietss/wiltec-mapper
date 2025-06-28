@@ -18,7 +18,7 @@ const IfThenNode: React.FC<{ data: IfThenNodeData; id: string }> = ({ data, id }
   const [thenValue, setThenValue] = useState(data.thenValue || '');
   const [elseValue, setElseValue] = useState(data.elseValue || '');
 
-  // Auto-sync state changes with React Flow's central state
+  // Sync state changes with React Flow's central state using centralized system
   useNodeDataSync(id, { operator, compareValue, thenValue, elseValue }, [operator, compareValue, thenValue, elseValue]);
 
   const getConditionSummary = () => {

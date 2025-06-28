@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Plus, Upload, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface MappingRule {
   id: string;
@@ -17,29 +18,17 @@ interface ConversionMappingNodeData {
 }
 
 const ConversionMappingNode: React.FC<{ data: ConversionMappingNodeData; id: string }> = ({ data, id }) => {
-  const { setNodes } = useReactFlow();
   const [isExpanded, setIsExpanded] = useState(data.isExpanded || false);
   const [mappings, setMappings] = useState<MappingRule[]>(data.mappings || []);
   const [headers, setHeaders] = useState<{ from: string; to: string } | undefined>(data.headers);
 
-  // Update node data whenever mappings change
-  useEffect(() => {
-    console.log('Updating node data with mappings:', mappings);
-    setNodes((nodes) =>
-      nodes.map((node) =>
-        node.id === id
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                mappings: mappings,
-                headers: headers,
-              },
-            }
-          : node
-      )
-    );
-  }, [mappings, headers, id, setNodes]);
+  // Sync state changes with React Flow's central state using centralized system
+  useNodeDataSync(id, { 
+    mappings, 
+    headers, 
+    isExpanded,
+    label: data.label 
+  }, [mappings, headers, isExpanded]);
 
   const addMapping = () => {
     const newMapping: MappingRule = {
