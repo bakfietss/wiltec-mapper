@@ -95,8 +95,8 @@ const Pipeline = () => {
     };
     setEdges((eds) => addEdge(newEdge, eds));
     
-    // Force update to recalculate enhanced nodes
-    forceUpdate();
+    // Force update immediately after connection
+    setTimeout(() => forceUpdate(), 50);
   }, [setEdges, forceUpdate]);
 
   // Enhanced onEdgesChange to handle connection removal
@@ -104,17 +104,32 @@ const Pipeline = () => {
     console.log('=== EDGE CHANGES ===');
     console.log('Edge changes:', changes);
     
-    // Check if any edges are being removed
-    const hasRemovals = changes.some(change => change.type === 'remove');
-    
     // Apply the edge changes normally
     onEdgesChange(changes);
     
-    // Force update if edges were removed to recalculate target values
-    if (hasRemovals) {
-      forceUpdate();
-    }
+    // Force update after any edge change
+    setTimeout(() => forceUpdate(), 50);
   }, [onEdgesChange, forceUpdate]);
+
+  // Enhanced onNodesChange to trigger updates when nodes change
+  const handleNodesChange = useCallback((changes: any[]) => {
+    console.log('=== NODE CHANGES ===');
+    console.log('Node changes:', changes);
+    
+    // Apply the node changes normally
+    onNodesChange(changes);
+    
+    // Check if any nodes were updated (data changes)
+    const hasDataUpdates = changes.some(change => 
+      change.type === 'replace' || 
+      (change.type === 'add') ||
+      (change.type === 'remove')
+    );
+    
+    if (hasDataUpdates) {
+      setTimeout(() => forceUpdate(), 50);
+    }
+  }, [onNodesChange, forceUpdate]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -225,7 +240,7 @@ const Pipeline = () => {
           <ReactFlow
             nodes={enhancedNodes}
             edges={edges}
-            onNodesChange={onNodesChange}
+            onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}

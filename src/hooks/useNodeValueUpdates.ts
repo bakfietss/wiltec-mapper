@@ -1,5 +1,4 @@
 
-
 import { useReactFlow } from '@xyflow/react';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 
@@ -192,44 +191,52 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
 // Centralized hook for managing node updates
 export const useNodeValueUpdates = (baseNodes?: any[]) => {
     const [updateTrigger, setUpdateTrigger] = useState(0);
-    const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
     
-    // Safe hook usage - only call useReactFlow when instance is available
+    // Always try to get React Flow instance, but handle gracefully if not available
+    let reactFlowInstance: any = null;
     let getNodes: any = () => baseNodes || [];
     let getEdges: any = () => [];
     
     try {
         const reactFlow = useReactFlow();
+        reactFlowInstance = reactFlow;
         getNodes = reactFlow.getNodes;
         getEdges = reactFlow.getEdges;
-        if (!reactFlowInstance) {
-            setReactFlowInstance(reactFlow);
-        }
     } catch (error) {
-        // ReactFlow not available yet, use empty functions
-        console.log('ReactFlow not available yet, using fallback');
+        // ReactFlow not available, use baseNodes
+        console.log('ReactFlow not available, using baseNodes');
     }
     
     const enhancedNodes = useMemo(() => {
-        if (!reactFlowInstance && !baseNodes) {
-            return [];
-        }
-        
         console.log('=== ENHANCED NODES RECALCULATION (CENTRALIZED) ===');
         console.log('Update trigger:', updateTrigger);
+        
         const nodes = getNodes();
         const currentEdges = getEdges();
+        
         console.log('Raw nodes count:', nodes.length);
         console.log('Raw edges count:', currentEdges.length);
         
+        if (nodes.length === 0) {
+            console.log('No nodes to process');
+            return [];
+        }
+        
         const enhanced = calculateNodeFieldValues(nodes, currentEdges);
         console.log('Enhanced nodes count:', enhanced.length);
+        
         return enhanced;
-    }, [getNodes, getEdges, updateTrigger, reactFlowInstance, baseNodes]);
+    }, [updateTrigger, baseNodes]);
+    
+    // Force update function
+    const forceUpdate = useCallback(() => {
+        console.log('=== FORCING UPDATE ===');
+        setUpdateTrigger(prev => prev + 1);
+    }, []);
     
     return {
         enhancedNodes,
-        forceUpdate: useCallback(() => setUpdateTrigger(prev => prev + 1), [])
+        forceUpdate
     };
 };
 
