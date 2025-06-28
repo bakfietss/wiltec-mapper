@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -16,6 +17,7 @@ export const importMappingConfiguration = (
   // Pre-scan execution steps to identify connected fields
   if (config.execution && config.execution.steps) {
     config.execution.steps.forEach(step => {
+      // Handle direct mappings
       if (step.source?.fieldId || step.source?.fieldName) {
         const fieldId = step.source.fieldId || step.source.fieldName;
         connectedFields.add(`${step.source.nodeId}.${fieldId}`);
@@ -218,7 +220,7 @@ export const importMappingConfiguration = (
         transform: step.transform
       });
 
-      // Handle coalesce transforms specially
+      // Handle coalesce transforms specially - NEW UNIFIED APPROACH
       if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters) {
         const parameters = step.transform.parameters as any;
         const coalesceNodeId = targetNodeId;
@@ -232,7 +234,7 @@ export const importMappingConfiguration = (
             id: rule.id || `rule_${index}_${Date.now()}`,
             priority: rule.priority || (index + 1),
             outputValue: rule.outputValue || '',
-            sourceField: rule.sourceField || '',
+            sourceField: rule.sourceField || rule.sourceHandle || '',
             sourceHandle: rule.sourceHandle || rule.sourceField || ''
           }));
           
@@ -249,9 +251,8 @@ export const importMappingConfiguration = (
           
           // Create input edges for each rule based on the sourceField in the rule
           enhancedRules.forEach((rule: any) => {
-            if (rule.sourceField || rule.sourceHandle) {
-              const fieldPath = rule.sourceField || rule.sourceHandle;
-              
+            if (rule.sourceField) {
+              const fieldPath = rule.sourceField;
               console.log('Creating edge for coalesce rule:', { ruleId: rule.id, fieldPath });
               
               // Find the source node that contains this field
@@ -259,7 +260,6 @@ export const importMappingConfiguration = (
                 if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
                   return findFieldInSource(node.data.fields, fieldPath);
                 }
-                // Also check data fields if available
                 if (node.type === 'source' && node.data?.data && Array.isArray(node.data.data) && node.data.data.length > 0) {
                   return hasFieldInData(node.data.data[0], fieldPath);
                 }
