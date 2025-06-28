@@ -22,22 +22,37 @@ interface CoalesceTransformData {
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
-  const [rules, setRules] = useState<CoalesceRule[]>(data.config?.rules || []);
-  const [defaultValue, setDefaultValue] = useState(data.config?.defaultValue || '');
+  const [rules, setRules] = useState<CoalesceRule[]>(() => {
+    // Initialize rules from either config.rules or direct rules property
+    const initialRules = data.config?.rules || data.rules || [];
+    console.log('=== COALESCE NODE INITIALIZATION ===');
+    console.log('Node ID:', id);
+    console.log('Initial rules from data:', initialRules);
+    return initialRules;
+  });
+  
+  const [defaultValue, setDefaultValue] = useState(() => {
+    const initial = data.config?.defaultValue || data.defaultValue || '';
+    console.log('Initial default value:', initial);
+    return initial;
+  });
+  
   const inputValues = data.inputValues || {};
 
   console.log('=== COALESCE NODE RENDER ===');
   console.log('Node ID:', id);
-  console.log('Rules:', rules);
-  console.log('Default value:', defaultValue);
+  console.log('Current rules:', rules);
+  console.log('Current default value:', defaultValue);
   console.log('Input values:', inputValues);
 
-  // Sync changes back to React Flow using standard config structure
+  // Sync changes back to React Flow - update both config and direct properties
   useNodeDataSync(id, { 
     config: {
       rules, 
       defaultValue
     },
+    rules, // Also set direct rules property for backward compatibility
+    defaultValue, // Also set direct defaultValue property
     transformType: 'coalesce',
     label: data.label
   }, [rules, defaultValue]);
