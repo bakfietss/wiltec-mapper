@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NodeResizer, Position } from '@xyflow/react';
 import { Database, Plus } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
@@ -25,6 +25,9 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     
     console.log('=== SOURCE NODE RENDER ===');
     console.log('Node ID:', id);
+    console.log('Initial fields:', data.fields?.length || 0);
+    console.log('Initial data:', data.data?.length || 0);
+    console.log('Generated fields:', schemaHandler.fields?.length || 0);
     console.log('All fields:', schemaHandler.fields?.map(f => ({ id: f.id, name: f.name })));
 
     const handleJsonImport = () => {

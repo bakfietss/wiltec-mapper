@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { SchemaField } from '../components/common/GenericSchemaRenderer';
 
 export interface SchemaDataHandler {
@@ -20,6 +20,48 @@ export const useSchemaDataHandler = (
 ): SchemaDataHandler => {
     const [fields, setFields] = useState<SchemaField[]>(initialFields);
     const [data, setData] = useState<any[]>(initialData);
+
+    // Auto-generate fields from initial data if no fields are provided
+    useEffect(() => {
+        if (fields.length === 0 && data.length > 0 && typeof data[0] === 'object') {
+            const generatedFields = generateFieldsFromObject(data[0]);
+            setFields(generatedFields);
+        }
+    }, []);
+
+    const generateFieldsFromObject = useCallback((obj: any, parentPath = ''): SchemaField[] => {
+        if (!obj || typeof obj !== 'object') return [];
+        
+        return Object.keys(obj).map((key, index) => {
+            const value = obj[key];
+            const fieldId = `field-${Date.now()}-${parentPath}-${index}`;
+            
+            if (Array.isArray(value)) {
+                return {
+                    id: fieldId,
+                    name: key,
+                    type: 'array',
+                    children: value.length > 0 && typeof value[0] === 'object' 
+                        ? generateFieldsFromObject(value[0], `${fieldId}-item`)
+                        : []
+                };
+            } else if (value && typeof value === 'object') {
+                return {
+                    id: fieldId,
+                    name: key,
+                    type: 'object',
+                    children: generateFieldsFromObject(value, fieldId)
+                };
+            } else {
+                return {
+                    id: fieldId,
+                    name: key,
+                    type: typeof value === 'number' ? 'number' : 
+                          typeof value === 'boolean' ? 'boolean' : 'string'
+                };
+            }
+        });
+    }, []);
 
     const addField = useCallback((parentId?: string) => {
         const newField: SchemaField = {
@@ -86,38 +128,6 @@ export const useSchemaDataHandler = (
         
         setFields(deleteFieldRecursive(fields));
     }, [fields]);
-
-    const generateFieldsFromObject = useCallback((obj: any, parentPath = ''): SchemaField[] => {
-        return Object.keys(obj).map((key, index) => {
-            const value = obj[key];
-            const fieldId = `field-${Date.now()}-${parentPath}-${index}`;
-            
-            if (Array.isArray(value)) {
-                return {
-                    id: fieldId,
-                    name: key,
-                    type: 'array',
-                    children: value.length > 0 && typeof value[0] === 'object' 
-                        ? generateFieldsFromObject(value[0], `${fieldId}-item`)
-                        : []
-                };
-            } else if (value && typeof value === 'object') {
-                return {
-                    id: fieldId,
-                    name: key,
-                    type: 'object',
-                    children: generateFieldsFromObject(value, fieldId)
-                };
-            } else {
-                return {
-                    id: fieldId,
-                    name: key,
-                    type: typeof value === 'number' ? 'number' : 
-                          typeof value === 'boolean' ? 'boolean' : 'string'
-                };
-            }
-        });
-    }, []);
 
     const importJsonData = useCallback((jsonData: any[]) => {
         const dataArray = Array.isArray(jsonData) ? jsonData : [jsonData];
