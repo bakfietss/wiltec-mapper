@@ -3,6 +3,7 @@ import { Handle, Position, NodeResizer } from '@xyflow/react';
 import { FileText, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
+import { useTargetNodeValues } from '../hooks/useTargetNodeValues';
 import NodeEditSheet from './NodeEditSheet';
 import JsonImportDialog from './JsonImportDialog';
 
@@ -194,12 +195,16 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     const [jsonInput, setJsonInput] = useState('');
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
     
+    // Get field values from connections and processed data
+    const fieldValues = useTargetNodeValues(id, fields, nodeData);
+    
     // Sync local state changes back to React Flow
-    useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
+    useNodeDataSync(id, { fields, data: nodeData, fieldValues }, [fields, nodeData, fieldValues]);
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
-    console.log('Field values received:', data.fieldValues);
+    console.log('Field values from hook:', fieldValues);
+    console.log('Data.fieldValues:', data.fieldValues);
     console.log('All fields:', fields?.map(f => ({ id: f.id, name: f.name })));
 
     const addField = (parentId?: string) => {
@@ -451,7 +456,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                     <TargetField
                         key={field.id}
                         field={field}
-                        fieldValues={data.fieldValues || {}}
+                        fieldValues={fieldValues}
                         expandedFields={expandedFields}
                         onFieldExpansionToggle={handleFieldExpansionToggle}
                     />
