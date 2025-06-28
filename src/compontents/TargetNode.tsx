@@ -33,19 +33,58 @@ const getTypeColor = (type: string) => {
     }
 };
 
+// Helper function to check if any child field has connections
+const hasChildConnections = (field: SchemaField, fieldValues: Record<string, any>): boolean => {
+    if (!field.children) return false;
+    
+    for (const child of field.children) {
+        if (fieldValues[child.id] !== undefined) return true;
+        if (hasChildConnections(child, fieldValues)) return true;
+    }
+    return false;
+};
+
+// Helper function to get the deepest visible parent that should show connections
+const getVisibleConnectionParent = (
+    field: SchemaField, 
+    allFields: SchemaField[], 
+    expandedFields: Set<string>,
+    fieldValues: Record<string, any>
+): SchemaField | null => {
+    // If this field itself has a connection, it should show it
+    if (fieldValues[field.id] !== undefined) return field;
+    
+    // If this field is expanded and has child connections, don't bubble up
+    if (expandedFields.has(field.id) && hasChildConnections(field, fieldValues)) {
+        return null; // Let children handle their own connections
+    }
+    
+    // If this field is collapsed and has child connections, it should show them
+    if (!expandedFields.has(field.id) && hasChildConnections(field, fieldValues)) {
+        return field;
+    }
+    
+    return null;
+};
+
 const TargetField: React.FC<{
     field: SchemaField;
     fieldValues: Record<string, any>;
     level?: number;
     expandedFields: Set<string>;
     onFieldExpansionToggle: (fieldId: string) => void;
-}> = ({ field, fieldValues, level = 0, expandedFields, onFieldExpansionToggle }) => {
+    allFields: SchemaField[];
+}> = ({ field, fieldValues, level = 0, expandedFields, onFieldExpansionToggle, allFields }) => {
     const fieldValue = fieldValues[field.id];
     const isExpanded = expandedFields.has(field.id);
     const hasChildren = field.children && field.children.length > 0;
     
+    // Determine if this field should show a connection handle
+    const shouldShowHandle = getVisibleConnectionParent(field, allFields, expandedFields, fieldValues) === field;
+    
     console.log(`TargetField ${field.name} (${field.id}) - looking for value in fieldValues:`, fieldValues);
     console.log(`Found value for ${field.name}:`, fieldValue);
+    console.log(`Should show handle for ${field.name}:`, shouldShowHandle);
 
     if (field.type === 'array') {
         return (
@@ -68,21 +107,30 @@ const TargetField: React.FC<{
                     {hasChildren && (
                         <span className="text-xs text-gray-500">({field.children!.length} items)</span>
                     )}
+                    {!isExpanded && hasChildConnections(field, fieldValues) && (
+                        <div className="text-xs min-w-[80px] text-center">
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                                connected
+                            </span>
+                        </div>
+                    )}
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('array')}`}>
                         array
                     </span>
                     
-                    <Handle
-                        type="target"
-                        position={Position.Left}
-                        id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
-                        style={{
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            zIndex: 10
-                        }}
-                    />
+                    {shouldShowHandle && (
+                        <Handle
+                            type="target"
+                            position={Position.Left}
+                            id={field.id}
+                            className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
+                            style={{
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                zIndex: 10
+                            }}
+                        />
+                    )}
                 </div>
                 
                 {isExpanded && hasChildren && field.children!.map((childField) => (
@@ -93,6 +141,7 @@ const TargetField: React.FC<{
                         level={level + 1}
                         expandedFields={expandedFields}
                         onFieldExpansionToggle={onFieldExpansionToggle}
+                        allFields={allFields}
                     />
                 ))}
             </div>
@@ -122,21 +171,30 @@ const TargetField: React.FC<{
                             ({field.children!.length} fields)
                         </span>
                     )}
+                    {!isExpanded && hasChildConnections(field, fieldValues) && (
+                        <div className="text-xs min-w-[80px] text-center">
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                                connected
+                            </span>
+                        </div>
+                    )}
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('object')}`}>
                         object
                     </span>
                     
-                    <Handle
-                        type="target"
-                        position={Position.Left}
-                        id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
-                        style={{
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            zIndex: 10
-                        }}
-                    />
+                    {shouldShowHandle && (
+                        <Handle
+                            type="target"
+                            position={Position.Left}
+                            id={field.id}
+                            className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
+                            style={{
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                zIndex: 10
+                            }}
+                        />
+                    )}
                 </div>
                 
                 {isExpanded && hasChildren && field.children!.map((childField) => (
@@ -147,6 +205,7 @@ const TargetField: React.FC<{
                         level={level + 1}
                         expandedFields={expandedFields}
                         onFieldExpansionToggle={onFieldExpansionToggle}
+                        allFields={allFields}
                     />
                 ))}
             </div>
@@ -457,6 +516,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                         fieldValues={fieldValues}
                         expandedFields={expandedFields}
                         onFieldExpansionToggle={handleFieldExpansionToggle}
+                        allFields={fields}
                     />
                 ))}
                 
