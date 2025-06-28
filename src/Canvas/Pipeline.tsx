@@ -51,9 +51,9 @@ const Pipeline = () => {
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Centralized update system
+  // Centralized update system - FIXED to pass edges
   const { updateTrigger, triggerUpdate } = useManualUpdateTrigger();
-  const { enhancedNodes } = useNodeValueUpdates(updateTrigger, nodes);
+  const { enhancedNodes } = useNodeValueUpdates(updateTrigger, nodes, edges);
 
   // Click outside to close functionality
   useEffect(() => {

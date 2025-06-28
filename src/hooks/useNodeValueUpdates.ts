@@ -1,4 +1,3 @@
-
 import { useReactFlow } from '@xyflow/react';
 import { useMemo } from 'react';
 
@@ -22,7 +21,7 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
     
     const updatedNodes = nodes.map(node => {
         // Handle target nodes (editable schema with target type)
-        if (node.type === 'editableSchema' && node.data?.schemaType === 'target' && node.data?.fields) {
+        if (node.type === 'target' && node.data?.fields) {
             return calculateTargetNodeValues(node, nodes, edges);
         }
         
@@ -48,10 +47,17 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
     const valueMap: Record<string, any> = {};
     const newTargetData: any = {};
     
+    console.log('=== CALCULATING TARGET NODE VALUES ===');
+    console.log('Target node ID:', targetNode.id);
+    console.log('Available edges:', edges.length);
+    console.log('All edges:', edges);
+    
     // Find incoming edges to this target node
     const incomingEdges = edges.filter(edge => edge.target === targetNode.id);
+    console.log('Incoming edges to target:', incomingEdges);
     
     if (incomingEdges.length === 0) {
+        console.log('No incoming edges found for target node');
         return {
             ...targetNode,
             data: {
@@ -66,12 +72,17 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
         const sourceNode = nodes.find(n => n.id === edge.source);
         const targetField = fields.find((f: any) => f.id === edge.targetHandle);
         
+        console.log('Processing edge:', edge);
+        console.log('Source node:', sourceNode?.id, sourceNode?.type);
+        console.log('Target field:', targetField?.name);
+        
         if (sourceNode && targetField) {
             let value: any = undefined;
             
             // Handle different source node types
-            if (sourceNode.type === 'editableSchema' && sourceNode.data?.schemaType === 'source') {
+            if (sourceNode.type === 'source') {
                 value = getSourceNodeValue(sourceNode, edge.sourceHandle);
+                console.log('Got source value:', value);
             } else if (sourceNode.type === 'staticValue') {
                 value = getStaticNodeValue(sourceNode, edge.sourceHandle);
             } else if (sourceNode.type === 'transform') {
@@ -85,9 +96,13 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
             if (value !== undefined && value !== null && value !== '') {
                 valueMap[targetField.id] = value;
                 newTargetData[targetField.name] = value;
+                console.log('Set value for field:', targetField.name, '=', value);
             }
         }
     });
+    
+    console.log('Final value map:', valueMap);
+    console.log('Final target data:', newTargetData);
     
     return {
         ...targetNode,
@@ -106,7 +121,7 @@ const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+        if (inputSourceNode?.type === 'source') {
             const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
             inputValues[inputEdge.targetHandle] = sourceValue;
         }
@@ -128,7 +143,7 @@ const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) 
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+        if (inputSourceNode?.type === 'source') {
             inputValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
         }
     });
@@ -144,8 +159,15 @@ const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) 
 
 // Get value from source node
 const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
+    console.log('=== GETTING SOURCE VALUE ===');
+    console.log('Source node data:', sourceNode.data);
+    console.log('Looking for handle:', handleId);
+    
     const sourceFields = sourceNode.data?.fields || [];
     const sourceData = sourceNode.data?.data || [];
+    
+    console.log('Source fields:', sourceFields);
+    console.log('Source data:', sourceData);
     
     // Try to get from actual data first
     if (sourceData.length > 0) {
@@ -169,6 +191,7 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         };
         
         const dataValue = getValue(dataObject, handleId);
+        console.log('Data value found:', dataValue);
         if (dataValue !== undefined) {
             return dataValue;
         }
@@ -176,7 +199,9 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
     
     // Fallback to schema fields
     const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
-    return sourceField ? (sourceField.exampleValue || 'No data') : null;
+    const fallbackValue = sourceField ? (sourceField.exampleValue || 'No data') : null;
+    console.log('Fallback value:', fallbackValue);
+    return fallbackValue;
 };
 
 // Get value from static value node
@@ -198,7 +223,7 @@ const getTransformNodeValue = (transformNode: any, nodes: any[], edges: any[]): 
     const inputEdges = edges.filter(e => e.target === transformNode.id);
     for (const inputEdge of inputEdges) {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+        if (inputSourceNode?.type === 'source') {
             const inputValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
             return applyTransformation(inputValue, transformNode);
         }
@@ -215,7 +240,7 @@ const getIfThenNodeValue = (ifThenNode: any, nodes: any[], edges: any[]): any =>
     // Get input value
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+        if (inputSourceNode?.type === 'source') {
             inputValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
         }
     });
@@ -235,7 +260,7 @@ const getConversionMappingValue = (conversionNode: any, nodes: any[], edges: any
     
     for (const inputEdge of inputEdges) {
         const sourceNode = nodes.find(n => n.id === inputEdge.source);
-        if (sourceNode?.type === 'editableSchema' && sourceNode.data?.schemaType === 'source') {
+        if (sourceNode?.type === 'source') {
             let sourceValue = getSourceNodeValue(sourceNode, inputEdge.sourceHandle);
             const mappings = conversionNode.data?.mappings || [];
             
@@ -263,7 +288,7 @@ const applyCoalesceTransform = (coalesceNode: any, nodes: any[], edges: any[]): 
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+        if (inputSourceNode?.type === 'source') {
             const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
             inputValues[inputEdge.targetHandle] = sourceValue;
         }
@@ -351,11 +376,11 @@ const applyTransformation = (sourceValue: any, transformNode: any): any => {
     return sourceValue;
 };
 
-// Main hook for centralized node updates
-export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[]) => {
+// Main hook for centralized node updates - FIXED to properly pass edges
+export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[], baseEdges?: any[]) => {
     let reactFlowInstance: any = null;
     let getNodes: any = () => baseNodes || [];
-    let getEdges: any = () => [];
+    let getEdges: any = () => baseEdges || [];
     
     try {
         const reactFlow = useReactFlow();
@@ -363,7 +388,7 @@ export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[]) =>
         getNodes = reactFlow.getNodes;
         getEdges = reactFlow.getEdges;
     } catch (error) {
-        console.log('ReactFlow not available, using baseNodes');
+        console.log('ReactFlow not available, using baseNodes/baseEdges');
     }
     
     const enhancedNodes = useMemo(() => {
@@ -373,6 +398,9 @@ export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[]) =>
         const nodes = getNodes();
         const currentEdges = getEdges();
         
+        console.log('Available nodes:', nodes.length);
+        console.log('Available edges:', currentEdges.length);
+        
         if (nodes.length === 0) {
             return [];
         }
@@ -381,7 +409,7 @@ export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[]) =>
         console.log('Enhanced nodes calculated:', enhanced.length);
         
         return enhanced;
-    }, [updateTrigger, baseNodes]);
+    }, [updateTrigger, baseNodes, baseEdges]);
     
     return { enhancedNodes };
 };
