@@ -50,8 +50,8 @@ const Pipeline = () => {
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Use centralized node value updates system
-  const { enhancedNodes, forceUpdate } = useNodeValueUpdates();
+  // Use centralized node value updates system - pass base nodes for import support
+  const { enhancedNodes, forceUpdate } = useNodeValueUpdates(nodes);
 
   // Click outside to close functionality
   useEffect(() => {
@@ -178,6 +178,8 @@ const Pipeline = () => {
         setNodes(importedNodes);
         setEdges(importedEdges);
         setCurrentMappingName(config.name || 'Untitled Mapping');
+        // Force update after import to ensure enhanced nodes are recalculated
+        setTimeout(() => forceUpdate(), 100);
         toast.success('Mapping imported successfully!');
       } catch (error) {
         console.error('Failed to import mapping:', error);
@@ -185,7 +187,7 @@ const Pipeline = () => {
       }
     };
     reader.readAsText(file);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, forceUpdate]);
 
   const handleNewMapping = useCallback((name: string) => {
     setNodes(initialNodes);

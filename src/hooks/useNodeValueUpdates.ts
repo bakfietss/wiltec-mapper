@@ -1,4 +1,5 @@
 
+
 import { useReactFlow } from '@xyflow/react';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 
@@ -189,12 +190,12 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
 };
 
 // Centralized hook for managing node updates
-export const useNodeValueUpdates = () => {
+export const useNodeValueUpdates = (baseNodes?: any[]) => {
     const [updateTrigger, setUpdateTrigger] = useState(0);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
     
     // Safe hook usage - only call useReactFlow when instance is available
-    let getNodes: any = () => [];
+    let getNodes: any = () => baseNodes || [];
     let getEdges: any = () => [];
     
     try {
@@ -210,7 +211,7 @@ export const useNodeValueUpdates = () => {
     }
     
     const enhancedNodes = useMemo(() => {
-        if (!reactFlowInstance) {
+        if (!reactFlowInstance && !baseNodes) {
             return [];
         }
         
@@ -218,8 +219,13 @@ export const useNodeValueUpdates = () => {
         console.log('Update trigger:', updateTrigger);
         const nodes = getNodes();
         const currentEdges = getEdges();
-        return calculateNodeFieldValues(nodes, currentEdges);
-    }, [getNodes, getEdges, updateTrigger, reactFlowInstance]);
+        console.log('Raw nodes count:', nodes.length);
+        console.log('Raw edges count:', currentEdges.length);
+        
+        const enhanced = calculateNodeFieldValues(nodes, currentEdges);
+        console.log('Enhanced nodes count:', enhanced.length);
+        return enhanced;
+    }, [getNodes, getEdges, updateTrigger, reactFlowInstance, baseNodes]);
     
     return {
         enhancedNodes,
