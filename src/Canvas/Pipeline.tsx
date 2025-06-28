@@ -36,15 +36,17 @@ const initialNodes: Node[] = [
 
 const initialEdges: Edge[] = [];
 
-// Helper functions from working version
+// Helper function to check if node is a source-type node
 const isSourceNode = (node: any): boolean => {
     return node.type === 'source';
 };
 
+// Helper function to check if node is a target-type node  
 const isTargetNode = (node: any): boolean => {
     return node.type === 'target';
 };
 
+// Get source value from a node
 const getSourceValue = (node: any, handleId: string): any => {
     if (!isSourceNode(node)) return null;
     
@@ -92,6 +94,34 @@ const getSourceValue = (node: any, handleId: string): any => {
     return null;
 };
 
+// Apply coalesce transformation - now using standard config structure
+const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: any): any => {
+  const rules = nodeData?.config?.rules || [];
+  const defaultValue = nodeData?.config?.defaultValue || '';
+  
+  console.log('=== COALESCE TRANSFORM DEBUG ===');
+  console.log('Input values received:', inputValues);
+  console.log('Rules configuration:', rules);
+  console.log('Default value:', defaultValue);
+  
+  // Try each rule in priority order
+  for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
+    console.log(`Checking rule ${rule.priority} (ID: ${rule.id})`);
+    
+    const inputValue = inputValues[rule.id];
+    console.log(`  - Input value for rule ${rule.id}:`, inputValue);
+    console.log(`  - Rule output value:`, rule.outputValue);
+    
+    if (inputValue !== undefined && inputValue !== null && inputValue !== '') {
+      console.log(`  - Rule ${rule.priority} matched! Returning output:`, rule.outputValue);
+      return rule.outputValue || inputValue;
+    }
+  }
+  
+  console.log('No rules matched, returning default value:', defaultValue);
+  return defaultValue;
+};
+
 // Calculate field values for target nodes based on connections
 const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
     if (!targetFields || !Array.isArray(targetFields)) {
@@ -118,6 +148,34 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
         // Handle different source node types
         if (isSourceNode(sourceNode)) {
             value = getSourceValue(sourceNode, edge.sourceHandle);
+        } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
+            console.log('=== PROCESSING COALESCE TRANSFORM FOR TARGET ===');
+            console.log('Coalesce node ID:', sourceNode.id);
+            console.log('Coalesce node data:', sourceNode.data);
+            
+            // Handle coalesce transform node with multiple inputs
+            const transformInputEdges = allEdges.filter(e => e.target === sourceNode.id);
+            console.log('Transform input edges:', transformInputEdges);
+            
+            let inputValues: Record<string, any> = {};
+            
+            transformInputEdges.forEach(inputEdge => {
+                const inputSourceNode = allNodes.find(n => n.id === inputEdge.source);
+                console.log('Processing input edge:', inputEdge);
+                
+                if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                    const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                    inputValues[inputEdge.targetHandle] = sourceValue;
+                    console.log(`Mapped input: ${inputEdge.targetHandle} = ${sourceValue}`);
+                }
+            });
+            
+            console.log('Final input values for coalesce:', inputValues);
+            
+            if (Object.keys(inputValues).length > 0 || sourceNode.data?.config?.rules?.length > 0) {
+                value = applyCoalesceTransform(inputValues, sourceNode.data);
+                console.log('Coalesce transform result:', value);
+            }
         } else if (sourceNode.type === 'staticValue') {
             // Handle static value nodes
             const staticValues = sourceNode.data?.values;
@@ -134,9 +192,11 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
         
         if (value !== undefined) {
             valueMap[targetField.id] = value;
+            console.log(`Set target field value: ${targetField.name} (${targetField.id}) = ${value}`);
         }
     });
     
+    console.log('Final target valueMap:', valueMap);
     return valueMap;
 };
 
