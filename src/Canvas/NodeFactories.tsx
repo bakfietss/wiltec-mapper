@@ -1,14 +1,13 @@
-
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
-import SourceNode from '../compontents/SourceNode';
-import TargetNode from '../compontents/TargetNode';
-import TransformNode from '../compontents/TransformNode';
-import SplitterTransformNode from '../compontents/SplitterTransformNode';
-import IfThenNode from '../compontents/IfThenNode';
-import StaticValueNode from '../compontents/StaticValueNode';
-import ConversionMappingNode from '../compontents/ConversionMappingNode';
-import CoalesceTransformNode from '../compontents/CoalesceTransformNode';
+import SourceNode from '../components/SourceNode';
+import TargetNode from '../components/TargetNode';
+import TransformNode from '../components/TransformNode';
+import SplitterTransformNode from '../components/SplitterTransformNode';
+import IfThenNode from '../components/IfThenNode';
+import StaticValueNode from '../components/StaticValueNode';
+import ConversionMappingNode from '../components/ConversionMappingNode';
+import CoalesceTransformNode from '../components/CoalesceTransformNode';
 
 export const nodeTypes = {
   source: SourceNode,
