@@ -161,15 +161,16 @@ export const exportUIMappingConfiguration = (
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
       
-      // Get the actual rules from the node's current data
-      // The rules should be in node.data.rules or node.data.config.rules
-      const nodeRules = node.data?.rules || node.data?.config?.rules || [];
+      // Get the actual rules from the node's current data with proper type checking
+      const nodeData = node.data as any;
+      const nodeRules = (nodeData?.rules && Array.isArray(nodeData.rules)) ? nodeData.rules : 
+                       (nodeData?.config?.rules && Array.isArray(nodeData.config.rules)) ? nodeData.config.rules : [];
       console.log('Raw node rules:', nodeRules);
       
       // If rules are empty, try to build them from connections and inputValues
       let processedRules = [];
       
-      if (Array.isArray(nodeRules) && nodeRules.length > 0) {
+      if (nodeRules.length > 0) {
         // Use existing rules
         processedRules = nodeRules.map((rule: any) => ({
           id: rule.id,
@@ -200,19 +201,23 @@ export const exportUIMappingConfiguration = (
         }).sort((a, b) => a.priority - b.priority);
       }
       
+      // Safe access to defaultValue with type checking
+      const defaultValue = (nodeData?.defaultValue && typeof nodeData.defaultValue === 'string') ? nodeData.defaultValue :
+                          (nodeData?.config?.defaultValue && typeof nodeData.config.defaultValue === 'string') ? nodeData.config.defaultValue : '';
+      
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
           rules: processedRules,
-          defaultValue: node.data?.defaultValue || node.data?.config?.defaultValue || '',
-          outputType: node.data?.outputType || 'value'
+          defaultValue: defaultValue,
+          outputType: nodeData?.outputType || 'value'
         }
       };
       transformConfig.nodeData = {
         rules: processedRules,
-        defaultValue: node.data?.defaultValue || node.data?.config?.defaultValue || '',
-        outputType: node.data?.outputType || 'value',
-        inputValues: node.data?.inputValues || {}
+        defaultValue: defaultValue,
+        outputType: nodeData?.outputType || 'value',
+        inputValues: nodeData?.inputValues || {}
       };
       
       console.log('Coalesce transform config created:', transformConfig);
