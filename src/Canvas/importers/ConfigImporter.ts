@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -296,8 +297,8 @@ export const importMappingConfiguration = (
     edgesCount: edges.length,
     sourceNodes: nodes.filter(n => n.type === 'source').map(n => ({ 
       id: n.id, 
-      manualFields: n.data?.fields?.length || 0,
-      sampleData: n.data?.data?.length || 0
+      manualFields: (n.data?.fields && Array.isArray(n.data.fields)) ? n.data.fields.length : 0,
+      sampleData: (n.data?.data && Array.isArray(n.data.data)) ? n.data.data.length : 0
     }))
   });
 
