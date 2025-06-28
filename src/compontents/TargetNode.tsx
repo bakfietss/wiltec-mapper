@@ -179,7 +179,7 @@ const TargetField: React.FC<{
                 type="target"
                 position={Position.Left}
                 id={field.id}
-                className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1"
+                className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !left-1"
                 style={{
                     top: '50%',
                     transform: 'translateY(-50%)',

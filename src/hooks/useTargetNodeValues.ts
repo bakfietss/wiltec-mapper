@@ -20,6 +20,7 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
         console.log('=== TARGET NODE VALUES PROCESSING ===');
         console.log('Target Node ID:', targetNodeId);
         console.log('Fields:', fields?.map(f => ({ id: f.id, name: f.name })));
+        console.log('All Edges:', edges);
         console.log('Processed Data:', processedData);
         
         // First priority: Use processed data if available
@@ -49,6 +50,7 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                     sourceHandle: edge.sourceHandle,
                     targetHandle: edge.targetHandle,
                     sourceNode: sourceNode?.type,
+                    sourceNodeData: sourceNode?.data,
                     targetField: targetField?.name
                 });
                 
@@ -67,20 +69,31 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                         }
                         console.log('IF THEN value:', value);
                     } else if (sourceNode.type === 'source' || sourceNode.type === 'editableSchema') {
-                        // Handle source nodes - extract data from sample data
+                        // Handle source nodes - extract data from sample data or manual fields
                         const nodeData = sourceNode.data;
                         console.log('Source node data:', nodeData);
                         
                         if (nodeData && typeof nodeData === 'object') {
-                            // Get sample data from the source node
-                            const sourceData = (nodeData.data && Array.isArray(nodeData.data)) ? nodeData.data : [];
-                            console.log('Source sample data:', sourceData);
+                            // First check manual fields if they exist
+                            if (nodeData.fields && Array.isArray(nodeData.fields)) {
+                                const sourceField = nodeData.fields.find((f: any) => f.id === edge.sourceHandle);
+                                if (sourceField && sourceField.exampleValue !== undefined) {
+                                    value = sourceField.exampleValue;
+                                    console.log('Manual field value:', value);
+                                }
+                            }
                             
-                            if (sourceData.length > 0 && edge.sourceHandle) {
-                                // Navigate through the data structure using the source handle
-                                const sourceHandle = edge.sourceHandle;
-                                value = getNestedValue(sourceData[0], sourceHandle);
-                                console.log('Extracted value from source data:', { sourceHandle, value });
+                            // If no manual field value, check sample data
+                            if (value === undefined && nodeData.data && Array.isArray(nodeData.data)) {
+                                const sourceData = nodeData.data;
+                                console.log('Source sample data:', sourceData);
+                                
+                                if (sourceData.length > 0 && edge.sourceHandle) {
+                                    // Navigate through the data structure using the source handle
+                                    const sourceHandle = edge.sourceHandle;
+                                    value = getNestedValue(sourceData[0], sourceHandle);
+                                    console.log('Extracted value from source data:', { sourceHandle, value });
+                                }
                             }
                         }
                     } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
@@ -92,6 +105,8 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                     if (value !== undefined) {
                         valueMap[targetField.id] = value;
                         console.log('Set value for field:', targetField.id, '=', value);
+                    } else {
+                        console.log('No value found for field:', targetField.id);
                     }
                 }
             });
