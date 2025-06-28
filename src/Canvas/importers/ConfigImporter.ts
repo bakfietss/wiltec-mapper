@@ -1,4 +1,5 @@
 
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -18,7 +19,7 @@ export const importMappingConfiguration = (
       position: src.position,
       data: {
         label: src.label,
-        fields: src.schema.fields || [], // Manual schema fields
+        fields: src.schema?.fields || [], // Import schema fields directly
         data: src.sampleData || [], // Sample data array
         schemaType: 'source'
       }
@@ -31,7 +32,7 @@ export const importMappingConfiguration = (
   config.nodes.targets.forEach(tgt => {
     const nodeData: any = {
       label: tgt.label,
-      fields: tgt.schema.fields || [],
+      fields: tgt.schema?.fields || [],
       data: tgt.outputData ?? [],
       schemaType: 'target'
     };
@@ -297,7 +298,7 @@ export const importMappingConfiguration = (
     edgesCount: edges.length,
     sourceNodes: nodes.filter(n => n.type === 'source').map(n => ({ 
       id: n.id, 
-      manualFields: (n.data?.fields && Array.isArray(n.data.fields)) ? n.data.fields.length : 0,
+      fields: (n.data?.fields && Array.isArray(n.data.fields)) ? n.data.fields.length : 0,
       sampleData: (n.data?.data && Array.isArray(n.data.data)) ? n.data.data.length : 0
     }))
   });
@@ -325,3 +326,4 @@ const findFieldInSource = (fields: any[], handleId: string): boolean => {
   
   return false;
 };
+
