@@ -1,4 +1,3 @@
-
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -15,10 +14,10 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { nodeTypes, useNodeFactories } from './NodeFactories';
+import { nodeTypes } from './NodeFactories';
 import { useFieldStore } from '../store/fieldStore';
-import DataSidebar from '../compontents/DataSidebar';
-import MappingToolbar from '../compontents/MappingToolbar';
+import { DataSidebar } from '../compontents/DataSidebar';
+import { MappingToolbar } from '../compontents/MappingToolbar';
 import MappingManager from '../compontents/MappingManager';
 import { 
   exportUIMappingConfiguration, 
@@ -46,10 +45,8 @@ const Pipeline = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [currentMappingName, setCurrentMappingName] = useState<string>('Untitled Mapping');
-  const [sampleData, setSampleData] = useState<any[]>([]);
 
   const fieldStore = useFieldStore();
-  const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -73,12 +70,10 @@ const Pipeline = () => {
         return;
       }
 
-      // Calculate position relative to the ReactFlow viewport
-      const position = reactFlowInstance.screenToFlowPosition({
+      const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
-      
       const newNode: Node = {
         id: `${type}_${Date.now()}`,
         position,
@@ -150,13 +145,8 @@ const Pipeline = () => {
   return (
     <ReactFlowProvider>
       <div className="flex h-screen bg-gray-50">
-        <DataSidebar 
-          side="left"
-          title="Sample Data"
-          data={sampleData}
-          onDataChange={setSampleData}
-        />
-        <div className="flex-1 relative" ref={reactFlowWrapper}>
+        <DataSidebar />
+        <div className="flex-1 relative">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -174,13 +164,7 @@ const Pipeline = () => {
             <Controls />
           </ReactFlow>
           
-          <MappingToolbar 
-            onAddTransform={addTransformNode}
-            onAddMappingNode={addMappingNode}
-            onAddSchemaNode={addSchemaNode}
-            isExpanded={false}
-            onToggleExpanded={() => {}}
-          />
+          <MappingToolbar />
           
           <MappingManager 
             onExportMapping={handleExportMapping}
