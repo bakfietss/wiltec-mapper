@@ -6,8 +6,10 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 import NodeEditSheet from '../NodeEditSheet';
 import JsonImportDialog from '../JsonImportDialog';
+import DataEditor from '../DataEditor';
 import GenericSchemaRenderer, { SchemaField } from '../common/GenericSchemaRenderer';
 import { useSchemaDataHandler } from '../../hooks/useSchemaDataHandler';
+import { Separator } from '../ui/separator';
 
 interface SourceNodeData {
     label: string;
@@ -97,27 +99,10 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                     source
                 </span>
                 
-                <NodeEditSheet title={`Edit ${data.label} - Source Schema`}>
+                <NodeEditSheet title={`Edit ${data.label} - Source Schema & Data`}>
                     <div className="flex-1 flex flex-col space-y-6 mt-6 min-h-0">
-                        {/* Current Data Preview */}
+                        {/* Schema Fields Management */}
                         <div className="flex-shrink-0">
-                            <h4 className="font-medium mb-2">Current Data ({schemaHandler.data.length} records):</h4>
-                            <div className="h-64 border rounded p-2 bg-gray-50">
-                                <ScrollArea className="h-full">
-                                    {schemaHandler.data.length > 0 ? (
-                                        <pre className="text-xs">
-                                            {JSON.stringify(schemaHandler.data.slice(0, 3), null, 2)}
-                                            {schemaHandler.data.length > 3 && '\n... and more'}
-                                        </pre>
-                                    ) : (
-                                        <p className="text-gray-500 text-sm">No data available</p>
-                                    )}
-                                </ScrollArea>
-                            </div>
-                        </div>
-
-                        {/* Schema Fields */}
-                        <div className="flex-1 flex flex-col min-h-0">
                             <div className="flex items-center justify-between mb-3">
                                 <h4 className="font-medium">Schema Fields:</h4>
                                 <div className="flex gap-2">
@@ -138,7 +123,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                                 </div>
                             </div>
                             
-                            <div className="flex-1 border rounded min-h-0 bg-gray-50">
+                            <div className="h-48 border rounded bg-gray-50">
                                 <ScrollArea className="h-full">
                                     <div className="space-y-4 p-4">
                                         {schemaHandler.fields.length > 0 ? (
@@ -151,6 +136,18 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                                     </div>
                                 </ScrollArea>
                             </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Data Management */}
+                        <div className="flex-1 flex flex-col min-h-0">
+                            <DataEditor
+                                data={schemaHandler.data}
+                                fields={schemaHandler.fields.filter(f => f.type !== 'object' && f.type !== 'array')}
+                                onDataChange={schemaHandler.setData}
+                                title="Source Data Management"
+                            />
                         </div>
                     </div>
                 </NodeEditSheet>

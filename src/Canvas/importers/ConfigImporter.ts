@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -53,7 +52,7 @@ export const importMappingConfiguration = (
     let node: Node;
     
     if (tx.transformType === 'coalesce') {
-      // Quick fix for TypeScript errors
+      // Fix for TypeScript errors - cast to any first
       const rawConfig = (tx.config ?? {}) as any;
       const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
         ? rawConfig.parameters
