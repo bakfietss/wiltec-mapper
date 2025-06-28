@@ -1,5 +1,4 @@
-
-import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -24,6 +23,7 @@ import { downloadBothMappingFiles } from './utils/FileDownloader';
 import { importMappingConfiguration } from './importers/ConfigImporter';
 import { MappingConfiguration } from './types/MappingTypes';
 import { exportMappingDocumentation } from './DocumentationExporter';
+import { useNodeValueUpdates } from '../hooks/useNodeValueUpdates';
 import { toast } from 'sonner';
 
 const initialNodes: Node[] = [
@@ -37,99 +37,6 @@ const initialNodes: Node[] = [
 
 const initialEdges: Edge[] = [];
 
-// Centralized function to calculate all node field values
-const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
-    console.log('=== CALCULATING ALL NODE FIELD VALUES ===');
-    console.log('Total nodes:', nodes.length);
-    console.log('Total edges:', edges.length);
-    
-    const updatedNodes = nodes.map(node => {
-        if (node.type === 'target' && node.data?.fields && Array.isArray(node.data.fields)) {
-            // For target nodes, we'll let the hook handle the calculation
-            // This ensures consistency with the useTargetNodeValues hook
-            return node;
-        } else if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
-            // Calculate input values for coalesce nodes to display
-            const transformInputEdges = edges.filter(e => e.target === node.id);
-            let inputValues: Record<string, any> = {};
-            
-            console.log(`=== ENHANCING COALESCE NODE ${node.id} ===`);
-            console.log('Transform input edges:', transformInputEdges.length);
-            
-            transformInputEdges.forEach(inputEdge => {
-                const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-                
-                if (inputSourceNode && inputSourceNode.type === 'source') {
-                    const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
-                    inputValues[inputEdge.targetHandle] = sourceValue;
-                    console.log(`Mapped input for coalesce: ${inputEdge.targetHandle} = ${sourceValue}`);
-                }
-            });
-            
-            console.log('Final input values for coalesce node:', inputValues);
-            
-            return {
-                ...node,
-                data: {
-                    ...node.data,
-                    inputValues,
-                }
-            };
-        }
-        return node;
-    });
-    
-    return updatedNodes;
-};
-
-// Get source value from a node
-const getSourceValue = (node: any, handleId: string): any => {
-    if (node.type !== 'source') return null;
-    
-    const sourceFields = node.data?.fields;
-    const sourceData = node.data?.data;
-    
-    // First try to get value from actual data using the handleId as a path
-    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
-        const dataObject = sourceData[0];
-        
-        // Handle nested paths (like "user.name" or "items[0].title")
-        const getValue = (obj: any, path: string) => {
-            try {
-                // Handle array indices in path like "items[0]"
-                const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
-                const keys = normalizedPath.split('.');
-                let value = obj;
-                for (const key of keys) {
-                    if (value && typeof value === 'object') {
-                        value = value[key];
-                    } else {
-                        return undefined;
-                    }
-                }
-                return value;
-            } catch (e) {
-                return undefined;
-            }
-        };
-        
-        const dataValue = getValue(dataObject, handleId);
-        if (dataValue !== undefined) {
-            return dataValue;
-        }
-    }
-    
-    // Fallback to manual schema fields
-    if (sourceFields && Array.isArray(sourceFields)) {
-        const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
-        if (sourceField) {
-            return sourceField.exampleValue || 'No data';
-        }
-    }
-    
-    return null;
-};
-
 const Pipeline = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -139,18 +46,12 @@ const Pipeline = () => {
   const [sampleData, setSampleData] = useState<any[]>([]);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [isManagerExpanded, setIsManagerExpanded] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(0);
 
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Enhanced nodes with calculated field values - recalculate on every nodes/edges change
-  const enhancedNodes = useMemo(() => {
-    console.log('=== ENHANCED NODES RECALCULATION ===');
-    console.log('Force update counter:', forceUpdate);
-    const result = calculateNodeFieldValues(nodes, edges);
-    return result;
-  }, [nodes, edges, forceUpdate]);
+  // Use centralized node value updates system
+  const { enhancedNodes, forceUpdate } = useNodeValueUpdates();
 
   // Click outside to close functionality
   useEffect(() => {
@@ -195,8 +96,8 @@ const Pipeline = () => {
     setEdges((eds) => addEdge(newEdge, eds));
     
     // Force update to recalculate enhanced nodes
-    setForceUpdate(prev => prev + 1);
-  }, [setEdges]);
+    forceUpdate();
+  }, [setEdges, forceUpdate]);
 
   // Enhanced onEdgesChange to handle connection removal
   const handleEdgesChange = useCallback((changes: any[]) => {
@@ -211,9 +112,9 @@ const Pipeline = () => {
     
     // Force update if edges were removed to recalculate target values
     if (hasRemovals) {
-      setForceUpdate(prev => prev + 1);
+      forceUpdate();
     }
-  }, [onEdgesChange]);
+  }, [onEdgesChange, forceUpdate]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
