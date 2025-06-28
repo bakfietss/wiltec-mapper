@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 import SourceNode from '../components/nodes/SourceNode';
@@ -27,7 +28,7 @@ export const useNodeFactories = (
     const addSchemaNode = useCallback((type: 'source' | 'target') => {
         const newNode: Node = {
             id: `${type}-${Date.now()}`,
-            type: type, // Use 'source' or 'target' instead of 'editableSchema'
+            type: type,
             position: { x: type === 'source' ? 100 : 800, y: 100 + nodes.length * 50 },
             data: {
                 label: type === 'source' ? 'Source Schema' : 'Target Schema',
@@ -70,13 +71,15 @@ export const useNodeFactories = (
                 valueType: 'string',
             };
         } else if (transformType === 'Coalesce') {
-            nodeType = 'transform';
+            nodeType = 'coalesceTransform';
             nodeIdPrefix = 'coalesce';
             nodeData = {
                 label: 'Coalesce Transform',
                 transformType: 'coalesce',
-                rules: [],
-                defaultValue: '',
+                config: {
+                    rules: [],
+                    defaultValue: ''
+                }
             };
         }
         

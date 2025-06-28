@@ -48,21 +48,43 @@ export const importMappingConfiguration = (
     nodeMap.set(tgt.id, node);
   });
 
-  // 3. Transforms
+  // 3. Transforms - with proper coalesce handling
   config.nodes.transforms.forEach(tx => {
     let node: Node;
     
     if (tx.transformType === 'coalesce') {
+      // Handle different config structures for coalesce
+      let rules: any[] = [];
+      let defaultValue = '';
+      
+      // Check for rules in different locations
+      if (tx.config?.rules && Array.isArray(tx.config.rules)) {
+        rules = tx.config.rules;
+      } else if (tx.config?.parameters?.rules && Array.isArray(tx.config.parameters.rules)) {
+        rules = tx.config.parameters.rules;
+      }
+      
+      // Check for default value in different locations
+      if (tx.config?.defaultValue) {
+        defaultValue = tx.config.defaultValue;
+      } else if (tx.config?.parameters?.defaultValue) {
+        defaultValue = tx.config.parameters.defaultValue;
+      }
+      
       node = {
         id: tx.id,
-        type: 'transform',
+        type: 'coalesceTransform',
         position: tx.position,
         data: {
           label: tx.label,
           transformType: 'coalesce',
           config: {
-            rules: tx.config?.rules || [],
-            defaultValue: tx.config?.defaultValue || ''
+            rules: rules.map((rule: any, index: number) => ({
+              id: rule.id || `rule-${Date.now()}-${index}`,
+              priority: rule.priority || index + 1,
+              outputValue: rule.outputValue || `Value ${index + 1}`
+            })),
+            defaultValue: defaultValue
           }
         }
       };
@@ -166,30 +188,23 @@ export const importMappingConfiguration = (
           const coalesceNodeId = step.target.nodeId;
           const coalesceNode = nodeMap.get(coalesceNodeId);
           
-          if (coalesceNode) {
+          if (coalesceNode && coalesceNode.type === 'coalesceTransform') {
             // Update the coalesce node with the rules from execution mapping
-            const enhancedRules = parameters.rules.map((rule: any) => ({
+            const enhancedRules = parameters.rules.map((rule: any, index: number) => ({
               id: rule.id || `rule_${Date.now()}_${Math.random()}`,
-              priority: rule.priority || 1,
+              priority: rule.priority || index + 1,
               outputValue: rule.outputValue || '',
               sourceField: rule.sourceField || '',
               sourceHandle: rule.sourceHandle || ''
             }));
             
-            // Ensure coalesceNode.data exists and has proper structure
-            if (!coalesceNode.data) {
-              coalesceNode.data = {};
-            }
-            
-            // Ensure config exists and is properly typed
+            // Ensure proper config structure
             if (!coalesceNode.data.config) {
               coalesceNode.data.config = {};
             }
             
-            // Update the config with proper typing
-            const nodeConfig = coalesceNode.data.config as any;
-            nodeConfig.rules = enhancedRules;
-            nodeConfig.defaultValue = parameters.defaultValue || '';
+            coalesceNode.data.config.rules = enhancedRules;
+            coalesceNode.data.config.defaultValue = parameters.defaultValue || '';
             
             // Create input edges for each rule
             enhancedRules.forEach((rule: any) => {
