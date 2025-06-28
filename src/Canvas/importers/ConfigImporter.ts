@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -26,6 +25,31 @@ export const importMappingConfiguration = (
         for (let i = 1; i < pathParts.length; i++) {
           const parentPath = pathParts.slice(0, i).join('.');
           connectedFields.add(`${step.source.nodeId}.${parentPath}`);
+        }
+      }
+      
+      // Handle coalesce transforms - check rules for source fields
+      if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters) {
+        const parameters = step.transform.parameters as any;
+        if (parameters.rules && Array.isArray(parameters.rules)) {
+          parameters.rules.forEach((rule: any) => {
+            if (rule.sourceField || rule.sourceHandle) {
+              const fieldPath = rule.sourceField || rule.sourceHandle;
+              // Find which source node this field belongs to by scanning all source nodes
+              config.nodes.sources.forEach(src => {
+                if (hasFieldInData(src.sampleData?.[0], fieldPath) || findFieldInSource(src.schema.fields, fieldPath)) {
+                  connectedFields.add(`${src.id}.${fieldPath}`);
+                  
+                  // Also mark parent paths for expansion
+                  const pathParts = fieldPath.split('.');
+                  for (let i = 1; i < pathParts.length; i++) {
+                    const parentPath = pathParts.slice(0, i).join('.');
+                    connectedFields.add(`${src.id}.${parentPath}`);
+                  }
+                }
+              });
+            }
+          });
         }
       }
     });
@@ -223,26 +247,26 @@ export const importMappingConfiguration = (
           
           console.log('Updated coalesce node config:', nodeConfig);
           
-          // Create input edges for each rule
+          // Create input edges for each rule based on the sourceField in the rule
           enhancedRules.forEach((rule: any) => {
-            if (rule.sourceHandle || rule.sourceField) {
-              const handleToMatch = rule.sourceHandle || rule.sourceField;
+            if (rule.sourceField || rule.sourceHandle) {
+              const fieldPath = rule.sourceField || rule.sourceHandle;
               
-              console.log('Looking for source field:', handleToMatch);
+              console.log('Creating edge for coalesce rule:', { ruleId: rule.id, fieldPath });
               
               // Find the source node that contains this field
               const sourceNode = Array.from(nodeMap.values()).find(node => {
                 if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
-                  return findFieldInSource(node.data.fields, handleToMatch);
+                  return findFieldInSource(node.data.fields, fieldPath);
                 }
                 // Also check data fields if available
                 if (node.type === 'source' && node.data?.data && Array.isArray(node.data.data) && node.data.data.length > 0) {
-                  return hasFieldInData(node.data.data[0], handleToMatch);
+                  return hasFieldInData(node.data.data[0], fieldPath);
                 }
                 return false;
               });
               
-              console.log('Found source node for field:', { handleToMatch, sourceNodeId: sourceNode?.id });
+              console.log('Found source node for field:', { fieldPath, sourceNodeId: sourceNode?.id });
               
               if (sourceNode) {
                 const edgeId = `coalesce-rule-${sourceNode.id}-${coalesceNodeId}-${rule.id}`;
@@ -255,7 +279,7 @@ export const importMappingConfiguration = (
                     id: edgeId,
                     source: sourceNode.id,
                     target: coalesceNodeId,
-                    sourceHandle: handleToMatch,
+                    sourceHandle: fieldPath,
                     targetHandle: rule.id,
                     type: 'smoothstep',
                     animated: true,
@@ -263,7 +287,7 @@ export const importMappingConfiguration = (
                   });
                 }
               } else {
-                console.warn('Could not find source node for field:', handleToMatch);
+                console.warn('Could not find source node for field:', fieldPath);
               }
             }
           });
