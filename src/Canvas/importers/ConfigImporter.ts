@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -18,8 +17,8 @@ export const importMappingConfiguration = (
       position: src.position,
       data: {
         label: src.label,
-        fields: src.schema.fields,
-        data: src.sampleData,
+        fields: src.schema.fields || [], // Manual schema fields
+        data: src.sampleData || [], // Sample data array
         schemaType: 'source'
       }
     };
@@ -31,7 +30,7 @@ export const importMappingConfiguration = (
   config.nodes.targets.forEach(tgt => {
     const nodeData: any = {
       label: tgt.label,
-      fields: tgt.schema.fields,
+      fields: tgt.schema.fields || [],
       data: tgt.outputData ?? [],
       schemaType: 'target'
     };
@@ -53,6 +52,16 @@ export const importMappingConfiguration = (
     let node: Node;
     
     if (tx.transformType === 'coalesce') {
+      const rawConfig = (tx.config ?? {}) as any;
+      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
+        ? rawConfig.parameters
+        : rawConfig;
+      
+      const rules: any[] = Array.isArray(params.rules) ? params.rules : [];
+      const defaultValue: string = typeof params.defaultValue === 'string'
+        ? params.defaultValue
+        : '';
+      
       node = {
         id: tx.id,
         type: 'transform',
@@ -61,13 +70,21 @@ export const importMappingConfiguration = (
           label: tx.label,
           transformType: 'coalesce',
           config: {
-            rules: tx.config?.rules || [],
-            defaultValue: tx.config?.defaultValue || ''
+            rules: rules.map((r, i) => ({
+              id: r.id || `rule-${Date.now()}-${i}`,
+              priority: r.priority ?? (i + 1),
+              outputValue: r.outputValue ?? `Value ${i+1}`,
+            })),
+            defaultValue
           }
         }
       };
     } else if (tx.transformType === 'ifThen' || tx.transformType === 'IF THEN') {
-      const params = (tx.config?.parameters as any) ?? {};
+      const rawConfig = (tx.config ?? {}) as any;
+      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
+        ? rawConfig.parameters
+        : rawConfig;
+      
       node = {
         id: tx.id,
         type: 'ifThen',
@@ -81,7 +98,11 @@ export const importMappingConfiguration = (
         }
       };
     } else if (tx.transformType === 'staticValue' || tx.transformType === 'Static Value') {
-      const params = (tx.config?.parameters as any) ?? {};
+      const rawConfig = (tx.config ?? {}) as any;
+      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
+        ? rawConfig.parameters
+        : rawConfig;
+      
       node = {
         id: tx.id,
         type: 'staticValue',
@@ -92,7 +113,11 @@ export const importMappingConfiguration = (
         }
       };
     } else if (tx.transformType === 'splitterTransform' || tx.transformType === 'Text Splitter') {
-      const params = (tx.config?.parameters as any) ?? {};
+      const rawConfig = (tx.config ?? {}) as any;
+      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
+        ? rawConfig.parameters
+        : rawConfig;
+      
       node = {
         id: tx.id,
         type: 'splitterTransform',
@@ -269,8 +294,11 @@ export const importMappingConfiguration = (
   console.log('Import completed:', { 
     nodesCount: nodes.length, 
     edgesCount: edges.length,
-    nodeTypes: nodes.map(n => n.type),
-    edgeConnections: edges.map(e => `${e.source} -> ${e.target}`)
+    sourceNodes: nodes.filter(n => n.type === 'source').map(n => ({ 
+      id: n.id, 
+      manualFields: n.data?.fields?.length || 0,
+      sampleData: n.data?.data?.length || 0
+    }))
   });
 
   return { nodes, edges };
