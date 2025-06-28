@@ -53,29 +53,16 @@ export const importMappingConfiguration = (
     let node: Node;
     
     if (tx.transformType === 'coalesce') {
-      // Handle different config structures for coalesce
-      let rules: any[] = [];
-      let defaultValue = '';
-      
-      // Check for rules in different locations
-      if (tx.config?.rules && Array.isArray(tx.config.rules)) {
-        rules = tx.config.rules;
-      } else if (tx.config?.parameters && typeof tx.config.parameters === 'object' && tx.config.parameters !== null) {
-        const params = tx.config.parameters as Record<string, any>;
-        if (params.rules && Array.isArray(params.rules)) {
-          rules = params.rules;
-        }
-      }
-      
-      // Check for default value in different locations
-      if (tx.config?.defaultValue) {
-        defaultValue = tx.config.defaultValue;
-      } else if (tx.config?.parameters && typeof tx.config.parameters === 'object' && tx.config.parameters !== null) {
-        const params = tx.config.parameters as Record<string, any>;
-        if (params.defaultValue) {
-          defaultValue = params.defaultValue;
-        }
-      }
+      // Quick fix for TypeScript errors
+      const rawConfig = (tx.config ?? {}) as any;
+      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
+        ? rawConfig.parameters
+        : rawConfig;
+
+      const rules: any[] = Array.isArray(params.rules) ? params.rules : [];
+      const defaultValue: string = typeof params.defaultValue === 'string'
+        ? params.defaultValue
+        : '';
       
       node = {
         id: tx.id,
@@ -85,12 +72,12 @@ export const importMappingConfiguration = (
           label: tx.label,
           transformType: 'coalesce',
           config: {
-            rules: rules.map((rule: any, index: number) => ({
-              id: rule.id || `rule-${Date.now()}-${index}`,
-              priority: rule.priority || index + 1,
-              outputValue: rule.outputValue || `Value ${index + 1}`
+            rules: rules.map((r, i) => ({
+              id: r.id || `rule-${Date.now()}-${i}`,
+              priority: r.priority ?? (i + 1),
+              outputValue: r.outputValue ?? `Value ${i + 1}`
             })),
-            defaultValue: defaultValue
+            defaultValue
           }
         }
       };
@@ -188,25 +175,22 @@ export const importMappingConfiguration = (
   if (config.execution && config.execution.steps) {
     config.execution.steps.forEach(step => {
       if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters) {
-        // Cast parameters to the expected coalesce parameters type
-        const coalesceParams = step.transform.parameters as {
-          rules?: Array<{
-            id: string;
-            priority: number;
-            outputValue: string;
-            sourceField?: string;
-            sourceHandle?: string;
-          }>;
-          defaultValue?: string;
-        };
+        const rawParams = step.transform.parameters as any;
+        const params = (rawParams.parameters && typeof rawParams.parameters === 'object')
+          ? rawParams.parameters
+          : rawParams;
+
+        const rules: any[] = Array.isArray(params.rules) ? params.rules : [];
+        const defaultValue: string = typeof params.defaultValue === 'string'
+          ? params.defaultValue
+          : '';
         
-        if (coalesceParams.rules && Array.isArray(coalesceParams.rules)) {
+        if (rules.length > 0) {
           const coalesceNodeId = step.target.nodeId;
           const coalesceNode = nodeMap.get(coalesceNodeId);
           
           if (coalesceNode && coalesceNode.type === 'coalesceTransform') {
-            // Update the coalesce node with the rules from execution mapping
-            const enhancedRules = coalesceParams.rules.map((rule: any, index: number) => ({
+            const enhancedRules = rules.map((rule: any, index: number) => ({
               id: rule.id || `rule_${Date.now()}_${Math.random()}`,
               priority: rule.priority || index + 1,
               outputValue: rule.outputValue || '',
@@ -214,18 +198,15 @@ export const importMappingConfiguration = (
               sourceHandle: rule.sourceHandle || ''
             }));
             
-            // Ensure proper config structure
             if (!coalesceNode.data.config) {
               coalesceNode.data.config = {};
             }
             
             coalesceNode.data.config.rules = enhancedRules;
-            coalesceNode.data.config.defaultValue = coalesceParams.defaultValue || '';
+            coalesceNode.data.config.defaultValue = defaultValue;
             
-            // Create input edges for each rule
             enhancedRules.forEach((rule: any) => {
               if (rule.sourceHandle) {
-                // Find the source node that contains this field
                 const sourceNode = Array.from(nodeMap.values()).find(node => {
                   if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
                     return findFieldInSource(node.data.fields, rule.sourceHandle);
@@ -236,7 +217,6 @@ export const importMappingConfiguration = (
                 if (sourceNode) {
                   const edgeId = `xy-edge__${sourceNode.id}${rule.sourceHandle}-${coalesceNodeId}${rule.id}`;
                   
-                  // Only add edge if it doesn't already exist
                   const existingEdge = edges.find(e => e.id === edgeId);
                   if (!existingEdge) {
                     edges.push({
@@ -262,16 +242,12 @@ export const importMappingConfiguration = (
   return { nodes, edges };
 };
 
-// Helper function to check if a field exists in source fields (including nested)
 const findFieldInSource = (fields: any[], handleId: string): boolean => {
   if (!Array.isArray(fields)) return false;
   
   for (const field of fields) {
-    // Check exact ID match
     if (field.id === handleId) return true;
-    // Check exact name match
     if (field.name === handleId) return true;
-    // Check nested children
     if (field.children && Array.isArray(field.children)) {
       if (findFieldInSource(field.children, handleId)) return true;
     }

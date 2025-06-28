@@ -1,4 +1,3 @@
-
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -55,19 +54,15 @@ const Pipeline = () => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       
-      // Check if click is on ReactFlow canvas area
       const reactFlowElement = reactFlowWrapper.current?.querySelector('.react-flow');
       const isCanvasClick = reactFlowElement && reactFlowElement.contains(target);
       
-      // Check if click is outside toolbar
       const toolbarElement = document.querySelector('[data-toolbar="mapping-toolbar"]');
       const isToolbarClick = toolbarElement && toolbarElement.contains(target);
       
-      // Check if click is outside manager
       const managerElement = document.querySelector('[data-toolbar="mapping-manager"]');
       const isManagerClick = managerElement && managerElement.contains(target);
       
-      // Close toolbars if clicking on canvas or outside both toolbars
       if (isCanvasClick || (!isToolbarClick && !isManagerClick)) {
         setIsToolbarExpanded(false);
         setIsManagerExpanded(false);
@@ -81,8 +76,13 @@ const Pipeline = () => {
   }, []);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    (params: Connection) => {
+      console.log('Connection attempt:', params);
+      const newEdge = addEdge(params, edges);
+      console.log('New edges after connection:', newEdge);
+      setEdges(newEdge);
+    },
+    [setEdges, edges]
   );
 
   const onDrop = useCallback(
@@ -97,12 +97,10 @@ const Pipeline = () => {
       const type = event.dataTransfer.getData('application/reactflow');
       const label = event.dataTransfer.getData('application/label');
 
-      // check if the dropped element is valid
       if (typeof type === 'undefined' || !type) {
         return;
       }
 
-      // Calculate position relative to the ReactFlow viewport
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
