@@ -30,7 +30,7 @@ export const useNodeUpdater = (nodeId: string) => {
                         data: {
                             ...node.data,
                             config: {
-                                ...node.data.config,
+                                ...(node.data.config || {}),
                                 ...configUpdates,
                             },
                         },
