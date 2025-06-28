@@ -156,41 +156,73 @@ export const importMappingConfiguration = (
     }
   });
 
-  // 6. Additional logic: Recreate coalesce input edges from execution mappings
-  // This ensures that coalesce transforms get their input connections restored
+  // 6. Enhanced coalesce reconstruction from execution mappings
   if (config.execution && config.execution.steps) {
     config.execution.steps.forEach(step => {
-      if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters?.rules) {
-        const coalesceNodeId = step.target.nodeId;
-        const coalesceNode = nodeMap.get(coalesceNodeId);
+      if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters) {
+        const parameters = step.transform.parameters as any;
         
-        if (coalesceNode) {
-          step.transform.parameters.rules.forEach((rule: any) => {
-            if (rule.sourceField && rule.sourceHandle) {
-              // Find the source node that has this field
-              const sourceNode = Array.from(nodeMap.values()).find(node => {
-                if (node.type === 'source' && node.data?.fields) {
-                  // Check if this source has the field we're looking for
-                  return findFieldInSource(node.data.fields, rule.sourceHandle);
-                }
-                return false;
-              });
-              
-              if (sourceNode) {
-                const edgeId = `xy-edge__${sourceNode.id}${rule.sourceHandle}-${coalesceNodeId}${rule.id}`;
-                edges.push({
-                  id: edgeId,
-                  source: sourceNode.id,
-                  target: coalesceNodeId,
-                  sourceHandle: rule.sourceHandle,
-                  targetHandle: rule.id,
-                  type: 'smoothstep',
-                  animated: true,
-                  style: { strokeWidth: 2, stroke: '#3b82f6' }
-                });
-              }
+        if (parameters && Array.isArray(parameters.rules)) {
+          const coalesceNodeId = step.target.nodeId;
+          const coalesceNode = nodeMap.get(coalesceNodeId);
+          
+          if (coalesceNode) {
+            // Update the coalesce node with the rules from execution mapping
+            const enhancedRules = parameters.rules.map((rule: any) => ({
+              id: rule.id || `rule_${Date.now()}_${Math.random()}`,
+              priority: rule.priority || 1,
+              outputValue: rule.outputValue || '',
+              sourceField: rule.sourceField || '',
+              sourceHandle: rule.sourceHandle || ''
+            }));
+            
+            // Ensure coalesceNode.data exists and has proper structure
+            if (!coalesceNode.data) {
+              coalesceNode.data = {};
             }
-          });
+            
+            // Ensure config exists and is properly typed
+            if (!coalesceNode.data.config) {
+              coalesceNode.data.config = {};
+            }
+            
+            // Update the config with proper typing
+            const nodeConfig = coalesceNode.data.config as any;
+            nodeConfig.rules = enhancedRules;
+            nodeConfig.defaultValue = parameters.defaultValue || '';
+            
+            // Create input edges for each rule
+            enhancedRules.forEach((rule: any) => {
+              if (rule.sourceHandle) {
+                // Find the source node that contains this field
+                const sourceNode = Array.from(nodeMap.values()).find(node => {
+                  if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
+                    return findFieldInSource(node.data.fields, rule.sourceHandle);
+                  }
+                  return false;
+                });
+                
+                if (sourceNode) {
+                  const edgeId = `xy-edge__${sourceNode.id}${rule.sourceHandle}-${coalesceNodeId}${rule.id}`;
+                  
+                  // Only add edge if it doesn't already exist
+                  const existingEdge = edges.find(e => e.id === edgeId);
+                  if (!existingEdge) {
+                    edges.push({
+                      id: edgeId,
+                      source: sourceNode.id,
+                      target: coalesceNodeId,
+                      sourceHandle: rule.sourceHandle,
+                      targetHandle: rule.id,
+                      type: 'smoothstep',
+                      animated: true,
+                      style: { strokeWidth: 2, stroke: '#3b82f6' }
+                    });
+                  }
+                }
+              }
+            });
+          }
         }
       }
     });
