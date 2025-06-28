@@ -1,4 +1,5 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -46,41 +47,9 @@ const Pipeline = () => {
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [currentMappingName, setCurrentMappingName] = useState<string>('Untitled Mapping');
   const [sampleData, setSampleData] = useState<any[]>([]);
-  const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
-  const [isManagerExpanded, setIsManagerExpanded] = useState(false);
 
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
-
-  // Click outside to close functionality - improved to target canvas specifically
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Check if click is on ReactFlow canvas area
-      const reactFlowElement = reactFlowWrapper.current?.querySelector('.react-flow');
-      const isCanvasClick = reactFlowElement && reactFlowElement.contains(target);
-      
-      // Check if click is outside toolbar
-      const toolbarElement = document.querySelector('[data-toolbar="mapping-toolbar"]');
-      const isToolbarClick = toolbarElement && toolbarElement.contains(target);
-      
-      // Check if click is outside manager
-      const managerElement = document.querySelector('[data-toolbar="mapping-manager"]');
-      const isManagerClick = managerElement && managerElement.contains(target);
-      
-      // Close toolbars if clicking on canvas or outside both toolbars
-      if (isCanvasClick || (!isToolbarClick && !isManagerClick)) {
-        setIsToolbarExpanded(false);
-        setIsManagerExpanded(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -209,8 +178,8 @@ const Pipeline = () => {
             onAddTransform={addTransformNode}
             onAddMappingNode={addMappingNode}
             onAddSchemaNode={addSchemaNode}
-            isExpanded={isToolbarExpanded}
-            onToggleExpanded={setIsToolbarExpanded}
+            isExpanded={false}
+            onToggleExpanded={() => {}}
           />
           
           <MappingManager 
@@ -220,8 +189,6 @@ const Pipeline = () => {
             onSaveMapping={handleSaveMapping}
             onExportDocumentation={handleExportDocumentation}
             currentMappingName={currentMappingName}
-            isExpanded={isManagerExpanded}
-            onToggleExpanded={setIsManagerExpanded}
           />
         </div>
       </div>

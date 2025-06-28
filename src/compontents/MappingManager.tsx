@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Download, Upload, ChevronDown, ChevronUp, Settings, Plus, Save, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -11,8 +12,6 @@ interface MappingManagerProps {
   onSaveMapping?: (name: string) => void;
   onExportDocumentation?: () => void;
   currentMappingName?: string;
-  isExpanded?: boolean;
-  onToggleExpanded?: (expanded: boolean) => void;
 }
 
 const MappingManager: React.FC<MappingManagerProps> = ({ 
@@ -21,20 +20,13 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   onNewMapping,
   onSaveMapping,
   onExportDocumentation,
-  currentMappingName = 'Untitled Mapping',
-  isExpanded = false,
-  onToggleExpanded
+  currentMappingName = 'Untitled Mapping'
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isNewMappingOpen, setIsNewMappingOpen] = useState(false);
   const [isSaveMappingOpen, setIsSaveMappingOpen] = useState(false);
   const [newMappingName, setNewMappingName] = useState('');
   const [saveMappingName, setSaveMappingName] = useState(currentMappingName);
-
-  const handleToggle = () => {
-    if (onToggleExpanded) {
-      onToggleExpanded(!isExpanded);
-    }
-  };
 
   const handleImportClick = () => {
     const input = document.createElement('input');
@@ -80,7 +72,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
             </div>
           </div>
           <button
-            onClick={handleToggle}
+            onClick={() => setIsExpanded(!isExpanded)}
             className="p-1 hover:bg-gray-100 rounded"
           >
             {isExpanded ? (

@@ -1,5 +1,4 @@
 
-
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionStep } from '../types/MappingTypes';
 
@@ -42,23 +41,6 @@ export const buildExecutionSteps = (
     return undefined;
   };
 
-  // Helper function to get source path from a node and handle
-  const getSourcePath = (nodeId: string, handleId: string | null): string => {
-    if (!handleId) return '';
-    const node = nodeMap.get(nodeId);
-    if (!node) return '';
-    
-    if (node.type === 'source') {
-      const nodeData = node.data as any;
-      const fields = nodeData?.fields;
-      if (Array.isArray(fields)) {
-        const field = fields.find((f: any) => f.id === handleId);
-        return field?.name || '';
-      }
-    }
-    return '';
-  };
-
   // Process each edge to create execution steps
   edges.forEach(edge => {
     const sourceNode = nodeMap.get(edge.source);
@@ -68,7 +50,6 @@ export const buildExecutionSteps = (
 
     const sourceField = getFieldInfo(sourceNode, edge.sourceHandle || '');
     const targetField = getFieldInfo(targetNode, edge.targetHandle || '');
-    const sourcePath = getSourcePath(edge.source, edge.sourceHandle);
 
     // Direct mapping (source to target)
     if (sourceNode.type === 'source' && targetNode.type === 'target') {
@@ -79,8 +60,7 @@ export const buildExecutionSteps = (
           nodeId: sourceNode.id,
           fieldId: sourceField.id,
           fieldName: sourceField.name,
-          value: getSampleValue(sourceNode, sourceField.name),
-          sourcePath: sourcePath
+          value: getSampleValue(sourceNode, sourceField.name)
         },
         target: {
           nodeId: targetNode.id,
@@ -115,8 +95,7 @@ export const buildExecutionSteps = (
             nodeId: sourceNode.id,
             fieldId: sourceField.id,
             fieldName: sourceField.name,
-            value: getSampleValue(sourceNode, sourceField.name),
-            sourcePath: sourcePath
+            value: getSampleValue(sourceNode, sourceField.name)
           },
           target: {
             nodeId: finalTargetNode.id,
@@ -154,8 +133,7 @@ export const buildExecutionSteps = (
             nodeId: sourceNode.id,
             fieldId: sourceField.id,
             fieldName: sourceField.name,
-            value: getSampleValue(sourceNode, sourceField.name),
-            sourcePath: sourcePath
+            value: getSampleValue(sourceNode, sourceField.name)
           },
           target: {
             nodeId: finalTargetNode.id,
@@ -172,4 +150,3 @@ export const buildExecutionSteps = (
 
   return steps;
 };
-
