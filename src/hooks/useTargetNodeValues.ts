@@ -9,6 +9,53 @@ interface SchemaField {
     children?: SchemaField[];
 }
 
+const getSourceValue = (node: any, handleId: string): any => {
+    if (node.type !== 'source') return null;
+    
+    const sourceFields = node.data?.fields;
+    const sourceData = node.data?.data;
+    
+    // First try to get value from actual data using the handleId as a path
+    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
+        const dataObject = sourceData[0];
+        
+        // Handle nested paths (like "user.name" or "items[0].title")
+        const getValue = (obj: any, path: string) => {
+            try {
+                // Handle array indices in path like "items[0]"
+                const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+                const keys = normalizedPath.split('.');
+                let value = obj;
+                for (const key of keys) {
+                    if (value && typeof value === 'object') {
+                        value = value[key];
+                    } else {
+                        return undefined;
+                    }
+                }
+                return value;
+            } catch (e) {
+                return undefined;
+            }
+        };
+        
+        const dataValue = getValue(dataObject, handleId);
+        if (dataValue !== undefined) {
+            return dataValue;
+        }
+    }
+    
+    // Fallback to manual schema fields
+    if (sourceFields && Array.isArray(sourceFields)) {
+        const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
+        if (sourceField) {
+            return sourceField.exampleValue || 'No data';
+        }
+    }
+    
+    return null;
+};
+
 export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[], processedData: any[]) => {
     const { getNodes, getEdges } = useReactFlow();
     
@@ -21,14 +68,12 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
         console.log('Target Node ID:', targetNodeId);
         console.log('Fields:', fields?.map(f => ({ id: f.id, name: f.name })));
         console.log('All Edges:', edges);
-        console.log('Processed Data:', processedData);
         
-        // First priority: Use processed data if available
+        // Use processed data if available (this takes priority)
         const firstRecord = processedData?.[0] ?? {};
         
         if (Object.keys(firstRecord).length > 0) {
             console.log('Using processed data for values');
-            // Use processed data from DataMappingProcessor
             fields.forEach(field => {
                 if (firstRecord[field.name] !== undefined) {
                     valueMap[field.id] = firstRecord[field.name];
@@ -36,7 +81,7 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
             });
         } else {
             console.log('No processed data, resolving values from connections');
-            // Fallback: Direct value resolution for immediate updates
+            // Direct value resolution from connections
             const incomingEdges = edges.filter(edge => edge.target === targetNodeId);
             console.log('Incoming edges:', incomingEdges);
             
@@ -50,63 +95,31 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                     sourceHandle: edge.sourceHandle,
                     targetHandle: edge.targetHandle,
                     sourceNode: sourceNode?.type,
-                    sourceNodeData: sourceNode?.data,
                     targetField: targetField?.name
                 });
                 
                 if (sourceNode && targetField) {
                     let value: any = undefined;
                     
-                    // Handle different source node types
-                    if (sourceNode.type === 'staticValue' && sourceNode.data?.value) {
-                        value = sourceNode.data.value;
+                    if (sourceNode.type === 'source') {
+                        value = getSourceValue(sourceNode, edge.sourceHandle);
+                        console.log('Source value extracted:', value);
+                    } else if (sourceNode.type === 'staticValue') {
+                        const staticValues = sourceNode.data?.values;
+                        if (Array.isArray(staticValues)) {
+                            const staticValue = staticValues.find((v: any) => v.id === edge.sourceHandle);
+                            if (staticValue) {
+                                value = staticValue.value || '';
+                            }
+                        } else {
+                            value = sourceNode.data?.value || '';
+                        }
                         console.log('Static value:', value);
-                    } else if (sourceNode.type === 'ifThen') {
-                        // For IF THEN nodes, show configuration summary
-                        const { operator, compareValue, thenValue, elseValue } = sourceNode.data || {};
-                        if (operator && compareValue) {
-                            value = `IF ? ${operator} ${compareValue} THEN ${thenValue} ELSE ${elseValue}`;
-                        }
-                        console.log('IF THEN value:', value);
-                    } else if (sourceNode.type === 'source' || sourceNode.type === 'editableSchema') {
-                        // Handle source nodes - extract data from sample data or manual fields
-                        const nodeData = sourceNode.data;
-                        console.log('Source node data:', nodeData);
-                        
-                        if (nodeData && typeof nodeData === 'object') {
-                            // First check manual fields if they exist
-                            if (nodeData.fields && Array.isArray(nodeData.fields)) {
-                                const sourceField = nodeData.fields.find((f: any) => f.id === edge.sourceHandle);
-                                if (sourceField && sourceField.exampleValue !== undefined) {
-                                    value = sourceField.exampleValue;
-                                    console.log('Manual field value:', value);
-                                }
-                            }
-                            
-                            // If no manual field value, check sample data
-                            if (value === undefined && nodeData.data && Array.isArray(nodeData.data)) {
-                                const sourceData = nodeData.data;
-                                console.log('Source sample data:', sourceData);
-                                
-                                if (sourceData.length > 0 && edge.sourceHandle) {
-                                    // Navigate through the data structure using the source handle
-                                    const sourceHandle = edge.sourceHandle;
-                                    value = getNestedValue(sourceData[0], sourceHandle);
-                                    console.log('Extracted value from source data:', { sourceHandle, value });
-                                }
-                            }
-                        }
-                    } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
-                        // Handle coalesce transform output
-                        value = 'Coalesce Result';
-                        console.log('Coalesce transform value:', value);
                     }
                     
                     if (value !== undefined) {
                         valueMap[targetField.id] = value;
                         console.log('Set value for field:', targetField.id, '=', value);
-                    } else {
-                        console.log('No value found for field:', targetField.id);
                     }
                 }
             });
@@ -118,33 +131,3 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
     
     return handleValueMap;
 };
-
-// Helper function to get nested values from objects using dot notation
-function getNestedValue(obj: any, path: string): any {
-    if (!obj || !path) return undefined;
-    
-    // Handle array notation like containers[0].container_number
-    const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
-    const parts = normalizedPath.split('.');
-    
-    let current = obj;
-    for (const part of parts) {
-        if (current === null || current === undefined) {
-            return undefined;
-        }
-        
-        // Handle array indices
-        if (/^\d+$/.test(part)) {
-            const index = parseInt(part, 10);
-            if (Array.isArray(current) && index < current.length) {
-                current = current[index];
-            } else {
-                return undefined;
-            }
-        } else {
-            current = current[part];
-        }
-    }
-    
-    return current;
-}

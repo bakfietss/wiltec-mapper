@@ -1,5 +1,4 @@
-
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -37,6 +36,109 @@ const initialNodes: Node[] = [
 
 const initialEdges: Edge[] = [];
 
+// Helper functions from working version
+const isSourceNode = (node: any): boolean => {
+    return node.type === 'source';
+};
+
+const isTargetNode = (node: any): boolean => {
+    return node.type === 'target';
+};
+
+const getSourceValue = (node: any, handleId: string): any => {
+    if (!isSourceNode(node)) return null;
+    
+    const sourceFields = node.data?.fields;
+    const sourceData = node.data?.data;
+    
+    // First try to get value from actual data using the handleId as a path
+    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
+        const dataObject = sourceData[0];
+        
+        // Handle nested paths (like "user.name" or "items[0].title")
+        const getValue = (obj: any, path: string) => {
+            try {
+                // Handle array indices in path like "items[0]"
+                const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+                const keys = normalizedPath.split('.');
+                let value = obj;
+                for (const key of keys) {
+                    if (value && typeof value === 'object') {
+                        value = value[key];
+                    } else {
+                        return undefined;
+                    }
+                }
+                return value;
+            } catch (e) {
+                return undefined;
+            }
+        };
+        
+        const dataValue = getValue(dataObject, handleId);
+        if (dataValue !== undefined) {
+            return dataValue;
+        }
+    }
+    
+    // Fallback to manual schema fields
+    if (sourceFields && Array.isArray(sourceFields)) {
+        const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
+        if (sourceField) {
+            return sourceField.exampleValue || 'No data';
+        }
+    }
+    
+    return null;
+};
+
+const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
+    if (!targetFields || !Array.isArray(targetFields)) {
+        return {};
+    }
+    
+    const valueMap: Record<string, any> = {};
+    
+    // Find incoming edges to this target node
+    const incomingEdges = allEdges.filter(edge => edge.target === targetNodeId);
+    
+    if (incomingEdges.length === 0) {
+        return {};
+    }
+    
+    incomingEdges.forEach(edge => {
+        const sourceNode = allNodes.find(n => n.id === edge.source);
+        const targetField = targetFields.find(f => f.id === edge.targetHandle);
+        
+        if (!sourceNode || !targetField) return;
+        
+        let value: any = undefined;
+        
+        // Handle different source node types
+        if (isSourceNode(sourceNode)) {
+            value = getSourceValue(sourceNode, edge.sourceHandle);
+        } else if (sourceNode.type === 'staticValue') {
+            // Handle static value nodes
+            const staticValues = sourceNode.data?.values;
+            if (Array.isArray(staticValues)) {
+                const staticValue = staticValues.find((v: any) => v.id === edge.sourceHandle);
+                if (staticValue) {
+                    value = staticValue.value || '';
+                }
+            } else {
+                // Fallback for old single-value static nodes
+                value = sourceNode.data?.value || '';
+            }
+        }
+        
+        if (value !== undefined) {
+            valueMap[targetField.id] = value;
+        }
+    });
+    
+    return valueMap;
+};
+
 const Pipeline = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -50,24 +152,38 @@ const Pipeline = () => {
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Click outside to close functionality - improved to target canvas specifically
+  // Enhanced nodes with calculated field values for target nodes
+  const enhancedNodes = useMemo(() => {
+    return nodes.map(node => {
+      if (isTargetNode(node) && node.data?.fields) {
+        const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
+        
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            fieldValues,
+          }
+        };
+      }
+      return node;
+    });
+  }, [nodes, edges]);
+
+  // Click outside to close functionality
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       
-      // Check if click is on ReactFlow canvas area
       const reactFlowElement = reactFlowWrapper.current?.querySelector('.react-flow');
       const isCanvasClick = reactFlowElement && reactFlowElement.contains(target);
       
-      // Check if click is outside toolbar
       const toolbarElement = document.querySelector('[data-toolbar="mapping-toolbar"]');
       const isToolbarClick = toolbarElement && toolbarElement.contains(target);
       
-      // Check if click is outside manager
       const managerElement = document.querySelector('[data-toolbar="mapping-manager"]');
       const isManagerClick = managerElement && managerElement.contains(target);
       
-      // Close toolbars if clicking on canvas or outside both toolbars
       if (isCanvasClick || (!isToolbarClick && !isManagerClick)) {
         setIsToolbarExpanded(false);
         setIsManagerExpanded(false);
@@ -80,10 +196,19 @@ const Pipeline = () => {
     };
   }, []);
 
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+  const onConnect = useCallback((params: Connection) => {
+    const newEdge = {
+      ...params,
+      type: 'smoothstep',
+      animated: true,
+      style: { 
+        strokeWidth: 2,
+        stroke: '#3b82f6',
+        strokeDasharray: '5,5'
+      }
+    };
+    setEdges((eds) => addEdge(newEdge, eds));
+  }, [setEdges]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -97,12 +222,10 @@ const Pipeline = () => {
       const type = event.dataTransfer.getData('application/reactflow');
       const label = event.dataTransfer.getData('application/label');
 
-      // check if the dropped element is valid
       if (typeof type === 'undefined' || !type) {
         return;
       }
 
-      // Calculate position relative to the ReactFlow viewport
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
@@ -187,7 +310,7 @@ const Pipeline = () => {
         />
         <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow
-            nodes={nodes}
+            nodes={enhancedNodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
@@ -198,6 +321,15 @@ const Pipeline = () => {
             onInit={setReactFlowInstance}
             onDrop={onDrop}
             onDragOver={onDragOver}
+            defaultEdgeOptions={{
+              type: 'smoothstep',
+              animated: true,
+              style: { 
+                strokeWidth: 2,
+                stroke: '#3b82f6',
+                strokeDasharray: '5,5'
+              }
+            }}
           >
             <Background />
             <Controls />
