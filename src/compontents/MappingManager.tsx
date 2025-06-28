@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Download, Upload, ChevronDown, ChevronUp, Settings, Plus, Save } from 'lucide-react';
+import { Download, Upload, ChevronDown, ChevronUp, Settings, Plus, Save, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -10,7 +9,10 @@ interface MappingManagerProps {
   onImportMapping?: (file: File) => void;
   onNewMapping?: (name: string) => void;
   onSaveMapping?: (name: string) => void;
+  onExportDocumentation?: () => void;
   currentMappingName?: string;
+  isExpanded?: boolean;
+  onToggleExpanded?: (expanded: boolean) => void;
 }
 
 const MappingManager: React.FC<MappingManagerProps> = ({ 
@@ -18,13 +20,21 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   onImportMapping,
   onNewMapping,
   onSaveMapping,
-  currentMappingName = 'Untitled Mapping'
+  onExportDocumentation,
+  currentMappingName = 'Untitled Mapping',
+  isExpanded = false,
+  onToggleExpanded
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isNewMappingOpen, setIsNewMappingOpen] = useState(false);
   const [isSaveMappingOpen, setIsSaveMappingOpen] = useState(false);
   const [newMappingName, setNewMappingName] = useState('');
   const [saveMappingName, setSaveMappingName] = useState(currentMappingName);
+
+  const handleToggle = () => {
+    if (onToggleExpanded) {
+      onToggleExpanded(!isExpanded);
+    }
+  };
 
   const handleImportClick = () => {
     const input = document.createElement('input');
@@ -70,7 +80,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
             </div>
           </div>
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={handleToggle}
             className="p-1 hover:bg-gray-100 rounded"
           >
             {isExpanded ? (
@@ -187,6 +197,24 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                   >
                     <Upload className="w-4 h-4" />
                     Import Mapping
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Documentation */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Documentation:
+              </label>
+              <div className="space-y-2">
+                {onExportDocumentation && (
+                  <button
+                    onClick={onExportDocumentation}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded border border-indigo-200"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Export Documentation
                   </button>
                 )}
               </div>

@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -43,7 +42,17 @@ export interface ExecutionMapping {
   transform?: {
     type: string;
     operation?: string;
-    parameters?: Record<string, any>;
+    parameters?: {
+      sources?: string[];
+      rules?: Array<{
+        id: string;
+        priority: number;
+        outputValue: string;
+        sourceField?: string; // Add source field info to rules
+        sourceHandle?: string; // Add source handle info to rules
+      }>;
+      defaultValue?: string;
+    };
     end?: number;
     start?: number;
   };
