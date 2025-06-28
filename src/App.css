@@ -44,11 +44,21 @@
 
 /* Force standard black cursor everywhere */
 * {
-  cursor: default !important;
+  cursor: auto !important;
 }
 
+/* Specifically target ReactFlow components */
 .react-flow,
-.react-flow * {
-  cursor: default !important;
+.react-flow *,
+.react-flow__pane,
+.react-flow__renderer,
+.react-flow__container {
+  cursor: auto !important;
 }
 
+/* Override any ReactFlow internal cursor styles */
+.react-flow__node,
+.react-flow__edge,
+.react-flow__handle {
+  cursor: auto !important;
+}
