@@ -16,41 +16,20 @@ export const exportExecutionMapping = (
   
   console.log('Target nodes:', targetNodes.length);
 
-  // Helper function to find source field by handle (supports nested field names)
-  const findSourceFieldByHandle = (sourceFields: any[], handleId: string): any => {
-    if (!Array.isArray(sourceFields)) return null;
+  // Helper function to get source path from a node and handle
+  const getSourcePath = (nodeId: string, handleId: string | null): string => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || !handleId) return '';
     
-    console.log(`Searching for handle: "${handleId}" in fields:`, sourceFields.map(f => f.name || f.id));
-    
-    // First try exact ID match
-    let field = sourceFields.find((f: any) => f.id === handleId);
-    if (field) {
-      console.log(`Found exact ID match:`, field);
-      return field;
-    }
-    
-    // Then try exact name match
-    field = sourceFields.find((f: any) => f.name === handleId);
-    if (field) {
-      console.log(`Found exact name match:`, field);
-      return field;
-    }
-    
-    // For nested fields, recursively search children
-    for (const sourceField of sourceFields) {
-      if (sourceField.children && Array.isArray(sourceField.children)) {
-        const nestedField = findSourceFieldByHandle(sourceField.children, handleId);
-        if (nestedField) {
-          console.log(`Found nested field:`, nestedField);
-          return nestedField;
-        }
+    if (node.type === 'source') {
+      const nodeData = node.data as any;
+      const fields = nodeData?.fields;
+      if (Array.isArray(fields)) {
+        const field = fields.find((f: any) => f.id === handleId);
+        return field?.name || '';
       }
     }
-    
-    // If still not found, try to match by the handle itself as field name
-    // This handles cases where the handle is the actual field path like "itinerary.actual_time_of_arrival"
-    console.log(`No exact match found, using handle as field name: "${handleId}"`);
-    return { id: handleId, name: handleId };
+    return '';
   };
 
   // Process each target node to find its incoming mappings
@@ -66,13 +45,14 @@ export const exportExecutionMapping = (
           edge.target === targetNode.id && edge.targetHandle === targetField.id
         );
         
-        console.log(`Target field ${targetField.name} (${targetField.id}) has ${incomingEdges.length} incoming edges`);
+        console.log(`Target field ${targetField.name} has ${incomingEdges.length} incoming edges`);
         
         incomingEdges.forEach(edge => {
           const sourceNode = nodes.find(n => n.id === edge.source);
           if (!sourceNode) return;
           
-          console.log(`Processing edge from ${sourceNode.type} (${sourceNode.id}) to ${targetField.name}`);
+          console.log(`Processing edge from ${sourceNode.type} to ${targetField.name}`);
+          console.log('Source node data:', sourceNode.data);
           
           let mapping: ExecutionMapping;
           
@@ -80,16 +60,14 @@ export const exportExecutionMapping = (
             // Direct mapping from source to target
             const sourceData = sourceNode.data as any;
             const sourceFields = sourceData?.fields;
-            const sourceField = findSourceFieldByHandle(sourceFields, edge.sourceHandle || '');
-            
-            console.log(`Looking for source field with handle: "${edge.sourceHandle}"`);
-            console.log('Available source fields:', sourceFields);
-            console.log('Found source field:', sourceField);
+            const sourceField = Array.isArray(sourceFields) ? 
+              sourceFields.find((f: any) => f.id === edge.sourceHandle) : null;
             
             mapping = {
               from: sourceField?.name || edge.sourceHandle || '',
               to: targetField.name,
-              type: 'direct'
+              type: 'direct',
+              sourcePath: sourceField?.name || ''
             };
             
           } else if (sourceNode.type === 'staticValue') {
@@ -103,7 +81,8 @@ export const exportExecutionMapping = (
               from: null,
               to: targetField.name,
               type: 'static',
-              value: staticValue?.value || ''
+              value: staticValue?.value || '',
+              sourcePath: '' // Static values don't have source paths
             };
             
           } else if (sourceNode.type === 'ifThen') {
@@ -116,13 +95,10 @@ export const exportExecutionMapping = (
             
             // Find the input to the IF THEN node
             const ifThenInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputSourceNode = ifThenInputEdge ? nodes.find(n => n.id === ifThenInputEdge.source) : null;
-            const inputData = inputSourceNode?.data as any;
-            const inputFields = inputData?.fields;
-            const inputField = findSourceFieldByHandle(inputFields, ifThenInputEdge?.sourceHandle || '');
+            const inputSourcePath = ifThenInputEdge ? getSourcePath(ifThenInputEdge.source, ifThenInputEdge.sourceHandle) : '';
             
             mapping = {
-              from: inputField?.name || '',
+              from: inputSourcePath,
               to: targetField.name,
               type: 'ifThen',
               if: {
@@ -130,78 +106,103 @@ export const exportExecutionMapping = (
                 value: compareValue
               },
               then: thenValue,
-              else: elseValue
+              else: elseValue,
+              sourcePath: inputSourcePath
             };
             
           } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
-            // Coalesce transform mapping
-            console.log('=== PROCESSING COALESCE TRANSFORM NODE ===');
-            console.log('Coalesce node ID:', sourceNode.id);
-            console.log('Coalesce node data:', sourceNode.data);
+            // COALESCE TRANSFORM - Fixed detection and processing
+            console.log('=== PROCESSING COALESCE TRANSFORM ===');
             
             const sourceData = sourceNode.data as any;
-            
-            // Get coalesce configuration from the node data config
-            const config = sourceData?.config || {};
-            const rules = config.rules || [];
-            const defaultValue = config.defaultValue || '';
+            const coalesceConfig = sourceData?.config || {};
+            const rules = coalesceConfig?.rules || [];
+            const defaultValue = coalesceConfig?.defaultValue || '';
             
             console.log('Coalesce rules from config:', rules);
-            console.log('Coalesce defaultValue from config:', defaultValue);
+            console.log('Coalesce defaultValue:', defaultValue);
             
-            // Find all inputs to the coalesce node and build the source field mappings
+            // Find all input edges to the coalesce node
             const coalesceInputEdges = edges.filter(e => e.target === sourceNode.id);
-            console.log('=== COALESCE INPUT EDGES ===');
-            console.log('All edges going to coalesce node:', coalesceInputEdges);
+            console.log('Coalesce input edges:', coalesceInputEdges);
             
-            // Create enhanced rules with source field information
-            const enhancedRules = rules.map((rule: any) => {
-              // Find the edge that connects to this specific rule
-              const ruleEdge = coalesceInputEdges.find(edge => edge.targetHandle === rule.id);
-              
-              if (ruleEdge) {
-                const inputNode = nodes.find(n => n.id === ruleEdge.source);
-                if (inputNode && inputNode.type === 'source') {
-                  const inputData = inputNode.data as any;
-                  const inputFields = inputData?.fields;
-                  const inputField = findSourceFieldByHandle(inputFields, ruleEdge.sourceHandle || '');
-                  
-                  console.log(`Rule ${rule.id} connected to source field:`, inputField?.name || ruleEdge.sourceHandle);
-                  
-                  return {
-                    ...rule,
-                    sourceField: inputField?.name || ruleEdge.sourceHandle || '',
-                    sourceHandle: ruleEdge.sourceHandle
-                  };
-                }
+            // Create a map of rule ID to source path
+            const ruleSourcePaths: Record<string, string> = {};
+            coalesceInputEdges.forEach(inputEdge => {
+              const sourcePath = getSourcePath(inputEdge.source, inputEdge.sourceHandle);
+              if (inputEdge.targetHandle && sourcePath) {
+                ruleSourcePaths[inputEdge.targetHandle] = sourcePath;
+                console.log(`Mapped rule ${inputEdge.targetHandle} to source path: ${sourcePath}`);
               }
+            });
+            
+            console.log('Rule source paths map:', ruleSourcePaths);
+            
+            // Build enhanced rules with source paths - REMOVE id property and add sourcePath
+            const enhancedRules = rules.map((rule: any) => {
+              const sourcePath = ruleSourcePaths[rule.id] || '';
+              console.log(`Processing rule ${rule.id} -> sourcePath: ${sourcePath}`);
               
-              console.log(`Rule ${rule.id} has no source connection`);
+              // Return rule WITHOUT the id property and WITH sourcePath
               return {
-                ...rule,
-                sourceField: '',
-                sourceHandle: ''
+                priority: rule.priority,
+                outputValue: rule.outputValue,
+                sourcePath: sourcePath
               };
             });
             
-            console.log('Enhanced rules with source information:', enhancedRules);
+            console.log('Final enhanced coalesce rules:', enhancedRules);
             
             mapping = {
-              from: null, // For coalesce, we don't have a single 'from' field
+              from: '', // Keep empty for coalesce as it has multiple sources
               to: targetField.name,
               type: 'transform',
               transform: {
                 type: 'coalesce',
-                operation: 'coalesce',
                 parameters: {
-                  rules: enhancedRules, // Use enhanced rules with source field info
+                  rules: enhancedRules,
                   defaultValue: defaultValue
                 }
-              }
+              },
+              sourcePath: '' // Multiple source paths are in the rules
             };
             
-            console.log('=== FINAL COALESCE MAPPING ===');
             console.log('Created coalesce execution mapping:', mapping);
+            
+          } else if (sourceNode.type === 'transform') {
+            // Generic transform mapping
+            const sourceData = sourceNode.data as any;
+            const transformConfig = sourceData?.config || {};
+            
+            // Find the input to the transform node
+            const transformInputEdge = edges.find(e => e.target === sourceNode.id);
+            const inputSourcePath = transformInputEdge ? getSourcePath(transformInputEdge.source, transformInputEdge.sourceHandle) : '';
+            
+            const operation = transformConfig?.stringOperation || transformConfig?.operation || 'unknown';
+            let transformInfo: any = {
+              type: sourceData?.transformType || 'unknown',
+              operation,
+              parameters: transformConfig
+            };
+            
+            // Handle substring operation specifically for cleaner output
+            if (operation === 'substring') {
+              transformInfo = {
+                type: 'substring',
+                start: transformConfig.substringStart || 0
+              };
+              if (transformConfig.substringEnd !== undefined) {
+                transformInfo.end = transformConfig.substringEnd;
+              }
+            }
+            
+            mapping = {
+              from: inputSourcePath,
+              to: targetField.name,
+              type: 'transform',
+              transform: transformInfo,
+              sourcePath: inputSourcePath
+            };
             
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
@@ -217,31 +218,21 @@ export const exportExecutionMapping = (
             
             // Find the input to the conversion mapping node
             const conversionInputEdge = edges.find(e => e.target === sourceNode.id);
-            const inputNode = conversionInputEdge ? nodes.find(n => n.id === conversionInputEdge.source) : null;
-            
-            let originalSourceField: string = '';
+            let originalSourcePath: string = '';
             let transformInfo: any = null;
             
-            if (inputNode) {
-              if (inputNode.type === 'source') {
-                // Direct source to conversion mapping
-                const inputData = inputNode.data as any;
-                const inputFields = inputData?.fields;
-                const inputField = findSourceFieldByHandle(inputFields, conversionInputEdge?.sourceHandle || '');
-                originalSourceField = inputField?.name || '';
-              } else if (inputNode.type === 'transform' || inputNode.type === 'splitterTransform') {
-                // Transform node feeding into conversion mapping
+            if (conversionInputEdge) {
+              originalSourcePath = getSourcePath(conversionInputEdge.source, conversionInputEdge.sourceHandle);
+              
+              // Check if there's a transform node in the chain
+              const inputNode = nodes.find(n => n.id === conversionInputEdge.source);
+              if (inputNode && (inputNode.type === 'transform' || inputNode.type === 'splitterTransform')) {
                 const transformData = inputNode.data as any;
                 
-                // Find the input to the transform node
+                // Find the input to the transform node to get the original source
                 const transformInputEdge = edges.find(e => e.target === inputNode.id);
-                const transformSourceNode = transformInputEdge ? nodes.find(n => n.id === transformInputEdge.source) : null;
-                
-                if (transformSourceNode && transformSourceNode.type === 'source') {
-                  const transformSourceData = transformSourceNode.data as any;
-                  const transformSourceFields = transformSourceData?.fields;
-                  const transformSourceField = findSourceFieldByHandle(transformSourceFields, transformInputEdge?.sourceHandle || '');
-                  originalSourceField = transformSourceField?.name || '';
+                if (transformInputEdge) {
+                  originalSourcePath = getSourcePath(transformInputEdge.source, transformInputEdge.sourceHandle);
                   
                   // Extract transform information
                   if (inputNode.type === 'transform') {
@@ -272,11 +263,12 @@ export const exportExecutionMapping = (
             }
             
             mapping = {
-              from: originalSourceField,
+              from: originalSourcePath,
               to: targetField.name,
               type: 'map',
               map: mapObject,
-              defaultValue: 'NotMapped' // Ensure default value is always added for map type
+              defaultValue: 'NotMapped',
+              sourcePath: originalSourcePath
             };
             
             // Add transform information if present
