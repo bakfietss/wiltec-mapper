@@ -92,6 +92,7 @@ const getSourceValue = (node: any, handleId: string): any => {
     return null;
 };
 
+// Calculate field values for target nodes based on connections
 const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
     if (!targetFields || !Array.isArray(targetFields)) {
         return {};
@@ -152,10 +153,10 @@ const Pipeline = () => {
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Enhanced nodes with calculated field values for target nodes
+  // Enhanced nodes with calculated field values for target nodes and input values for coalesce nodes
   const enhancedNodes = useMemo(() => {
     return nodes.map(node => {
-      if (isTargetNode(node) && node.data?.fields) {
+      if (isTargetNode(node) && node.data?.fields && Array.isArray(node.data.fields)) {
         const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
         
         return {
@@ -163,6 +164,33 @@ const Pipeline = () => {
           data: {
             ...node.data,
             fieldValues,
+          }
+        };
+      } else if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
+        // Calculate input values for coalesce nodes to display
+        const transformInputEdges = edges.filter(e => e.target === node.id);
+        let inputValues: Record<string, any> = {};
+        
+        console.log(`=== ENHANCING COALESCE NODE ${node.id} ===`);
+        console.log('Transform input edges:', transformInputEdges);
+        
+        transformInputEdges.forEach(inputEdge => {
+          const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+          
+          if (inputSourceNode && isSourceNode(inputSourceNode)) {
+            const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+            inputValues[inputEdge.targetHandle] = sourceValue;
+            console.log(`Mapped input for coalesce: ${inputEdge.targetHandle} = ${sourceValue}`);
+          }
+        });
+        
+        console.log('Final input values for coalesce node:', inputValues);
+        
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            inputValues,
           }
         };
       }
