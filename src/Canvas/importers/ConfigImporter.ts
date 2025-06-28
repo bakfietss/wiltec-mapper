@@ -18,8 +18,8 @@ export const importMappingConfiguration = (
       position: src.position,
       data: {
         label: src.label,
-        fields: src.schema?.fields || [], // Import schema fields directly
-        data: src.sampleData || [], // Sample data array
+        fields: src.schema.fields,
+        data: src.sampleData,
         schemaType: 'source'
       }
     };
@@ -31,7 +31,7 @@ export const importMappingConfiguration = (
   config.nodes.targets.forEach(tgt => {
     const nodeData: any = {
       label: tgt.label,
-      fields: tgt.schema?.fields || [],
+      fields: tgt.schema.fields,
       data: tgt.outputData ?? [],
       schemaType: 'target'
     };
@@ -48,37 +48,11 @@ export const importMappingConfiguration = (
     nodeMap.set(tgt.id, node);
   });
 
-  // 3. Transforms - Fixed coalesce handling with proper type checking
+  // 3. Transforms
   config.nodes.transforms.forEach(tx => {
     let node: Node;
     
-    console.log('Processing transform:', tx.id, 'transformType:', tx.transformType);
-    
     if (tx.transformType === 'coalesce') {
-      console.log('FOUND COALESCE TRANSFORM:', tx.id);
-      
-      // Extract rules from either nodeData or config, with proper type checking
-      let rules: any[] = [];
-      
-      if ((tx as any).nodeData && typeof (tx as any).nodeData === 'object') {
-        const nodeData = (tx as any).nodeData;
-        if (Array.isArray(nodeData.rules)) {
-          rules = nodeData.rules;
-        }
-      }
-      
-      if (rules.length === 0 && tx.config && typeof tx.config === 'object') {
-        const configObj = tx.config as any;
-        if (configObj.parameters && typeof configObj.parameters === 'object') {
-          if (Array.isArray(configObj.parameters.rules)) {
-            rules = configObj.parameters.rules;
-          }
-        }
-      }
-      
-      console.log('Extracted rules for coalesce:', rules);
-      
-      // Create transform node with coalesce data
       node = {
         id: tx.id,
         type: 'transform',
@@ -87,17 +61,13 @@ export const importMappingConfiguration = (
           label: tx.label,
           transformType: 'coalesce',
           config: {
-            rules: rules,
-            defaultValue: ''
+            rules: tx.config?.rules || [],
+            defaultValue: tx.config?.defaultValue || ''
           }
         }
       };
     } else if (tx.transformType === 'ifThen' || tx.transformType === 'IF THEN') {
-      const rawConfig = (tx.config ?? {}) as any;
-      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
-        ? rawConfig.parameters
-        : rawConfig;
-      
+      const params = (tx.config?.parameters as any) ?? {};
       node = {
         id: tx.id,
         type: 'ifThen',
@@ -111,11 +81,7 @@ export const importMappingConfiguration = (
         }
       };
     } else if (tx.transformType === 'staticValue' || tx.transformType === 'Static Value') {
-      const rawConfig = (tx.config ?? {}) as any;
-      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
-        ? rawConfig.parameters
-        : rawConfig;
-      
+      const params = (tx.config?.parameters as any) ?? {};
       node = {
         id: tx.id,
         type: 'staticValue',
@@ -126,11 +92,7 @@ export const importMappingConfiguration = (
         }
       };
     } else if (tx.transformType === 'splitterTransform' || tx.transformType === 'Text Splitter') {
-      const rawConfig = (tx.config ?? {}) as any;
-      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
-        ? rawConfig.parameters
-        : rawConfig;
-      
+      const params = (tx.config?.parameters as any) ?? {};
       node = {
         id: tx.id,
         type: 'splitterTransform',
@@ -175,7 +137,7 @@ export const importMappingConfiguration = (
     nodeMap.set(mp.id, node);
   });
 
-  // 5. Original Connections - restore basic connections first
+  // 5. Connections - use nodeMap for O(1) lookup instead of O(n) find operations
   config.connections.forEach(conn => {
     const src = nodeMap.get(conn.sourceNodeId);
     const tgt = nodeMap.get(conn.targetNodeId);
@@ -194,36 +156,5 @@ export const importMappingConfiguration = (
     }
   });
 
-  console.log('Import completed:', { 
-    nodesCount: nodes.length, 
-    edgesCount: edges.length,
-    sourceNodes: nodes.filter(n => n.type === 'source').map(n => ({ 
-      id: n.id, 
-      fields: (n.data?.fields && Array.isArray(n.data.fields)) ? n.data.fields.length : 0,
-      sampleData: (n.data?.data && Array.isArray(n.data.data)) ? n.data.data.length : 0
-    }))
-  });
-
   return { nodes, edges };
-};
-
-// Helper function to check if a field exists in source fields (including nested) - improved matching
-const findFieldInSource = (fields: any[], handleId: string): boolean => {
-  if (!Array.isArray(fields)) return false;
-  
-  for (const field of fields) {
-    // Check exact ID match
-    if (field.id === handleId) return true;
-    // Check exact name match
-    if (field.name === handleId) return true;
-    // Check partial matches for flexibility
-    if (field.id && field.id.includes(handleId)) return true;
-    if (field.name && field.name.includes(handleId)) return true;
-    // Check nested children
-    if (field.children && Array.isArray(field.children)) {
-      if (findFieldInSource(field.children, handleId)) return true;
-    }
-  }
-  
-  return false;
 };
