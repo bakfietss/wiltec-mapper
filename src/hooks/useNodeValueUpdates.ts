@@ -43,7 +43,86 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
     return updatedNodes;
 };
 
-// Calculate target node field values
+// Helper function to find field by ID recursively
+const findFieldById = (fields: any[], fieldId: string): any => {
+    for (const field of fields) {
+        if (field.id === fieldId) {
+            return field;
+        }
+        if (field.children) {
+            const childField = findFieldById(field.children, fieldId);
+            if (childField) {
+                return childField;
+            }
+        }
+    }
+    return null;
+};
+
+// Helper function to set nested value in target data object
+const setNestedValue = (obj: any, field: any, value: any, allFields: any[]) => {
+    // For root level fields, set directly
+    if (!field.parent) {
+        obj[field.name] = value;
+        return;
+    }
+    
+    // For nested fields, we need to build the path
+    const pathParts = [];
+    let currentField = field;
+    
+    // Build path from current field up to root
+    while (currentField) {
+        pathParts.unshift(currentField.name);
+        if (currentField.parent) {
+            currentField = findFieldById(allFields, currentField.parent);
+        } else {
+            break;
+        }
+    }
+    
+    // Create nested structure
+    let current = obj;
+    for (let i = 0; i < pathParts.length - 1; i++) {
+        const part = pathParts[i];
+        if (!current[part]) {
+            // Determine if this should be an object or array based on field type
+            const fieldForPart = findFieldRecursiveByName(allFields, part);
+            current[part] = fieldForPart?.type === 'array' ? [] : {};
+        }
+        current = current[part];
+        
+        // Handle array case - if it's an array, we typically want the first element
+        if (Array.isArray(current) && current.length === 0) {
+            current.push({});
+            current = current[0];
+        } else if (Array.isArray(current)) {
+            current = current[0];
+        }
+    }
+    
+    // Set the final value
+    const finalPart = pathParts[pathParts.length - 1];
+    current[finalPart] = value;
+};
+
+// Helper to find field by name recursively
+const findFieldRecursiveByName = (fields: any[], name: string): any => {
+    for (const field of fields) {
+        if (field.name === name) {
+            return field;
+        }
+        if (field.children) {
+            const childField = findFieldRecursiveByName(field.children, name);
+            if (childField) {
+                return childField;
+            }
+        }
+    }
+    return null;
+};
+
+// Calculate target node field values - ENHANCED for nested fields
 const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) => {
     const fields = targetNode.data.fields;
     const valueMap: Record<string, any> = {};
@@ -72,11 +151,12 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
     
     incomingEdges.forEach(edge => {
         const sourceNode = nodes.find(n => n.id === edge.source);
-        const targetField = fields.find((f: any) => f.id === edge.targetHandle);
+        // Use recursive field finder to handle nested fields
+        const targetField = findFieldById(fields, edge.targetHandle);
         
         console.log('Processing edge:', edge);
         console.log('Source node:', sourceNode?.id, sourceNode?.type);
-        console.log('Target field:', targetField?.name);
+        console.log('Target field:', targetField?.name, 'Field ID:', edge.targetHandle);
         
         if (sourceNode && targetField) {
             let value: any = undefined;
@@ -97,9 +177,15 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
             
             if (value !== undefined && value !== null && value !== '') {
                 valueMap[targetField.id] = value;
-                newTargetData[targetField.name] = value;
+                
+                // Set value in the target data object (handles nested paths)
+                setNestedValue(newTargetData, targetField, value, fields);
+                
                 console.log('Set value for field:', targetField.name, '=', value);
+                console.log('Target data structure after setting:', JSON.stringify(newTargetData, null, 2));
             }
+        } else {
+            console.log('Could not find source node or target field for edge:', edge);
         }
     });
     
