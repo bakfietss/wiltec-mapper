@@ -1,3 +1,4 @@
+
 import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
@@ -96,8 +97,8 @@ const getSourceValue = (node: any, handleId: string): any => {
 
 // Apply coalesce transformation - now using standard config structure
 const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: any): any => {
-  const rules = nodeData?.config?.rules || [];
-  const defaultValue = nodeData?.config?.defaultValue || '';
+  const rules = nodeData?.config?.rules || nodeData?.rules || [];
+  const defaultValue = nodeData?.config?.defaultValue || nodeData?.defaultValue || '';
   
   console.log('=== COALESCE TRANSFORM DEBUG ===');
   console.log('Input values received:', inputValues);
@@ -172,7 +173,7 @@ const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], a
             
             console.log('Final input values for coalesce:', inputValues);
             
-            if (Object.keys(inputValues).length > 0 || sourceNode.data?.config?.rules?.length > 0) {
+            if (Object.keys(inputValues).length > 0 || sourceNode.data?.config?.rules?.length > 0 || sourceNode.data?.rules?.length > 0) {
                 value = applyCoalesceTransform(inputValues, sourceNode.data);
                 console.log('Coalesce transform result:', value);
             }
@@ -298,6 +299,25 @@ const Pipeline = () => {
     setEdges((eds) => addEdge(newEdge, eds));
   }, [setEdges]);
 
+  // Enhanced onEdgesChange to handle connection removal and update field values
+  const handleEdgesChange = useCallback((changes: any[]) => {
+    console.log('Edge changes:', changes);
+    
+    // Check if any edges are being removed
+    const removedEdges = changes.filter(change => change.type === 'remove');
+    
+    if (removedEdges.length > 0) {
+      console.log('Edges being removed:', removedEdges);
+      
+      // Force recalculation of target field values by triggering a nodes update
+      // This will cause the useMemo for enhancedNodes to recalculate
+      setNodes(currentNodes => [...currentNodes]);
+    }
+    
+    // Apply the edge changes normally
+    onEdgesChange(changes);
+  }, [onEdgesChange, setNodes]);
+
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
@@ -401,7 +421,7 @@ const Pipeline = () => {
             nodes={enhancedNodes}
             edges={edges}
             onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
+            onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
             fitView

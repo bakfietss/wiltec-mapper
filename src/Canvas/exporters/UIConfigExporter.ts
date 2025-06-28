@@ -161,28 +161,56 @@ export const exportUIMappingConfiguration = (
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
       
-      // Extract rules from the node data, including priority and output values
-      const nodeRules = node.data?.rules || [];
-      // Fix: Ensure nodeRules is an array before calling map
-      const processedRules = Array.isArray(nodeRules) ? nodeRules.map((rule: any) => ({
-        id: rule.id,
-        priority: rule.priority || 1,
-        outputValue: rule.outputValue || '',
-        sourceField: rule.sourceField || '',
-        sourceHandle: rule.sourceHandle || rule.sourceField || ''
-      })) : [];
+      // Get the actual rules from the node's current data
+      // The rules should be in node.data.rules or node.data.config.rules
+      const nodeRules = node.data?.rules || node.data?.config?.rules || [];
+      console.log('Raw node rules:', nodeRules);
+      
+      // If rules are empty, try to build them from connections and inputValues
+      let processedRules = [];
+      
+      if (Array.isArray(nodeRules) && nodeRules.length > 0) {
+        // Use existing rules
+        processedRules = nodeRules.map((rule: any) => ({
+          id: rule.id,
+          priority: rule.priority || 1,
+          outputValue: rule.outputValue || '',
+          sourceField: rule.sourceField || '',
+          sourceHandle: rule.sourceHandle || rule.sourceField || ''
+        }));
+      } else {
+        // Build rules from connections and inputValues
+        const incomingEdges = edges.filter(edge => edge.target === node.id);
+        console.log('Building rules from connections:', incomingEdges);
+        
+        processedRules = incomingEdges.map((edge, index) => {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const sourceFieldName = edge.sourceHandle;
+          
+          // Try to find existing rule with this ID or create new one
+          const existingRule = nodeRules.find((r: any) => r.id === edge.targetHandle);
+          
+          return {
+            id: edge.targetHandle || `rule-${Date.now()}-${index}`,
+            priority: index + 1,
+            outputValue: existingRule?.outputValue || `Value ${index + 1}`, // Use existing or default
+            sourceField: sourceFieldName || '',
+            sourceHandle: sourceFieldName || ''
+          };
+        }).sort((a, b) => a.priority - b.priority);
+      }
       
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
           rules: processedRules,
-          defaultValue: node.data?.defaultValue || '',
+          defaultValue: node.data?.defaultValue || node.data?.config?.defaultValue || '',
           outputType: node.data?.outputType || 'value'
         }
       };
       transformConfig.nodeData = {
         rules: processedRules,
-        defaultValue: node.data?.defaultValue || '',
+        defaultValue: node.data?.defaultValue || node.data?.config?.defaultValue || '',
         outputType: node.data?.outputType || 'value',
         inputValues: node.data?.inputValues || {}
       };
