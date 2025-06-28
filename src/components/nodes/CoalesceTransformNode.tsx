@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitMerge, Plus, Trash2 } from 'lucide-react';
@@ -17,13 +18,44 @@ interface CoalesceTransformData {
   config: {
     rules: CoalesceRule[];
     defaultValue: string;
+    // Support legacy import structure
+    parameters?: {
+      rules?: CoalesceRule[];
+      defaultValue?: string;
+    };
   };
   inputValues?: Record<string, any>;
 }
 
 const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string }> = ({ data, id }) => {
-  const [rules, setRules] = useState<CoalesceRule[]>(data.config?.rules || []);
-  const [defaultValue, setDefaultValue] = useState(data.config?.defaultValue || '');
+  // Initialize rules from config, handling different config structures
+  const initializeRules = () => {
+    if (data.config?.rules && Array.isArray(data.config.rules)) {
+      return data.config.rules;
+    }
+    // Handle legacy config structure from imports
+    if (data.config?.parameters?.rules && Array.isArray(data.config.parameters.rules)) {
+      return data.config.parameters.rules.map((rule: any, index: number) => ({
+        id: rule.id || `rule-${Date.now()}-${index}`,
+        priority: rule.priority || index + 1,
+        outputValue: rule.outputValue || `Value ${index + 1}`
+      }));
+    }
+    return [];
+  };
+
+  const initializeDefaultValue = () => {
+    if (data.config?.defaultValue) {
+      return data.config.defaultValue;
+    }
+    if (data.config?.parameters?.defaultValue) {
+      return data.config.parameters.defaultValue;
+    }
+    return '';
+  };
+
+  const [rules, setRules] = useState<CoalesceRule[]>(initializeRules());
+  const [defaultValue, setDefaultValue] = useState(initializeDefaultValue());
   const inputValues = data.inputValues || {};
 
   console.log('=== COALESCE NODE RENDER ===');
@@ -31,6 +63,7 @@ const CoalesceTransformNode: React.FC<{ data: CoalesceTransformData; id: string 
   console.log('Rules:', rules);
   console.log('Default value:', defaultValue);
   console.log('Input values:', inputValues);
+  console.log('Config:', data.config);
 
   // Sync changes back to React Flow using standard config structure
   useNodeDataSync(id, { 
