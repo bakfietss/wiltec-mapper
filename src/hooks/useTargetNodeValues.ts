@@ -15,6 +15,16 @@ interface CoalesceRule {
     outputValue: string;
 }
 
+interface CoalesceNodeData {
+    rules?: CoalesceRule[];
+    config?: {
+        rules?: CoalesceRule[];
+        defaultValue?: string;
+    };
+    defaultValue?: string;
+    [key: string]: any;
+}
+
 const getSourceValue = (node: any, handleId: string): any => {
     if (node.type !== 'source') return null;
     
@@ -63,7 +73,7 @@ const getSourceValue = (node: any, handleId: string): any => {
 };
 
 // Apply coalesce transformation - same logic as in Pipeline.tsx
-const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: any): any => {
+const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: CoalesceNodeData): any => {
   const rules = nodeData?.rules || nodeData?.config?.rules || [];
   const defaultValue = nodeData?.defaultValue || nodeData?.config?.defaultValue || '';
   
@@ -141,12 +151,12 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                         }
                     });
                     
-                    // Fix: Properly type check the rules property
-                    const nodeRules = sourceNode.data?.rules || sourceNode.data?.config?.rules;
-                    const rules: CoalesceRule[] = Array.isArray(nodeRules) ? nodeRules : [];
+                    // Fix: Properly type the node data
+                    const coalesceData = sourceNode.data as CoalesceNodeData;
+                    const rules: CoalesceRule[] = coalesceData?.rules || coalesceData?.config?.rules || [];
                     
                     if (Object.keys(inputValues).length > 0 || rules.length > 0) {
-                        value = applyCoalesceTransform(inputValues, sourceNode.data);
+                        value = applyCoalesceTransform(inputValues, coalesceData);
                         console.log('Coalesce transform result:', value);
                     }
                 }
