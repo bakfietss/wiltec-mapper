@@ -9,6 +9,12 @@ interface SchemaField {
     children?: SchemaField[];
 }
 
+interface CoalesceRule {
+    id: string;
+    priority: number;
+    outputValue: string;
+}
+
 const getSourceValue = (node: any, handleId: string): any => {
     if (node.type !== 'source') return null;
     
@@ -135,9 +141,11 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                         }
                     });
                     
-                    // Fix: Check if rules exist and is an array before accessing length
-                    const rules = sourceNode.data?.rules || sourceNode.data?.config?.rules;
-                    if (Object.keys(inputValues).length > 0 || (Array.isArray(rules) && rules.length > 0)) {
+                    // Fix: Properly type check the rules property
+                    const nodeRules = sourceNode.data?.rules || sourceNode.data?.config?.rules;
+                    const rules: CoalesceRule[] = Array.isArray(nodeRules) ? nodeRules : [];
+                    
+                    if (Object.keys(inputValues).length > 0 || rules.length > 0) {
                         value = applyCoalesceTransform(inputValues, sourceNode.data);
                         console.log('Coalesce transform result:', value);
                     }
