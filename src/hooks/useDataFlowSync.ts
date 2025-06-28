@@ -13,40 +13,80 @@ export const useDataFlowSync = () => {
     const nodes = getNodes();
     const edges = getEdges();
     
+    console.log('=== DATA FLOW SYNC ===');
+    console.log('Total nodes:', nodes.length);
+    console.log('Total edges:', edges.length);
+    
     // Find all target nodes and update their field values
     const targetNodes = nodes.filter(node => node.type === 'target');
+    console.log('Target nodes found:', targetNodes.length);
     
     targetNodes.forEach(targetNode => {
       const incomingEdges = edges.filter(edge => edge.target === targetNode.id);
+      console.log(`Target node ${targetNode.id} has ${incomingEdges.length} incoming edges`);
+      
       const fieldValues: Record<string, any> = {};
       
       incomingEdges.forEach(edge => {
+        console.log('Processing edge:', edge);
+        
         const sourceNode = nodes.find(n => n.id === edge.source);
-        if (!sourceNode) return;
+        if (!sourceNode) {
+          console.log('Source node not found for edge:', edge.source);
+          return;
+        }
         
         const targetFieldId = edge.targetHandle;
-        if (!targetFieldId) return;
+        console.log('Target field ID:', targetFieldId);
+        
+        if (!targetFieldId) {
+          console.log('No target handle found');
+          return;
+        }
         
         let value: any = undefined;
         
         // Handle different source node types
         if (sourceNode.type === 'source' && sourceNode.data) {
+          console.log('Processing source node:', sourceNode.type);
+          
           // Get value from source data
           const sourceFieldPath = edge.sourceHandle;
-          if (sourceFieldPath && sourceNode.data.data && Array.isArray(sourceNode.data.data) && sourceNode.data.data.length > 0) {
-            value = getNestedValue(sourceNode.data.data[0], sourceFieldPath);
+          console.log('Source field path:', sourceFieldPath);
+          
+          if (sourceFieldPath) {
+            // Check if it's a manual field first
+            if (sourceNode.data.fields && Array.isArray(sourceNode.data.fields)) {
+              const manualField = sourceNode.data.fields.find((f: any) => f.id === sourceFieldPath);
+              if (manualField) {
+                value = manualField.exampleValue;
+                console.log('Found manual field value:', value);
+              }
+            }
+            
+            // If no manual field value, check data
+            if (value === undefined && sourceNode.data.data && Array.isArray(sourceNode.data.data) && sourceNode.data.data.length > 0) {
+              value = getNestedValue(sourceNode.data.data[0], sourceFieldPath);
+              console.log('Found data field value:', value);
+            }
           }
         } else if (sourceNode.type === 'staticValue' && sourceNode.data?.value) {
           value = sourceNode.data.value;
+          console.log('Found static value:', value);
         } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
           // For coalesce transforms, we need to evaluate the rules
           value = evaluateCoalesceTransform(sourceNode, nodes, edges);
+          console.log('Found coalesce value:', value);
         }
+        
+        console.log('Final value for field', targetFieldId, ':', value);
         
         if (value !== undefined) {
           fieldValues[targetFieldId] = value;
         }
       });
+      
+      console.log('Setting field values for target node:', fieldValues);
       
       // Update target node with field values
       setNodes(nodes => 
