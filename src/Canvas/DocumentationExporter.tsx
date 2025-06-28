@@ -60,7 +60,7 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
     edges.forEach(edge => {
       if (edge.source === sourceNodeId && edge.sourceHandle) {
         const sourceNode = nodes.find(n => n.id === sourceNodeId);
-        if (sourceNode?.data?.fields && Array.isArray(sourceNode.data.fields)) {
+        if (sourceNode?.data?.fields) {
           const field = sourceNode.data.fields.find((f: any) => f.id === edge.sourceHandle);
           if (field?.name && !usedFields.includes(field.name)) {
             usedFields.push(field.name);
@@ -73,23 +73,23 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
 
   // Extract source schemas
   const sourceSchemas: SourceSchemaDoc[] = sourceNodes.map(node => ({
-    nodeName: (node.data?.label as string) || 'Unnamed Source',
-    fields: Array.isArray(node.data?.fields) ? (node.data.fields as any[]).map((field: any) => ({
-      name: field.name || 'Unknown',
-      type: field.type || 'string',
+    nodeName: node.data?.label || 'Unnamed Source',
+    fields: (node.data?.fields || []).map((field: any) => ({
+      name: field.name,
+      type: field.type,
       children: field.children || []
-    })) : [],
+    })),
     usedFields: getUsedSourceFields(node.id)
   }));
 
   // Extract target schemas
   const targetSchemas: TargetSchemaDoc[] = targetNodes.map(node => ({
-    nodeName: (node.data?.label as string) || 'Unnamed Target',
-    fields: Array.isArray(node.data?.fields) ? (node.data.fields as any[]).map((field: any) => ({
-      name: field.name || 'Unknown',
-      type: field.type || 'string',
+    nodeName: node.data?.label || 'Unnamed Target',
+    fields: (node.data?.fields || []).map((field: any) => ({
+      name: field.name,
+      type: field.type,
       children: field.children || []
-    })) : []
+    }))
   }));
 
   // Extract transformations
@@ -109,10 +109,9 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
         };
         break;
       case 'staticValue':
-        const values = Array.isArray(node.data?.values) ? node.data.values : [];
-        description = `Static value assignment with ${values.length} predefined values`;
+        description = `Static value assignment with ${(node.data?.values || []).length} predefined values`;
         configuration = {
-          values: values
+          values: node.data?.values || []
         };
         break;
       case 'splitterTransform':
@@ -123,10 +122,9 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
         };
         break;
       case 'conversionMapping':
-        const mappings = Array.isArray(node.data?.mappings) ? node.data.mappings : [];
-        description = `Value conversion mapping with ${mappings.length} rules`;
+        description = `Value conversion mapping with ${(node.data?.mappings || []).length} rules`;
         rules = {
-          mappings: mappings
+          mappings: node.data?.mappings || []
         };
         break;
       case 'transform':
@@ -157,11 +155,8 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
       // Get field names
       const getFieldName = (node: Node, handleId: string | null) => {
         if (!handleId) return 'Unknown';
-        if (Array.isArray(node.data?.fields)) {
-          const field = node.data.fields.find((f: any) => f.id === handleId);
-          return field?.name || handleId;
-        }
-        return handleId;
+        const field = node.data?.fields?.find((f: any) => f.id === handleId);
+        return field?.name || handleId;
       };
 
       const sourceFieldName = getFieldName(sourceNode, edge.sourceHandle);
@@ -192,9 +187,9 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
             
             mappingRules.push({
               sourceField: sourceFieldName,
-              sourceNode: (sourceNode.data?.label as string) || 'Unnamed Source',
+              sourceNode: sourceNode.data?.label || 'Unnamed Source',
               targetField: finalTargetFieldName,
-              targetNode: (finalTarget.data?.label as string) || 'Unnamed Target',
+              targetNode: finalTarget.data?.label || 'Unnamed Target',
               mappingType: targetNode.type === 'staticValue' ? 'static' : 
                           ['ifThen'].includes(targetNode.type || '') ? 'conditional' : 'transformed',
               transformationId: targetNode.id
@@ -204,9 +199,9 @@ const analyzeMapping = (nodes: Node[], edges: Edge[]): DocumentationConfig => {
       } else {
         mappingRules.push({
           sourceField: sourceFieldName,
-          sourceNode: (sourceNode.data?.label as string) || 'Unnamed Source',
+          sourceNode: sourceNode.data?.label || 'Unnamed Source',
           targetField: targetFieldName,
-          targetNode: (targetNode.data?.label as string) || 'Unnamed Target',
+          targetNode: targetNode.data?.label || 'Unnamed Target',
           mappingType,
           transformationId
         });
