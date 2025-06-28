@@ -18,6 +18,11 @@ interface CoalesceTransformData {
   config: {
     rules: CoalesceRule[];
     defaultValue: string;
+    // Support legacy import structure
+    parameters?: {
+      rules?: CoalesceRule[];
+      defaultValue?: string;
+    };
   };
   inputValues?: Record<string, any>;
 }
