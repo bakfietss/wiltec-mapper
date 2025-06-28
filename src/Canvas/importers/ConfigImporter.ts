@@ -61,7 +61,7 @@ export const importMappingConfiguration = (
       if (tx.config?.rules && Array.isArray(tx.config.rules)) {
         rules = tx.config.rules;
       } else if (tx.config?.parameters && typeof tx.config.parameters === 'object' && tx.config.parameters !== null) {
-        const params = tx.config.parameters as any;
+        const params = tx.config.parameters as Record<string, any>;
         if (params.rules && Array.isArray(params.rules)) {
           rules = params.rules;
         }
@@ -71,7 +71,7 @@ export const importMappingConfiguration = (
       if (tx.config?.defaultValue) {
         defaultValue = tx.config.defaultValue;
       } else if (tx.config?.parameters && typeof tx.config.parameters === 'object' && tx.config.parameters !== null) {
-        const params = tx.config.parameters as any;
+        const params = tx.config.parameters as Record<string, any>;
         if (params.defaultValue) {
           defaultValue = params.defaultValue;
         }
