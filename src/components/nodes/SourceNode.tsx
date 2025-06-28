@@ -156,6 +156,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </NodeEditSheet>
             </div>
 
+            {/* Only show output handles for source nodes, no input handles */}
             <GenericSchemaRenderer
                 fields={schemaHandler.fields}
                 handleType="source"
