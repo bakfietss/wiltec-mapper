@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/useNotifications';
+import { useToast } from '@/hooks/use-toast';
 
 const UserHeader = () => {
   const { user, logout } = useAuth();

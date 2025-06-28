@@ -1,9 +1,7 @@
-
-import React, { useState } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import React, { useState, useCallback } from 'react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Scissors } from 'lucide-react';
-import NodeEditSheet from '../NodeEditSheet';
-import { useNodeUpdater } from '../../hooks/useNodeUpdater';
+import NodeEditSheet from './NodeEditSheet';
 
 interface SplitterConfig {
   delimiter?: string;
@@ -19,14 +17,31 @@ interface SplitterTransformNodeData {
 }
 
 const SplitterTransformNode: React.FC<{ data: SplitterTransformNodeData; id: string }> = ({ data, id }) => {
-  const { updateNodeConfig } = useNodeUpdater(id);
+  const { setNodes } = useReactFlow();
   const [config, setConfig] = useState<SplitterConfig>(data.config || { delimiter: ',', index: 0 });
   const { label, description } = data;
+  
+  const updateNodeData = useCallback((newConfig: SplitterConfig) => {
+    console.log('Updating splitter node config:', newConfig);
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                config: newConfig,
+              },
+            }
+          : node
+      )
+    );
+  }, [id, setNodes]);
   
   const updateConfig = (updates: Partial<SplitterConfig>) => {
     const newConfig = { ...config, ...updates };
     setConfig(newConfig);
-    updateNodeConfig(newConfig);
+    updateNodeData(newConfig);
   };
   
   return (

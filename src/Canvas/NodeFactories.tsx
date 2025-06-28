@@ -1,14 +1,14 @@
 
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
-import SourceNode from '../components/nodes/SourceNode';
-import TargetNode from '../components/nodes/TargetNode';
-import TransformNode from '../components/nodes/TransformNode';
-import SplitterTransformNode from '../components/nodes/SplitterTransformNode';
-import IfThenNode from '../components/nodes/IfThenNode';
-import StaticValueNode from '../components/nodes/StaticValueNode';
-import ConversionMappingNode from '../components/nodes/ConversionMappingNode';
-import CoalesceTransformNode from '../components/nodes/CoalesceTransformNode';
+import SourceNode from '../compontents/SourceNode';
+import TargetNode from '../compontents/TargetNode';
+import TransformNode from '../compontents/TransformNode';
+import SplitterTransformNode from '../compontents/SplitterTransformNode';
+import IfThenNode from '../compontents/IfThenNode';
+import StaticValueNode from '../compontents/StaticValueNode';
+import ConversionMappingNode from '../compontents/ConversionMappingNode';
+import CoalesceTransformNode from '../compontents/CoalesceTransformNode';
 
 export const nodeTypes = {
   source: SourceNode,
@@ -28,7 +28,7 @@ export const useNodeFactories = (
     const addSchemaNode = useCallback((type: 'source' | 'target') => {
         const newNode: Node = {
             id: `${type}-${Date.now()}`,
-            type: type,
+            type: type, // Use 'source' or 'target' instead of 'editableSchema'
             position: { x: type === 'source' ? 100 : 800, y: 100 + nodes.length * 50 },
             data: {
                 label: type === 'source' ? 'Source Schema' : 'Target Schema',
@@ -71,15 +71,13 @@ export const useNodeFactories = (
                 valueType: 'string',
             };
         } else if (transformType === 'Coalesce') {
-            nodeType = 'coalesceTransform';
+            nodeType = 'transform';
             nodeIdPrefix = 'coalesce';
             nodeData = {
                 label: 'Coalesce Transform',
                 transformType: 'coalesce',
-                config: {
-                    rules: [],
-                    defaultValue: ''
-                }
+                rules: [],
+                defaultValue: '',
             };
         }
         

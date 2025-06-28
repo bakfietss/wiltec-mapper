@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration, SourceNodeConfig, TargetNodeConfig } from '../types/MappingTypes';
 import { buildExecutionSteps } from '../utils/ExecutionStepBuilder';
@@ -161,43 +160,17 @@ export const exportUIMappingConfiguration = (
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
       
-      // Extract rules from config structure with proper type guards
-      let rules: any[] = [];
-      let defaultValue = '';
-      
-      // Check if node.data exists and is an object
-      if (node.data && typeof node.data === 'object') {
-        // Check for rules in config
-        if ('config' in node.data && node.data.config && typeof node.data.config === 'object') {
-          const config = node.data.config as Record<string, any>;
-          if ('rules' in config && Array.isArray(config.rules)) {
-            rules = config.rules;
-          }
-          if ('defaultValue' in config && typeof config.defaultValue === 'string') {
-            defaultValue = config.defaultValue;
-          }
-        }
-        
-        // Fallback to direct properties on node.data
-        if (rules.length === 0 && 'rules' in node.data && Array.isArray(node.data.rules)) {
-          rules = node.data.rules;
-        }
-        if (!defaultValue && 'defaultValue' in node.data && typeof node.data.defaultValue === 'string') {
-          defaultValue = node.data.defaultValue;
-        }
-      }
-      
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
-          rules: rules,
-          defaultValue: defaultValue,
+          rules: node.data?.rules || [],
+          defaultValue: node.data?.defaultValue || '',
           outputType: node.data?.outputType || 'value'
         }
       };
       transformConfig.nodeData = {
-        rules: rules,
-        defaultValue: defaultValue,
+        rules: node.data?.rules || [],
+        defaultValue: node.data?.defaultValue || '',
         outputType: node.data?.outputType || 'value',
         inputValues: node.data?.inputValues || {}
       };
