@@ -135,7 +135,9 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                         }
                     });
                     
-                    if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0) {
+                    // Fix: Check if rules exist and is an array before accessing length
+                    const rules = sourceNode.data?.rules || sourceNode.data?.config?.rules;
+                    if (Object.keys(inputValues).length > 0 || (Array.isArray(rules) && rules.length > 0)) {
                         value = applyCoalesceTransform(inputValues, sourceNode.data);
                         console.log('Coalesce transform result:', value);
                     }
