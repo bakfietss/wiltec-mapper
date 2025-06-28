@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Download, Upload, ChevronDown, ChevronUp, Settings, Plus, Save, FileText } from 'lucide-react';
+import { Download, Upload, ChevronDown, ChevronUp, Settings, Plus, Save } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -10,7 +10,6 @@ interface MappingManagerProps {
   onImportMapping?: (file: File) => void;
   onNewMapping?: (name: string) => void;
   onSaveMapping?: (name: string) => void;
-  onExportDocumentation?: () => void;
   currentMappingName?: string;
 }
 
@@ -19,7 +18,6 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   onImportMapping,
   onNewMapping,
   onSaveMapping,
-  onExportDocumentation,
   currentMappingName = 'Untitled Mapping'
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -189,24 +187,6 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                   >
                     <Upload className="w-4 h-4" />
                     Import Mapping
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Documentation */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Documentation:
-              </label>
-              <div className="space-y-2">
-                {onExportDocumentation && (
-                  <button
-                    onClick={onExportDocumentation}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded border border-indigo-200"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Export Documentation
                   </button>
                 )}
               </div>
