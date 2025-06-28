@@ -122,6 +122,59 @@ const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: any)
   return defaultValue;
 };
 
+// Centralized function to calculate all node field values
+const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
+    console.log('=== CALCULATING ALL NODE FIELD VALUES ===');
+    console.log('Total nodes:', nodes.length);
+    console.log('Total edges:', edges.length);
+    
+    const updatedNodes = nodes.map(node => {
+        if (isTargetNode(node) && node.data?.fields && Array.isArray(node.data.fields)) {
+            const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
+            
+            console.log(`Target node ${node.id} field values:`, fieldValues);
+            
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    fieldValues,
+                }
+            };
+        } else if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
+            // Calculate input values for coalesce nodes to display
+            const transformInputEdges = edges.filter(e => e.target === node.id);
+            let inputValues: Record<string, any> = {};
+            
+            console.log(`=== ENHANCING COALESCE NODE ${node.id} ===`);
+            console.log('Transform input edges:', transformInputEdges.length);
+            
+            transformInputEdges.forEach(inputEdge => {
+                const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+                
+                if (inputSourceNode && isSourceNode(inputSourceNode)) {
+                    const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                    inputValues[inputEdge.targetHandle] = sourceValue;
+                    console.log(`Mapped input for coalesce: ${inputEdge.targetHandle} = ${sourceValue}`);
+                }
+            });
+            
+            console.log('Final input values for coalesce node:', inputValues);
+            
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    inputValues,
+                }
+            };
+        }
+        return node;
+    });
+    
+    return updatedNodes;
+};
+
 // Enhanced function to calculate field values for target nodes
 const calculateTargetFieldValues = (targetNodeId: string, targetFields: any[], allNodes: any[], allEdges: any[]) => {
     console.log('=== CALCULATING TARGET FIELD VALUES ===');
@@ -235,62 +288,15 @@ const Pipeline = () => {
   const [sampleData, setSampleData] = useState<any[]>([]);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [isManagerExpanded, setIsManagerExpanded] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(0);
 
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Enhanced nodes with calculated field values - using forceUpdate to ensure recalculation
+  // Enhanced nodes with calculated field values - recalculate on every nodes/edges change
   const enhancedNodes = useMemo(() => {
-    console.log('=== ENHANCED NODES CALCULATION ===');
-    console.log('Force update counter:', forceUpdate);
-    console.log('Total nodes:', nodes.length);
-    console.log('Total edges:', edges.length);
-    
-    return nodes.map(node => {
-      if (isTargetNode(node) && node.data?.fields && Array.isArray(node.data.fields)) {
-        const fieldValues = calculateTargetFieldValues(node.id, node.data.fields, nodes, edges);
-        
-        console.log(`Target node ${node.id} field values:`, fieldValues);
-        
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            fieldValues,
-          }
-        };
-      } else if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
-        // Calculate input values for coalesce nodes to display
-        const transformInputEdges = edges.filter(e => e.target === node.id);
-        let inputValues: Record<string, any> = {};
-        
-        console.log(`=== ENHANCING COALESCE NODE ${node.id} ===`);
-        console.log('Transform input edges:', transformInputEdges.length);
-        
-        transformInputEdges.forEach(inputEdge => {
-          const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-          
-          if (inputSourceNode && isSourceNode(inputSourceNode)) {
-            const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
-            inputValues[inputEdge.targetHandle] = sourceValue;
-            console.log(`Mapped input for coalesce: ${inputEdge.targetHandle} = ${sourceValue}`);
-          }
-        });
-        
-        console.log('Final input values for coalesce node:', inputValues);
-        
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            inputValues,
-          }
-        };
-      }
-      return node;
-    });
-  }, [nodes, edges, forceUpdate]);
+    console.log('=== ENHANCED NODES RECALCULATION ===');
+    return calculateNodeFieldValues(nodes, edges);
+  }, [nodes, edges]);
 
   // Click outside to close functionality
   useEffect(() => {
@@ -333,36 +339,15 @@ const Pipeline = () => {
       }
     };
     setEdges((eds) => addEdge(newEdge, eds));
-    
-    // Force recalculation of enhanced nodes
-    setForceUpdate(prev => prev + 1);
   }, [setEdges]);
 
-  // Enhanced onEdgesChange to handle connection removal and update field values
+  // Enhanced onEdgesChange to handle connection removal
   const handleEdgesChange = useCallback((changes: any[]) => {
     console.log('=== EDGE CHANGES ===');
     console.log('Edge changes:', changes);
     
-    // Check if any edges are being removed
-    const removedEdges = changes.filter(change => change.type === 'remove');
-    const addedEdges = changes.filter(change => change.type === 'add');
-    
-    if (removedEdges.length > 0) {
-      console.log('Edges being removed:', removedEdges);
-    }
-    
-    if (addedEdges.length > 0) {
-      console.log('Edges being added:', addedEdges);
-    }
-    
     // Apply the edge changes normally
     onEdgesChange(changes);
-    
-    // Force recalculation of enhanced nodes after any edge change
-    if (removedEdges.length > 0 || addedEdges.length > 0) {
-      console.log('Forcing node recalculation due to edge changes');
-      setForceUpdate(prev => prev + 1);
-    }
   }, [onEdgesChange]);
 
   const onDrop = useCallback(

@@ -56,6 +56,22 @@ const getSourceValue = (node: any, handleId: string): any => {
     return null;
 };
 
+// Apply coalesce transformation - same logic as in Pipeline.tsx
+const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: any): any => {
+  const rules = nodeData?.rules || nodeData?.config?.rules || [];
+  const defaultValue = nodeData?.defaultValue || nodeData?.config?.defaultValue || '';
+  
+  // Try each rule in priority order
+  for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
+    const inputValue = inputValues[rule.id];
+    if (inputValue !== undefined && inputValue !== null && inputValue !== '') {
+      return rule.outputValue || inputValue;
+    }
+  }
+  
+  return defaultValue;
+};
+
 export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[], processedData: any[]) => {
     const { getNodes, getEdges } = useReactFlow();
     
@@ -64,14 +80,17 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
         const edges = getEdges();
         const valueMap: Record<string, any> = {};
         
-        console.log('=== TARGET NODE VALUES PROCESSING ===');
+        console.log('=== TARGET NODE VALUES PROCESSING (HOOK) ===');
         console.log('Target Node ID:', targetNodeId);
         console.log('Fields:', fields?.map(f => ({ id: f.id, name: f.name })));
-        console.log('All Edges:', edges);
         
-        // Direct value resolution from connections - this is the main logic
+        if (!fields || !Array.isArray(fields)) {
+            return {};
+        }
+        
+        // Find incoming edges to this target node
         const incomingEdges = edges.filter(edge => edge.target === targetNodeId);
-        console.log('Incoming edges to target:', incomingEdges);
+        console.log('Incoming edges to target:', incomingEdges.length);
         
         incomingEdges.forEach(edge => {
             const sourceNode = nodes.find(n => n.id === edge.source);
@@ -104,37 +123,42 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                     }
                     console.log('Static value:', value);
                 } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
-                    // Handle coalesce nodes if they exist in the chain
-                    const inputValues = sourceNode.data?.inputValues || {};
-                    if (Object.keys(inputValues).length > 0) {
-                        // Apply coalesce logic here if needed
-                        value = Object.values(inputValues)[0]; // Simple fallback
+                    // Handle coalesce nodes
+                    const transformInputEdges = edges.filter(e => e.target === sourceNode.id);
+                    let inputValues: Record<string, any> = {};
+                    
+                    transformInputEdges.forEach(inputEdge => {
+                        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+                        if (inputSourceNode && inputSourceNode.type === 'source') {
+                            const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
+                            inputValues[inputEdge.targetHandle] = sourceValue;
+                        }
+                    });
+                    
+                    if (Object.keys(inputValues).length > 0 || sourceNode.data?.rules?.length > 0) {
+                        value = applyCoalesceTransform(inputValues, sourceNode.data);
+                        console.log('Coalesce transform result:', value);
                     }
-                    console.log('Coalesce value:', value);
                 }
                 
-                if (value !== undefined && value !== null) {
+                if (value !== undefined && value !== null && value !== '') {
                     valueMap[targetField.id] = value;
-                    console.log('Set value for field:', targetField.id, '=', value);
+                    console.log(`Set target field value: ${targetField.name} (${targetField.id}) = ${value}`);
                 }
             }
         });
         
-        // Use processed data if available (this takes lower priority than direct connections)
+        // Use processed data as fallback if available
         const firstRecord = processedData?.[0] ?? {};
-        
         if (Object.keys(firstRecord).length > 0) {
-            console.log('Also checking processed data for additional values');
             fields.forEach(field => {
-                // Only use processed data if we don't already have a value from connections
                 if (valueMap[field.id] === undefined && firstRecord[field.name] !== undefined) {
                     valueMap[field.id] = firstRecord[field.name];
-                    console.log('Added from processed data:', field.id, '=', firstRecord[field.name]);
                 }
             });
         }
         
-        console.log('Final value map:', valueMap);
+        console.log('Final value map (HOOK):', valueMap);
         return valueMap;
     }, [targetNodeId, fields, processedData, getNodes, getEdges]);
     
