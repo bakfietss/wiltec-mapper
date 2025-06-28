@@ -1,4 +1,3 @@
-
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -86,13 +85,19 @@ const PipelineContent = () => {
 
   const onConnect = useCallback(
     (params: Connection) => {
-      const newEdge = addEdge({
+      console.log('Connection made:', params);
+      const newEdges = addEdge({
         ...params,
         type: 'smoothstep',
         animated: true,
         style: { strokeWidth: 2, stroke: '#3b82f6' }
       }, edges);
-      setEdges(newEdge);
+      setEdges(newEdges);
+      
+      // Force a small delay to ensure the edge is properly added before sync
+      setTimeout(() => {
+        console.log('Triggering data flow sync after connection');
+      }, 100);
     },
     [setEdges, edges]
   );

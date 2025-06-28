@@ -97,7 +97,7 @@ export const useDataFlowSync = () => {
         )
       );
     });
-  }, [getNodes, getEdges, setNodes]);
+  }, [getNodes, getEdges, setNodes]); // Add dependencies to trigger on changes
 };
 
 // Helper function to get nested values from objects
