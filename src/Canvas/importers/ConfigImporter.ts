@@ -194,7 +194,8 @@ export const importMappingConfiguration = (
         if (parameters && typeof parameters === 'object' && parameters !== null) {
           const params = parameters as any;
           
-          if (params.rules && Array.isArray(params.rules)) {
+          // Add type guards for params properties
+          if (params && typeof params === 'object' && params.rules && Array.isArray(params.rules)) {
             const coalesceNodeId = step.target.nodeId;
             const coalesceNode = nodeMap.get(coalesceNodeId);
             
@@ -214,7 +215,7 @@ export const importMappingConfiguration = (
               }
               
               coalesceNode.data.config.rules = enhancedRules;
-              coalesceNode.data.config.defaultValue = params.defaultValue || '';
+              coalesceNode.data.config.defaultValue = (params && typeof params === 'object' && params.defaultValue) ? params.defaultValue : '';
               
               // Create input edges for each rule
               enhancedRules.forEach((rule: any) => {
