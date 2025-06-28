@@ -198,8 +198,8 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     // Get field values from connections and processed data
     const fieldValues = useTargetNodeValues(id, fields, nodeData);
     
-    // Sync local state changes back to React Flow
-    useNodeDataSync(id, { fields, data: nodeData, fieldValues }, [fields, nodeData, fieldValues]);
+    // Sync local state changes back to React Flow - fix the hook call with 4 parameters
+    useNodeDataSync(id, { fields, data: nodeData, fieldValues }, [fields, nodeData, fieldValues], undefined);
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
