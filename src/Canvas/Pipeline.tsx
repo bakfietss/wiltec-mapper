@@ -1,3 +1,4 @@
+
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -205,6 +206,7 @@ const PipelineContent = () => {
           nodeTypes={nodeTypes}
           fitView
           className="bg-gray-50"
+          style={{ cursor: 'default' }}
           onInit={setReactFlowInstance}
           onDrop={onDrop}
           onDragOver={onDragOver}
