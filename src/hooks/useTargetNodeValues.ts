@@ -1,6 +1,6 @@
 
 import { useReactFlow } from '@xyflow/react';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 
 interface SchemaField {
     id: string;
@@ -90,23 +90,41 @@ const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: Coal
 
 export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[], processedData: any[]) => {
     const { getNodes, getEdges } = useReactFlow();
+    const [updateTrigger, setUpdateTrigger] = useState(0);
+    
+    // Listen to edge changes to trigger updates when connections are removed
+    const edges = getEdges();
+    const edgeCount = edges.length;
+    const targetEdges = edges.filter(edge => edge.target === targetNodeId);
+    const targetEdgeIds = targetEdges.map(e => e.id).sort().join(',');
+    
+    useEffect(() => {
+        // Force update when edges change (including removals)
+        setUpdateTrigger(prev => prev + 1);
+    }, [edgeCount, targetEdgeIds]);
     
     const handleValueMap = useMemo(() => {
         const nodes = getNodes();
-        const edges = getEdges();
+        const currentEdges = getEdges();
         const valueMap: Record<string, any> = {};
         
         console.log('=== TARGET NODE VALUES PROCESSING (HOOK) ===');
         console.log('Target Node ID:', targetNodeId);
         console.log('Fields:', fields?.map(f => ({ id: f.id, name: f.name })));
+        console.log('Update trigger:', updateTrigger);
         
         if (!fields || !Array.isArray(fields)) {
             return {};
         }
         
         // Find incoming edges to this target node
-        const incomingEdges = edges.filter(edge => edge.target === targetNodeId);
+        const incomingEdges = currentEdges.filter(edge => edge.target === targetNodeId);
         console.log('Incoming edges to target:', incomingEdges.length);
+        
+        // First, reset all field values to undefined
+        fields.forEach(field => {
+            valueMap[field.id] = undefined;
+        });
         
         incomingEdges.forEach(edge => {
             const sourceNode = nodes.find(n => n.id === edge.source);
@@ -140,7 +158,7 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
                     console.log('Static value:', value);
                 } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
                     // Handle coalesce nodes
-                    const transformInputEdges = edges.filter(e => e.target === sourceNode.id);
+                    const transformInputEdges = currentEdges.filter(e => e.target === sourceNode.id);
                     let inputValues: Record<string, any> = {};
                     
                     transformInputEdges.forEach(inputEdge => {
@@ -180,7 +198,7 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
         
         console.log('Final value map (HOOK):', valueMap);
         return valueMap;
-    }, [targetNodeId, fields, processedData, getNodes, getEdges]);
+    }, [targetNodeId, fields, processedData, getNodes, getEdges, updateTrigger]);
     
     return handleValueMap;
 };
