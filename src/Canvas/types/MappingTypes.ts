@@ -136,6 +136,8 @@ export interface TransformNodeConfig {
       id: string;
       priority: number;
       outputValue: string;
+      sourceField?: string;
+      sourceHandle?: string;
     }>;
     defaultValue?: string;
   };

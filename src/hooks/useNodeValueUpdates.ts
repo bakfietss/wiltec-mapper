@@ -27,6 +27,8 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
         
         // Handle transform nodes
         if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
+            console.log('Processing coalesce node:', node.id);
+            console.log('Coalesce node data:', node.data);
             return calculateCoalesceNodeValues(node, nodes, edges);
         }
         
@@ -116,14 +118,22 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
 
 // Calculate coalesce node input values
 const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any[]) => {
+    console.log('=== CALCULATING COALESCE NODE VALUES ===');
+    console.log('Coalesce node ID:', coalesceNode.id);
+    console.log('Coalesce rules:', coalesceNode.data?.rules);
+    console.log('Coalesce config rules:', coalesceNode.data?.config?.rules);
+    
     const inputEdges = edges.filter(e => e.target === coalesceNode.id);
     let inputValues: Record<string, any> = {};
+    
+    console.log('Input edges to coalesce:', inputEdges);
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
         if (inputSourceNode?.type === 'source') {
             const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
             inputValues[inputEdge.targetHandle] = sourceValue;
+            console.log('Set coalesce input:', inputEdge.targetHandle, '=', sourceValue);
         }
     });
     

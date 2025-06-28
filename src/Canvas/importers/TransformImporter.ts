@@ -49,9 +49,21 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
     } else if (transform.type === 'coalesceTransform' || transform.transformType === 'coalesce') {
       console.log('Importing coalesce transform:', transform.id);
       console.log('Transform nodeData:', transform.nodeData);
+      console.log('Transform config:', transform.config);
       
-      // Import the rules with all their properties
-      const rules = transform.nodeData?.rules || transform.config?.parameters?.rules || [];
+      // Import the rules with all their properties - check multiple possible locations
+      const rules = transform.nodeData?.rules || 
+                   transform.config?.parameters?.rules || 
+                   transform.config?.rules || 
+                   [];
+      
+      const defaultValue = transform.nodeData?.defaultValue || 
+                          transform.config?.parameters?.defaultValue || 
+                          transform.config?.defaultValue || 
+                          '';
+      
+      console.log('Extracted rules:', rules);
+      console.log('Extracted defaultValue:', defaultValue);
       
       return {
         ...baseNode,
@@ -60,10 +72,14 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
           ...baseNode.data,
           transformType: 'coalesce',
           rules: rules,
-          defaultValue: transform.nodeData?.defaultValue || transform.config?.parameters?.defaultValue || '',
+          defaultValue: defaultValue,
           outputType: transform.nodeData?.outputType || 'value',
           inputValues: transform.nodeData?.inputValues || {},
-          config: transform.config || {}
+          config: {
+            rules: rules,
+            defaultValue: defaultValue,
+            ...transform.config
+          }
         }
       };
     } else {
