@@ -1,3 +1,4 @@
+
 import { useReactFlow } from '@xyflow/react';
 import { useMemo } from 'react';
 
@@ -14,31 +15,143 @@ interface CoalesceRule {
     outputValue: string;
 }
 
-interface CoalesceNodeData {
-    rules?: CoalesceRule[];
-    config?: {
-        rules?: CoalesceRule[];
-        defaultValue?: string;
-    };
-    defaultValue?: string;
-    [key: string]: any;
-}
-
-// Get source value from a node
-const getSourceValue = (node: any, handleId: string): any => {
-    if (node.type !== 'source') return null;
+// Enhanced centralized function to calculate all node field values
+export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
+    console.log('=== CENTRALIZED VALUE CALCULATION ===');
+    console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
     
-    const sourceFields = node.data?.fields;
-    const sourceData = node.data?.data;
-    
-    // First try to get value from actual data using the handleId as a path
-    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
-        const dataObject = sourceData[0];
+    const updatedNodes = nodes.map(node => {
+        // Handle target nodes (editable schema with target type)
+        if (node.type === 'editableSchema' && node.data?.schemaType === 'target' && node.data?.fields) {
+            return calculateTargetNodeValues(node, nodes, edges);
+        }
         
-        // Handle nested paths (like "user.name" or "items[0].title")
+        // Handle transform nodes
+        if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
+            return calculateCoalesceNodeValues(node, nodes, edges);
+        }
+        
+        // Handle IF THEN nodes
+        if (node.type === 'ifThen') {
+            return calculateIfThenNodeValues(node, nodes, edges);
+        }
+        
+        return node;
+    });
+    
+    return updatedNodes;
+};
+
+// Calculate target node field values
+const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) => {
+    const fields = targetNode.data.fields;
+    const valueMap: Record<string, any> = {};
+    const newTargetData: any = {};
+    
+    // Find incoming edges to this target node
+    const incomingEdges = edges.filter(edge => edge.target === targetNode.id);
+    
+    if (incomingEdges.length === 0) {
+        return {
+            ...targetNode,
+            data: {
+                ...targetNode.data,
+                fieldValues: {},
+                data: [{}]
+            }
+        };
+    }
+    
+    incomingEdges.forEach(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        const targetField = fields.find((f: any) => f.id === edge.targetHandle);
+        
+        if (sourceNode && targetField) {
+            let value: any = undefined;
+            
+            // Handle different source node types
+            if (sourceNode.type === 'editableSchema' && sourceNode.data?.schemaType === 'source') {
+                value = getSourceNodeValue(sourceNode, edge.sourceHandle);
+            } else if (sourceNode.type === 'staticValue') {
+                value = getStaticNodeValue(sourceNode, edge.sourceHandle);
+            } else if (sourceNode.type === 'transform') {
+                value = getTransformNodeValue(sourceNode, nodes, edges);
+            } else if (sourceNode.type === 'ifThen') {
+                value = getIfThenNodeValue(sourceNode, nodes, edges);
+            } else if (sourceNode.type === 'conversionMapping') {
+                value = getConversionMappingValue(sourceNode, nodes, edges, edge);
+            }
+            
+            if (value !== undefined && value !== null && value !== '') {
+                valueMap[targetField.id] = value;
+                newTargetData[targetField.name] = value;
+            }
+        }
+    });
+    
+    return {
+        ...targetNode,
+        data: {
+            ...targetNode.data,
+            fieldValues: valueMap,
+            data: [newTargetData]
+        }
+    };
+};
+
+// Calculate coalesce node input values
+const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any[]) => {
+    const inputEdges = edges.filter(e => e.target === coalesceNode.id);
+    let inputValues: Record<string, any> = {};
+    
+    inputEdges.forEach(inputEdge => {
+        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+            const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
+            inputValues[inputEdge.targetHandle] = sourceValue;
+        }
+    });
+    
+    return {
+        ...coalesceNode,
+        data: {
+            ...coalesceNode.data,
+            inputValues
+        }
+    };
+};
+
+// Calculate IF THEN node values (for display purposes)
+const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) => {
+    const inputEdges = edges.filter(e => e.target === ifThenNode.id);
+    let inputValue: any = null;
+    
+    inputEdges.forEach(inputEdge => {
+        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+            inputValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
+        }
+    });
+    
+    return {
+        ...ifThenNode,
+        data: {
+            ...ifThenNode.data,
+            currentInputValue: inputValue
+        }
+    };
+};
+
+// Get value from source node
+const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
+    const sourceFields = sourceNode.data?.fields || [];
+    const sourceData = sourceNode.data?.data || [];
+    
+    // Try to get from actual data first
+    if (sourceData.length > 0) {
+        const dataObject = sourceData[0];
         const getValue = (obj: any, path: string) => {
             try {
-                // Handle array indices in path like "items[0]"
                 const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
                 const keys = normalizedPath.split('.');
                 let value = obj;
@@ -61,21 +174,100 @@ const getSourceValue = (node: any, handleId: string): any => {
         }
     }
     
-    // Fallback to manual schema fields
-    if (sourceFields && Array.isArray(sourceFields)) {
-        const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
-        if (sourceField) {
-            return sourceField.exampleValue || 'No data';
+    // Fallback to schema fields
+    const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
+    return sourceField ? (sourceField.exampleValue || 'No data') : null;
+};
+
+// Get value from static value node
+const getStaticNodeValue = (staticNode: any, handleId: string): any => {
+    if (Array.isArray(staticNode.data?.values)) {
+        const staticValue = staticNode.data.values.find((v: any) => v.id === handleId);
+        return staticValue ? staticValue.value : '';
+    }
+    return staticNode.data?.value || '';
+};
+
+// Get value from transform node
+const getTransformNodeValue = (transformNode: any, nodes: any[], edges: any[]): any => {
+    if (transformNode.data?.transformType === 'coalesce') {
+        return applyCoalesceTransform(transformNode, nodes, edges);
+    }
+    
+    // Handle other transform types
+    const inputEdges = edges.filter(e => e.target === transformNode.id);
+    for (const inputEdge of inputEdges) {
+        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+            const inputValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
+            return applyTransformation(inputValue, transformNode);
         }
     }
     
     return null;
 };
 
+// Get value from IF THEN node
+const getIfThenNodeValue = (ifThenNode: any, nodes: any[], edges: any[]): any => {
+    const inputEdges = edges.filter(e => e.target === ifThenNode.id);
+    let inputValue: any = null;
+    
+    // Get input value
+    inputEdges.forEach(inputEdge => {
+        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+            inputValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
+        }
+    });
+    
+    // Evaluate condition
+    if (inputValue !== null && ifThenNode.data?.operator && ifThenNode.data?.compareValue) {
+        const conditionResult = evaluateCondition(inputValue, ifThenNode.data.operator, ifThenNode.data.compareValue);
+        return conditionResult ? ifThenNode.data.thenValue : ifThenNode.data.elseValue;
+    }
+    
+    return ifThenNode.data?.elseValue || '';
+};
+
+// Get value from conversion mapping node
+const getConversionMappingValue = (conversionNode: any, nodes: any[], edges: any[], targetEdge: any): any => {
+    const inputEdges = edges.filter(e => e.target === conversionNode.id && e.targetHandle === 'input');
+    
+    for (const inputEdge of inputEdges) {
+        const sourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (sourceNode?.type === 'editableSchema' && sourceNode.data?.schemaType === 'source') {
+            let sourceValue = getSourceNodeValue(sourceNode, inputEdge.sourceHandle);
+            const mappings = conversionNode.data?.mappings || [];
+            
+            if (mappings.length > 0) {
+                const sourceValueStr = String(sourceValue).trim();
+                const mappingRule = mappings.find((mapping: any) => 
+                    String(mapping.from).trim() === sourceValueStr
+                );
+                
+                return mappingRule ? mappingRule.to : 'NotMapped';
+            }
+        }
+    }
+    
+    return 'NotMapped';
+};
+
 // Apply coalesce transformation
-const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: CoalesceNodeData): any => {
-    const rules = nodeData?.rules || nodeData?.config?.rules || [];
-    const defaultValue = nodeData?.defaultValue || nodeData?.config?.defaultValue || '';
+const applyCoalesceTransform = (coalesceNode: any, nodes: any[], edges: any[]): any => {
+    const rules = coalesceNode.data?.rules || coalesceNode.data?.config?.rules || [];
+    const defaultValue = coalesceNode.data?.defaultValue || coalesceNode.data?.config?.defaultValue || '';
+    
+    const inputEdges = edges.filter(e => e.target === coalesceNode.id);
+    let inputValues: Record<string, any> = {};
+    
+    inputEdges.forEach(inputEdge => {
+        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (inputSourceNode?.type === 'editableSchema' && inputSourceNode.data?.schemaType === 'source') {
+            const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
+            inputValues[inputEdge.targetHandle] = sourceValue;
+        }
+    });
     
     // Try each rule in priority order
     for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
@@ -88,108 +280,79 @@ const applyCoalesceTransform = (inputValues: Record<string, any>, nodeData: Coal
     return defaultValue;
 };
 
-// Centralized function to calculate node field values
-export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
-    console.log('=== CALCULATING ALL NODE FIELD VALUES ===');
-    console.log('Total nodes:', nodes.length);
-    console.log('Total edges:', edges.length);
-    
-    const updatedNodes = nodes.map(node => {
-        if (node.type === 'target' && node.data?.fields && Array.isArray(node.data.fields)) {
-            // Calculate field values for target nodes
-            const fields = node.data.fields;
-            const valueMap: Record<string, any> = {};
-            
-            // Reset all field values
-            fields.forEach((field: SchemaField) => {
-                valueMap[field.id] = undefined;
-            });
-            
-            // Find incoming edges to this target node
-            const incomingEdges = edges.filter(edge => edge.target === node.id);
-            
-            incomingEdges.forEach(edge => {
-                const sourceNode = nodes.find(n => n.id === edge.source);
-                const targetField = fields.find((f: SchemaField) => f.id === edge.targetHandle);
-                
-                if (sourceNode && targetField) {
-                    let value: any = undefined;
-                    
-                    if (sourceNode.type === 'source') {
-                        value = getSourceValue(sourceNode, edge.sourceHandle);
-                    } else if (sourceNode.type === 'staticValue') {
-                        const staticValues = sourceNode.data?.values;
-                        if (Array.isArray(staticValues)) {
-                            const staticValue = staticValues.find((v: any) => v.id === edge.sourceHandle);
-                            if (staticValue) {
-                                value = staticValue.value || '';
-                            }
-                        } else {
-                            value = sourceNode.data?.value || '';
-                        }
-                    } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
-                        // Handle coalesce nodes
-                        const transformInputEdges = edges.filter(e => e.target === sourceNode.id);
-                        let inputValues: Record<string, any> = {};
-                        
-                        transformInputEdges.forEach(inputEdge => {
-                            const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-                            if (inputSourceNode && inputSourceNode.type === 'source') {
-                                const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
-                                inputValues[inputEdge.targetHandle] = sourceValue;
-                            }
-                        });
-                        
-                        const coalesceData = sourceNode.data as CoalesceNodeData;
-                        if (Object.keys(inputValues).length > 0 || (coalesceData?.rules || coalesceData?.config?.rules || []).length > 0) {
-                            value = applyCoalesceTransform(inputValues, coalesceData);
-                        }
-                    }
-                    
-                    if (value !== undefined && value !== null && value !== '') {
-                        valueMap[targetField.id] = value;
-                    }
-                }
-            });
-            
-            return {
-                ...node,
-                data: {
-                    ...node.data,
-                    fieldValues: valueMap
-                }
-            };
-        } else if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
-            // Calculate input values for coalesce nodes to display
-            const transformInputEdges = edges.filter(e => e.target === node.id);
-            let inputValues: Record<string, any> = {};
-            
-            transformInputEdges.forEach(inputEdge => {
-                const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
-                
-                if (inputSourceNode && inputSourceNode.type === 'source') {
-                    const sourceValue = getSourceValue(inputSourceNode, inputEdge.sourceHandle);
-                    inputValues[inputEdge.targetHandle] = sourceValue;
-                }
-            });
-            
-            return {
-                ...node,
-                data: {
-                    ...node.data,
-                    inputValues,
-                }
-            };
+// Evaluate IF THEN conditions
+const evaluateCondition = (inputValue: any, operator: string, compareValue: string): boolean => {
+    try {
+        const leftValue = String(inputValue).trim();
+        const rightValue = String(compareValue).trim();
+        
+        switch (operator) {
+            case '=':
+                return leftValue === rightValue;
+            case '!=':
+                return leftValue !== rightValue;
+            case '>':
+                return Number(leftValue) > Number(rightValue);
+            case '<':
+                return Number(leftValue) < Number(rightValue);
+            case '>=':
+                return Number(leftValue) >= Number(rightValue);
+            case '<=':
+                return Number(leftValue) <= Number(rightValue);
+            case 'date_before_today':
+                return new Date(leftValue) < new Date();
+            case 'date_after_today':
+                return new Date(leftValue) > new Date();
+            case 'date_before':
+                return new Date(leftValue) < new Date(rightValue);
+            case 'date_after':
+                return new Date(leftValue) > new Date(rightValue);
+            default:
+                return false;
         }
-        return node;
-    });
-    
-    return updatedNodes;
+    } catch (error) {
+        console.error('Error evaluating condition:', error);
+        return false;
+    }
 };
 
-// Centralized hook for managing node updates
+// Apply other transformations
+const applyTransformation = (sourceValue: any, transformNode: any): any => {
+    const transformType = transformNode.data?.transformType;
+    const config = transformNode.data?.config || {};
+    
+    if (transformType === 'String Transform') {
+        const operation = config.stringOperation || config.operation;
+        const inputValue = String(sourceValue);
+        
+        switch (operation) {
+            case 'uppercase':
+                return inputValue.toUpperCase();
+            case 'lowercase':
+                return inputValue.toLowerCase();
+            case 'trim':
+                return inputValue.trim();
+            case 'prefix':
+                return (config.prefix || '') + inputValue;
+            case 'suffix':
+                return inputValue + (config.suffix || '');
+            case 'substring':
+                const start = config.substringStart || 0;
+                const end = config.substringEnd;
+                return end !== undefined ? inputValue.substring(start, end) : inputValue.substring(start);
+            case 'replace':
+                const regex = new RegExp(config.regex || '', 'g');
+                return inputValue.replace(regex, config.replacement || '');
+            default:
+                return sourceValue;
+        }
+    }
+    
+    return sourceValue;
+};
+
+// Main hook for centralized node updates
 export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[]) => {
-    // Always try to get React Flow instance, but handle gracefully if not available
     let reactFlowInstance: any = null;
     let getNodes: any = () => baseNodes || [];
     let getEdges: any = () => [];
@@ -200,65 +363,37 @@ export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[]) =>
         getNodes = reactFlow.getNodes;
         getEdges = reactFlow.getEdges;
     } catch (error) {
-        // ReactFlow not available, use baseNodes
         console.log('ReactFlow not available, using baseNodes');
     }
     
     const enhancedNodes = useMemo(() => {
-        console.log('=== ENHANCED NODES RECALCULATION (MANUAL TRIGGER) ===');
+        console.log('=== CENTRALIZED RECALCULATION ===');
         console.log('Update trigger:', updateTrigger);
         
         const nodes = getNodes();
         const currentEdges = getEdges();
         
-        console.log('Raw nodes count:', nodes.length);
-        console.log('Raw edges count:', currentEdges.length);
-        
         if (nodes.length === 0) {
-            console.log('No nodes to process');
             return [];
         }
         
         const enhanced = calculateNodeFieldValues(nodes, currentEdges);
-        console.log('Enhanced nodes count:', enhanced.length);
+        console.log('Enhanced nodes calculated:', enhanced.length);
         
         return enhanced;
     }, [updateTrigger, baseNodes]);
     
-    return {
-        enhancedNodes
-    };
+    return { enhancedNodes };
 };
 
-// Hook specifically for target node field values (simplified)
+// Simplified hook for backward compatibility
 export const useTargetNodeValues = (targetNodeId: string, fields: any[], processedData: any[], updateTrigger: number) => {
     const { enhancedNodes } = useNodeValueUpdates(updateTrigger);
     
     const handleValueMap = useMemo(() => {
-        console.log('=== TARGET NODE VALUES FROM CENTRALIZED SYSTEM ===');
-        console.log('Target Node ID:', targetNodeId);
-        
-        // Find the enhanced target node
         const targetNode = enhancedNodes.find(node => node.id === targetNodeId);
-        if (targetNode && targetNode.data?.fieldValues) {
-            console.log('Using enhanced node field values:', targetNode.data.fieldValues);
-            return targetNode.data.fieldValues;
-        }
-        
-        // Fallback to processed data if available
-        const valueMap: Record<string, any> = {};
-        const firstRecord = processedData?.[0] ?? {};
-        if (Object.keys(firstRecord).length > 0 && fields) {
-            fields.forEach(field => {
-                if (firstRecord[field.name] !== undefined) {
-                    valueMap[field.id] = firstRecord[field.name];
-                }
-            });
-        }
-        
-        console.log('Final value map:', valueMap);
-        return valueMap;
-    }, [enhancedNodes, targetNodeId, processedData, fields, updateTrigger]);
+        return targetNode?.data?.fieldValues || {};
+    }, [enhancedNodes, targetNodeId, updateTrigger]);
     
     return handleValueMap;
 };

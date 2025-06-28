@@ -1,8 +1,10 @@
+
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Zap, Edit3 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import CoalesceTransformNode from './CoalesceTransformNode';
+import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
 interface TransformConfig {
   operation?: string;
@@ -16,7 +18,6 @@ interface TransformConfig {
   joinDelimiter?: string;
   substringStart?: number;
   substringEnd?: number;
-  // Add coalesce-specific properties
   rules?: Array<{
     id: string;
     priority: number;
@@ -35,13 +36,11 @@ interface TransformNodeData {
 }
 
 const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data, id }) => {
-  const { setNodes } = useReactFlow();
   const [config, setConfig] = useState<TransformConfig>(data.config || {});
   const { label, transformType, description } = data;
   
   // If this is a coalesce transform, render the specialized component
   if (transformType === 'coalesce') {
-    // Pass the data in the format CoalesceTransformNode expects
     const coalesceData = {
       label: data.label,
       transformType: 'coalesce',
@@ -54,27 +53,12 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
     return <CoalesceTransformNode data={coalesceData} id={id} />;
   }
   
-  const updateNodeData = useCallback((newConfig: TransformConfig) => {
-    console.log('Updating transform node config:', newConfig);
-    setNodes((nodes) =>
-      nodes.map((node) =>
-        node.id === id
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                config: newConfig,
-              },
-            }
-          : node
-      )
-    );
-  }, [id, setNodes]);
+  // Sync config changes with centralized system
+  useNodeDataSync(id, { config, transformType, label }, [config]);
   
   const updateConfig = (updates: Partial<TransformConfig>) => {
     const newConfig = { ...config, ...updates };
     setConfig(newConfig);
-    updateNodeData(newConfig);
   };
   
   const getConfigSummary = () => {

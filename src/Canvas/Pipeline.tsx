@@ -51,7 +51,7 @@ const Pipeline = () => {
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Use manual update trigger system
+  // Centralized update system
   const { updateTrigger, triggerUpdate } = useManualUpdateTrigger();
   const { enhancedNodes } = useNodeValueUpdates(updateTrigger, nodes);
 
@@ -97,36 +97,30 @@ const Pipeline = () => {
     };
     setEdges((eds) => addEdge(newEdge, eds));
     
-    // Trigger update after connection
-    setTimeout(() => triggerUpdate('CONNECTION_CREATED'), 100);
+    // Trigger immediate update after connection
+    setTimeout(() => triggerUpdate('CONNECTION_CREATED'), 50);
   }, [setEdges, triggerUpdate]);
 
-  // Enhanced onEdgesChange to handle connection removal
   const handleEdgesChange = useCallback((changes: any[]) => {
     console.log('=== EDGE CHANGES ===');
     console.log('Edge changes:', changes);
     
-    // Apply the edge changes normally
     onEdgesChange(changes);
     
-    // Check if any edges were removed or added
     const hasRemovals = changes.some(change => change.type === 'remove');
     const hasAdditions = changes.some(change => change.type === 'add');
     
     if (hasRemovals || hasAdditions) {
-      setTimeout(() => triggerUpdate('EDGE_CHANGED'), 100);
+      setTimeout(() => triggerUpdate('EDGE_CHANGED'), 50);
     }
   }, [onEdgesChange, triggerUpdate]);
 
-  // Enhanced onNodesChange to trigger updates when nodes change
   const handleNodesChange = useCallback((changes: any[]) => {
     console.log('=== NODE CHANGES ===');
     console.log('Node changes:', changes);
     
-    // Apply the node changes normally
     onNodesChange(changes);
     
-    // Check if any nodes had data updates
     const hasDataUpdates = changes.some(change => 
       change.type === 'replace' || 
       (change.type === 'add') ||
@@ -134,7 +128,7 @@ const Pipeline = () => {
     );
     
     if (hasDataUpdates) {
-      setTimeout(() => triggerUpdate('NODE_DATA_CHANGED'), 100);
+      setTimeout(() => triggerUpdate('NODE_DATA_CHANGED'), 50);
     }
   }, [onNodesChange, triggerUpdate]);
 
@@ -176,7 +170,6 @@ const Pipeline = () => {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  // Fix the onInit type issue
   const handleReactFlowInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
   }, []);
@@ -200,8 +193,7 @@ const Pipeline = () => {
         setNodes(importedNodes);
         setEdges(importedEdges);
         setCurrentMappingName(config.name || 'Untitled Mapping');
-        // Trigger update after import
-        setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 200);
+        setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 100);
         toast.success('Mapping imported successfully!');
       } catch (error) {
         console.error('Failed to import mapping:', error);
