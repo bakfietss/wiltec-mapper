@@ -1,6 +1,6 @@
 
 import { useReactFlow } from '@xyflow/react';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 
 interface SchemaField {
     id: string;
@@ -190,30 +190,40 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
 
 // Centralized hook for managing node updates
 export const useNodeValueUpdates = () => {
-    const { getNodes, getEdges } = useReactFlow();
     const [updateTrigger, setUpdateTrigger] = useState(0);
+    const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
     
-    // Listen to edge changes to trigger updates
-    const edges = getEdges();
-    const edgeCount = edges.length;
-    const edgeIds = edges.map(e => e.id).sort().join(',');
+    // Safe hook usage - only call useReactFlow when instance is available
+    let getNodes: any = () => [];
+    let getEdges: any = () => [];
     
-    useEffect(() => {
-        // Force update when edges change (including additions/removals)
-        setUpdateTrigger(prev => prev + 1);
-    }, [edgeCount, edgeIds]);
+    try {
+        const reactFlow = useReactFlow();
+        getNodes = reactFlow.getNodes;
+        getEdges = reactFlow.getEdges;
+        if (!reactFlowInstance) {
+            setReactFlowInstance(reactFlow);
+        }
+    } catch (error) {
+        // ReactFlow not available yet, use empty functions
+        console.log('ReactFlow not available yet, using fallback');
+    }
     
     const enhancedNodes = useMemo(() => {
+        if (!reactFlowInstance) {
+            return [];
+        }
+        
         console.log('=== ENHANCED NODES RECALCULATION (CENTRALIZED) ===');
         console.log('Update trigger:', updateTrigger);
         const nodes = getNodes();
         const currentEdges = getEdges();
         return calculateNodeFieldValues(nodes, currentEdges);
-    }, [getNodes, getEdges, updateTrigger]);
+    }, [getNodes, getEdges, updateTrigger, reactFlowInstance]);
     
     return {
         enhancedNodes,
-        forceUpdate: () => setUpdateTrigger(prev => prev + 1)
+        forceUpdate: useCallback(() => setUpdateTrigger(prev => prev + 1), [])
     };
 };
 
