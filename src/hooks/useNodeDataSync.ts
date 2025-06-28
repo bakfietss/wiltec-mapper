@@ -9,7 +9,8 @@ import { useReactFlow } from '@xyflow/react';
 export const useNodeDataSync = <T extends Record<string, any>>(
   nodeId: string,
   data: T,
-  dependencies: any[] = []
+  dependencies: any[] = [],
+  onDataChange?: () => void
 ) => {
   const { setNodes } = useReactFlow();
 
@@ -21,5 +22,10 @@ export const useNodeDataSync = <T extends Record<string, any>>(
           : node
       )
     );
-  }, [nodeId, setNodes, ...dependencies]);
+    
+    // Notify parent of data change for manual updates
+    if (onDataChange) {
+      onDataChange();
+    }
+  }, [nodeId, setNodes, onDataChange, ...dependencies]);
 };

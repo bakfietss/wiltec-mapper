@@ -24,6 +24,7 @@ import { importMappingConfiguration } from './importers/ConfigImporter';
 import { MappingConfiguration } from './types/MappingTypes';
 import { exportMappingDocumentation } from './DocumentationExporter';
 import { useNodeValueUpdates } from '../hooks/useNodeValueUpdates';
+import { useManualUpdateTrigger } from '../hooks/useManualUpdateTrigger';
 import { toast } from 'sonner';
 
 const initialNodes: Node[] = [
@@ -50,8 +51,9 @@ const Pipeline = () => {
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
 
-  // Use centralized node value updates system - pass base nodes for import support
-  const { enhancedNodes, forceUpdate } = useNodeValueUpdates(nodes);
+  // Use manual update trigger system
+  const { updateTrigger, triggerUpdate } = useManualUpdateTrigger();
+  const { enhancedNodes } = useNodeValueUpdates(updateTrigger, nodes);
 
   // Click outside to close functionality
   useEffect(() => {
@@ -95,9 +97,9 @@ const Pipeline = () => {
     };
     setEdges((eds) => addEdge(newEdge, eds));
     
-    // Force update immediately after connection
-    setTimeout(() => forceUpdate(), 50);
-  }, [setEdges, forceUpdate]);
+    // Trigger update after connection
+    setTimeout(() => triggerUpdate('CONNECTION_CREATED'), 100);
+  }, [setEdges, triggerUpdate]);
 
   // Enhanced onEdgesChange to handle connection removal
   const handleEdgesChange = useCallback((changes: any[]) => {
@@ -107,9 +109,14 @@ const Pipeline = () => {
     // Apply the edge changes normally
     onEdgesChange(changes);
     
-    // Force update after any edge change
-    setTimeout(() => forceUpdate(), 50);
-  }, [onEdgesChange, forceUpdate]);
+    // Check if any edges were removed or added
+    const hasRemovals = changes.some(change => change.type === 'remove');
+    const hasAdditions = changes.some(change => change.type === 'add');
+    
+    if (hasRemovals || hasAdditions) {
+      setTimeout(() => triggerUpdate('EDGE_CHANGED'), 100);
+    }
+  }, [onEdgesChange, triggerUpdate]);
 
   // Enhanced onNodesChange to trigger updates when nodes change
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -119,7 +126,7 @@ const Pipeline = () => {
     // Apply the node changes normally
     onNodesChange(changes);
     
-    // Check if any nodes were updated (data changes)
+    // Check if any nodes had data updates
     const hasDataUpdates = changes.some(change => 
       change.type === 'replace' || 
       (change.type === 'add') ||
@@ -127,9 +134,9 @@ const Pipeline = () => {
     );
     
     if (hasDataUpdates) {
-      setTimeout(() => forceUpdate(), 50);
+      setTimeout(() => triggerUpdate('NODE_DATA_CHANGED'), 100);
     }
-  }, [onNodesChange, forceUpdate]);
+  }, [onNodesChange, triggerUpdate]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -193,8 +200,8 @@ const Pipeline = () => {
         setNodes(importedNodes);
         setEdges(importedEdges);
         setCurrentMappingName(config.name || 'Untitled Mapping');
-        // Force update after import to ensure enhanced nodes are recalculated
-        setTimeout(() => forceUpdate(), 100);
+        // Trigger update after import
+        setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 200);
         toast.success('Mapping imported successfully!');
       } catch (error) {
         console.error('Failed to import mapping:', error);
@@ -202,7 +209,7 @@ const Pipeline = () => {
       }
     };
     reader.readAsText(file);
-  }, [setNodes, setEdges, forceUpdate]);
+  }, [setNodes, setEdges, triggerUpdate]);
 
   const handleNewMapping = useCallback((name: string) => {
     setNodes(initialNodes);

@@ -1,6 +1,5 @@
-
 import { useReactFlow } from '@xyflow/react';
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo } from 'react';
 
 interface SchemaField {
     id: string;
@@ -189,9 +188,7 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
 };
 
 // Centralized hook for managing node updates
-export const useNodeValueUpdates = (baseNodes?: any[]) => {
-    const [updateTrigger, setUpdateTrigger] = useState(0);
-    
+export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[]) => {
     // Always try to get React Flow instance, but handle gracefully if not available
     let reactFlowInstance: any = null;
     let getNodes: any = () => baseNodes || [];
@@ -208,7 +205,7 @@ export const useNodeValueUpdates = (baseNodes?: any[]) => {
     }
     
     const enhancedNodes = useMemo(() => {
-        console.log('=== ENHANCED NODES RECALCULATION (CENTRALIZED) ===');
+        console.log('=== ENHANCED NODES RECALCULATION (MANUAL TRIGGER) ===');
         console.log('Update trigger:', updateTrigger);
         
         const nodes = getNodes();
@@ -228,21 +225,14 @@ export const useNodeValueUpdates = (baseNodes?: any[]) => {
         return enhanced;
     }, [updateTrigger, baseNodes]);
     
-    // Force update function
-    const forceUpdate = useCallback(() => {
-        console.log('=== FORCING UPDATE ===');
-        setUpdateTrigger(prev => prev + 1);
-    }, []);
-    
     return {
-        enhancedNodes,
-        forceUpdate
+        enhancedNodes
     };
 };
 
 // Hook specifically for target node field values (simplified)
-export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[], processedData: any[]) => {
-    const { enhancedNodes } = useNodeValueUpdates();
+export const useTargetNodeValues = (targetNodeId: string, fields: any[], processedData: any[], updateTrigger: number) => {
+    const { enhancedNodes } = useNodeValueUpdates(updateTrigger);
     
     const handleValueMap = useMemo(() => {
         console.log('=== TARGET NODE VALUES FROM CENTRALIZED SYSTEM ===');
@@ -268,7 +258,7 @@ export const useTargetNodeValues = (targetNodeId: string, fields: SchemaField[],
         
         console.log('Final value map:', valueMap);
         return valueMap;
-    }, [enhancedNodes, targetNodeId, processedData, fields]);
+    }, [enhancedNodes, targetNodeId, processedData, fields, updateTrigger]);
     
     return handleValueMap;
 };
