@@ -215,7 +215,7 @@ export const importMappingConfiguration = (
               }
               
               coalesceNode.data.config.rules = enhancedRules;
-              coalesceNode.data.config.defaultValue = (params && typeof params === 'object' && params.defaultValue) ? params.defaultValue : '';
+              coalesceNode.data.config.defaultValue = (params && typeof params === 'object' && 'defaultValue' in params) ? params.defaultValue : '';
               
               // Create input edges for each rule
               enhancedRules.forEach((rule: any) => {
