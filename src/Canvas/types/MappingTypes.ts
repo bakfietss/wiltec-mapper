@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -137,6 +138,27 @@ export interface TransformNodeConfig {
       outputValue: string;
     }>;
     defaultValue?: string;
+  };
+  // Add nodeData property to match what the importer expects
+  nodeData?: {
+    rules?: Array<{
+      id: string;
+      priority: number;
+      outputValue: string;
+      sourceField?: string;
+      sourceHandle?: string;
+    }>;
+    defaultValue?: string;
+    outputType?: string;
+    inputValues?: Record<string, any>;
+    operator?: string;
+    compareValue?: string;
+    thenValue?: string;
+    elseValue?: string;
+    values?: any[];
+    delimiter?: string;
+    splitIndex?: number;
+    config?: Record<string, any>;
   };
 }
 

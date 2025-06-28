@@ -163,13 +163,14 @@ export const exportUIMappingConfiguration = (
       
       // Extract rules from the node data, including priority and output values
       const nodeRules = node.data?.rules || [];
-      const processedRules = nodeRules.map((rule: any) => ({
+      // Fix: Ensure nodeRules is an array before calling map
+      const processedRules = Array.isArray(nodeRules) ? nodeRules.map((rule: any) => ({
         id: rule.id,
         priority: rule.priority || 1,
         outputValue: rule.outputValue || '',
         sourceField: rule.sourceField || '',
         sourceHandle: rule.sourceHandle || rule.sourceField || ''
-      }));
+      })) : [];
       
       transformConfig.config = {
         operation: 'coalesce',
