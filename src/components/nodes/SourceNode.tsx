@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useStore, NodeResizer } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Plus, Trash2 } from 'lucide-react';
-import { ScrollArea } from './ui/scroll-area';
-import { useNodeDataSync } from '../hooks/useNodeDataSync';
-import NodeEditSheet from './NodeEditSheet';
-import JsonImportDialog from './JsonImportDialog';
+import { ScrollArea } from '../ui/scroll-area';
+import { useNodeDataSync } from '../../hooks/useNodeDataSync';
+import NodeEditSheet from '../NodeEditSheet';
+import JsonImportDialog from '../JsonImportDialog';
 
 interface SchemaField {
     id: string;
@@ -467,9 +467,9 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                                     
                                     <button
                                         onClick={addField}
-                                        className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                        className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
                                     >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-4 h-4" />
                                         Add Field
                                     </button>
                                 </div>
@@ -509,11 +509,17 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                                                 </div>
                                                 
                                                 <div className="flex items-center gap-2">
-                                                    <label className="text-sm text-gray-600 w-20">Example:</label>
+                                                    <label className="text-xs text-gray-600 w-20">Example:</label>
                                                     {getExampleValueInput(field)}
                                                 </div>
                                             </div>
                                         ))}
+                                        
+                                        {fields.length === 0 && (
+                                            <div className="text-center py-8 text-gray-500">
+                                                No manual fields yet. Add some fields to get started.
+                                            </div>
+                                        )}
                                     </div>
                                 </ScrollArea>
                             </div>
@@ -522,45 +528,37 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </NodeEditSheet>
             </div>
 
-            {/* Manual Schema Fields */}
-            {fields.length > 0 && (
-                <div className="space-y-1 mb-2">
-                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Manual Fields:</div>
-                    {fields.map((field) => (
-                        <ManualField
-                            key={field.id}
-                            field={field}
-                            onFieldToggle={handleFieldToggle}
-                            selectedFields={selectedFields}
-                        />
-                    ))}
-                </div>
-            )}
-            
-            {/* Data Structure Display */}
-            {hasData && (
-                <div className="space-y-1">
-                    {fields.length > 0 && <div className="text-xs font-medium text-gray-500 px-2 py-1">Data Fields:</div>}
-                    {Object.entries(nodeData[0]).map(([key, value]) => (
-                        <DataField
-                            key={key}
-                            path={key}
-                            value={value}
-                            level={0}
-                            onFieldToggle={handleDataFieldToggle}
-                            onFieldExpansionToggle={handleFieldExpansionToggle}
-                            selectedFields={selectedFields}
-                            expandedFields={expandedFields}
-                        />
-                    ))}
-                </div>
-            )}
-            
-            {!hasData && fields.length === 0 && (
-                <div className="text-center py-3 text-gray-500 text-xs">
-                    No data available. Click edit to import JSON data or add manual fields.
-                </div>
-            )}
+            <div className="p-1 max-h-96 relative">
+                <ScrollArea className="h-full">
+                    {hasData ? (
+                        Object.entries(nodeData[0]).map(([key, value]) => (
+                            <DataField
+                                key={key}
+                                path={key}
+                                value={value}
+                                level={0}
+                                onFieldToggle={handleDataFieldToggle}
+                                onFieldExpansionToggle={handleFieldExpansionToggle}
+                                selectedFields={selectedFields}
+                                expandedFields={expandedFields}
+                            />
+                        ))
+                    ) : fields.length > 0 ? (
+                        fields.map((field) => (
+                            <ManualField
+                                key={field.id}
+                                field={field}
+                                onFieldToggle={handleFieldToggle}
+                                selectedFields={selectedFields}
+                            />
+                        ))
+                    ) : (
+                        <div className="text-center py-3 text-gray-500 text-xs">
+                            No data or fields available. Click edit to configure.
+                        </div>
+                    )}
+                </ScrollArea>
+            </div>
         </div>
     );
 };

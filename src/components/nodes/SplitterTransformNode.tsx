@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Scissors } from 'lucide-react';
-import NodeEditSheet from './NodeEditSheet';
+import NodeEditSheet from '../NodeEditSheet';
 
 interface SplitterConfig {
   delimiter?: string;

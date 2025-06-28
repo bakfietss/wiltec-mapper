@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import { FileText, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import { ScrollArea } from './ui/scroll-area';
-import { useNodeDataSync } from '../hooks/useNodeDataSync';
-import NodeEditSheet from './NodeEditSheet';
-import JsonImportDialog from './JsonImportDialog';
+import { ScrollArea } from '../ui/scroll-area';
+import { useNodeDataSync } from '../../hooks/useNodeDataSync';
+import NodeEditSheet from '../NodeEditSheet';
+import JsonImportDialog from '../JsonImportDialog';
 
 interface SchemaField {
     id: string;
