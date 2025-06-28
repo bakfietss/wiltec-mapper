@@ -188,73 +188,71 @@ export const importMappingConfiguration = (
   if (config.execution && config.execution.steps) {
     config.execution.steps.forEach(step => {
       if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters) {
-        // Add proper type checking for parameters with type guards
-        const parameters = step.transform.parameters;
+        // Cast parameters to the expected coalesce parameters type
+        const coalesceParams = step.transform.parameters as {
+          rules?: Array<{
+            id: string;
+            priority: number;
+            outputValue: string;
+            sourceField?: string;
+            sourceHandle?: string;
+          }>;
+          defaultValue?: string;
+        };
         
-        if (parameters && typeof parameters === 'object' && parameters !== null) {
-          const params = parameters as Record<string, any>;
+        if (coalesceParams.rules && Array.isArray(coalesceParams.rules)) {
+          const coalesceNodeId = step.target.nodeId;
+          const coalesceNode = nodeMap.get(coalesceNodeId);
           
-          // Check if 'rules' property exists and is an array
-          if ('rules' in params && Array.isArray(params.rules)) {
-            const coalesceNodeId = step.target.nodeId;
-            const coalesceNode = nodeMap.get(coalesceNodeId);
+          if (coalesceNode && coalesceNode.type === 'coalesceTransform') {
+            // Update the coalesce node with the rules from execution mapping
+            const enhancedRules = coalesceParams.rules.map((rule: any, index: number) => ({
+              id: rule.id || `rule_${Date.now()}_${Math.random()}`,
+              priority: rule.priority || index + 1,
+              outputValue: rule.outputValue || '',
+              sourceField: rule.sourceField || '',
+              sourceHandle: rule.sourceHandle || ''
+            }));
             
-            if (coalesceNode && coalesceNode.type === 'coalesceTransform') {
-              // Update the coalesce node with the rules from execution mapping
-              const enhancedRules = params.rules.map((rule: any, index: number) => ({
-                id: rule.id || `rule_${Date.now()}_${Math.random()}`,
-                priority: rule.priority || index + 1,
-                outputValue: rule.outputValue || '',
-                sourceField: rule.sourceField || '',
-                sourceHandle: rule.sourceHandle || ''
-              }));
-              
-              // Ensure proper config structure
-              if (!coalesceNode.data.config) {
-                coalesceNode.data.config = {};
-              }
-              
-              coalesceNode.data.config.rules = enhancedRules;
-              
-              // Check if 'defaultValue' property exists and is a string
-              if ('defaultValue' in params && typeof params.defaultValue === 'string') {
-                coalesceNode.data.config.defaultValue = params.defaultValue;
-              } else {
-                coalesceNode.data.config.defaultValue = '';
-              }
-              
-              // Create input edges for each rule
-              enhancedRules.forEach((rule: any) => {
-                if (rule.sourceHandle) {
-                  // Find the source node that contains this field
-                  const sourceNode = Array.from(nodeMap.values()).find(node => {
-                    if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
-                      return findFieldInSource(node.data.fields, rule.sourceHandle);
-                    }
-                    return false;
-                  });
+            // Ensure proper config structure
+            if (!coalesceNode.data.config) {
+              coalesceNode.data.config = {};
+            }
+            
+            coalesceNode.data.config.rules = enhancedRules;
+            coalesceNode.data.config.defaultValue = coalesceParams.defaultValue || '';
+            
+            // Create input edges for each rule
+            enhancedRules.forEach((rule: any) => {
+              if (rule.sourceHandle) {
+                // Find the source node that contains this field
+                const sourceNode = Array.from(nodeMap.values()).find(node => {
+                  if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
+                    return findFieldInSource(node.data.fields, rule.sourceHandle);
+                  }
+                  return false;
+                });
+                
+                if (sourceNode) {
+                  const edgeId = `xy-edge__${sourceNode.id}${rule.sourceHandle}-${coalesceNodeId}${rule.id}`;
                   
-                  if (sourceNode) {
-                    const edgeId = `xy-edge__${sourceNode.id}${rule.sourceHandle}-${coalesceNodeId}${rule.id}`;
-                    
-                    // Only add edge if it doesn't already exist
-                    const existingEdge = edges.find(e => e.id === edgeId);
-                    if (!existingEdge) {
-                      edges.push({
-                        id: edgeId,
-                        source: sourceNode.id,
-                        target: coalesceNodeId,
-                        sourceHandle: rule.sourceHandle,
-                        targetHandle: rule.id,
-                        type: 'smoothstep',
-                        animated: true,
-                        style: { strokeWidth: 2, stroke: '#3b82f6' }
-                      });
-                    }
+                  // Only add edge if it doesn't already exist
+                  const existingEdge = edges.find(e => e.id === edgeId);
+                  if (!existingEdge) {
+                    edges.push({
+                      id: edgeId,
+                      source: sourceNode.id,
+                      target: coalesceNodeId,
+                      sourceHandle: rule.sourceHandle,
+                      targetHandle: rule.id,
+                      type: 'smoothstep',
+                      animated: true,
+                      style: { strokeWidth: 2, stroke: '#3b82f6' }
+                    });
                   }
                 }
-              });
-            }
+              }
+            });
           }
         }
       }
