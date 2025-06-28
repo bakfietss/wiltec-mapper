@@ -1,106 +1,79 @@
 
 import { Node } from '@xyflow/react';
-import { TransformNodeConfig } from '../types/MappingTypes';
+import { MappingConfiguration } from '../types/MappingTypes';
 
-export const importTransformNodes = (transforms: TransformNodeConfig[]): Node[] => {
-  return transforms.map(tx => {
-    console.log('Processing transform:', tx.id, 'transformType:', tx.transformType);
+export const importTransformNodes = (transforms: MappingConfiguration['nodes']['transforms']): Node[] => {
+  return transforms.map(transform => {
+    console.log('Importing transform node:', transform.id, 'type:', transform.type);
     
-    if (tx.transformType === 'coalesce') {
-      console.log('FOUND COALESCE TRANSFORM:', tx.id);
-      
-      let rules: any[] = [];
-      
-      if ((tx as any).nodeData && typeof (tx as any).nodeData === 'object') {
-        const nodeData = (tx as any).nodeData;
-        if (Array.isArray(nodeData.rules)) {
-          rules = nodeData.rules;
-        }
+    const baseNode = {
+      id: transform.id,
+      type: transform.type,
+      position: transform.position,
+      data: {
+        label: transform.label,
+        transformType: transform.transformType
       }
-      
-      if (rules.length === 0 && tx.config && typeof tx.config === 'object') {
-        const configObj = tx.config as any;
-        if (configObj.parameters && typeof configObj.parameters === 'object') {
-          if (Array.isArray(configObj.parameters.rules)) {
-            rules = configObj.parameters.rules;
-          }
+    };
+
+    // Handle different transform types
+    if (transform.type === 'ifThen') {
+      return {
+        ...baseNode,
+        data: {
+          ...baseNode.data,
+          operator: transform.nodeData?.operator || '=',
+          compareValue: transform.nodeData?.compareValue || '',
+          thenValue: transform.nodeData?.thenValue || '',
+          elseValue: transform.nodeData?.elseValue || ''
         }
-      }
+      };
+    } else if (transform.type === 'staticValue') {
+      return {
+        ...baseNode,
+        data: {
+          ...baseNode.data,
+          values: transform.nodeData?.values || []
+        }
+      };
+    } else if (transform.type === 'splitterTransform') {
+      return {
+        ...baseNode,
+        data: {
+          ...baseNode.data,
+          delimiter: transform.nodeData?.delimiter || ',',
+          splitIndex: transform.nodeData?.splitIndex || 0,
+          config: transform.nodeData?.config || {}
+        }
+      };
+    } else if (transform.type === 'coalesceTransform' || transform.transformType === 'coalesce') {
+      console.log('Importing coalesce transform:', transform.id);
+      console.log('Transform nodeData:', transform.nodeData);
       
-      console.log('Extracted rules for coalesce:', rules);
+      // Import the rules with all their properties
+      const rules = transform.nodeData?.rules || transform.config?.parameters?.rules || [];
       
       return {
-        id: tx.id,
-        type: 'transform',
-        position: tx.position,
+        ...baseNode,
+        type: 'transform', // Ensure we use the correct type for coalesce
         data: {
-          label: tx.label,
+          ...baseNode.data,
           transformType: 'coalesce',
-          config: {
-            rules: rules,
-            defaultValue: ''
-          }
-        }
-      };
-    } else if (tx.transformType === 'ifThen' || tx.transformType === 'IF THEN') {
-      const rawConfig = (tx.config ?? {}) as any;
-      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
-        ? rawConfig.parameters
-        : rawConfig;
-      
-      return {
-        id: tx.id,
-        type: 'ifThen',
-        position: tx.position,
-        data: {
-          label: tx.label,
-          operator: params.operator ?? '=',
-          compareValue: params.compareValue ?? '',
-          thenValue: params.thenValue ?? '',
-          elseValue: params.elseValue ?? ''
-        }
-      };
-    } else if (tx.transformType === 'staticValue' || tx.transformType === 'Static Value') {
-      const rawConfig = (tx.config ?? {}) as any;
-      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
-        ? rawConfig.parameters
-        : rawConfig;
-      
-      return {
-        id: tx.id,
-        type: 'staticValue',
-        position: tx.position,
-        data: {
-          label: tx.label,
-          values: params.values ?? []
-        }
-      };
-    } else if (tx.transformType === 'splitterTransform' || tx.transformType === 'Text Splitter') {
-      const rawConfig = (tx.config ?? {}) as any;
-      const params = (rawConfig.parameters && typeof rawConfig.parameters === 'object')
-        ? rawConfig.parameters
-        : rawConfig;
-      
-      return {
-        id: tx.id,
-        type: 'splitterTransform',
-        position: tx.position,
-        data: {
-          label: tx.label,
-          delimiter: params.delimiter ?? ',',
-          splitIndex: params.splitIndex ?? 0,
-          config: tx.config
+          rules: rules,
+          defaultValue: transform.nodeData?.defaultValue || transform.config?.parameters?.defaultValue || '',
+          outputType: transform.nodeData?.outputType || 'value',
+          inputValues: transform.nodeData?.inputValues || {},
+          config: transform.config || {}
         }
       };
     } else {
+      // Handle generic transform nodes
       return {
-        id: tx.id,
-        type: 'transform',
-        position: tx.position,
+        ...baseNode,
         data: {
-          label: tx.label,
-          transformType: tx.transformType,
-          config: tx.config
+          ...baseNode.data,
+          config: transform.config || {},
+          ...(transform.nodeData || {})
         }
       };
     }

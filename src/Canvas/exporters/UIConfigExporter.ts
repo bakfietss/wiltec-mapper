@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration, SourceNodeConfig, TargetNodeConfig } from '../types/MappingTypes';
 import { buildExecutionSteps } from '../utils/ExecutionStepBuilder';
@@ -160,16 +161,26 @@ export const exportUIMappingConfiguration = (
       console.log('PROCESSING COALESCE TRANSFORM NODE:', node.id);
       console.log('Coalesce node data:', node.data);
       
+      // Extract rules from the node data, including priority and output values
+      const nodeRules = node.data?.rules || [];
+      const processedRules = nodeRules.map((rule: any) => ({
+        id: rule.id,
+        priority: rule.priority || 1,
+        outputValue: rule.outputValue || '',
+        sourceField: rule.sourceField || '',
+        sourceHandle: rule.sourceHandle || rule.sourceField || ''
+      }));
+      
       transformConfig.config = {
         operation: 'coalesce',
         parameters: {
-          rules: node.data?.rules || [],
+          rules: processedRules,
           defaultValue: node.data?.defaultValue || '',
           outputType: node.data?.outputType || 'value'
         }
       };
       transformConfig.nodeData = {
-        rules: node.data?.rules || [],
+        rules: processedRules,
         defaultValue: node.data?.defaultValue || '',
         outputType: node.data?.outputType || 'value',
         inputValues: node.data?.inputValues || {}
