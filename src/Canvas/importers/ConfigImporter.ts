@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -47,7 +48,7 @@ export const importMappingConfiguration = (
     nodeMap.set(tgt.id, node);
   });
 
-  // 3. Transforms - Fixed coalesce handling
+  // 3. Transforms - Fixed coalesce handling with proper type checking
   config.nodes.transforms.forEach(tx => {
     let node: Node;
     
@@ -55,6 +56,27 @@ export const importMappingConfiguration = (
     
     if (tx.transformType === 'coalesce') {
       console.log('FOUND COALESCE TRANSFORM:', tx.id);
+      
+      // Extract rules from either nodeData or config, with proper type checking
+      let rules: any[] = [];
+      
+      if ((tx as any).nodeData && typeof (tx as any).nodeData === 'object') {
+        const nodeData = (tx as any).nodeData;
+        if (Array.isArray(nodeData.rules)) {
+          rules = nodeData.rules;
+        }
+      }
+      
+      if (rules.length === 0 && tx.config && typeof tx.config === 'object') {
+        const config = tx.config as any;
+        if (config.parameters && typeof config.parameters === 'object') {
+          if (Array.isArray(config.parameters.rules)) {
+            rules = config.parameters.rules;
+          }
+        }
+      }
+      
+      console.log('Extracted rules for coalesce:', rules);
       
       // Create coalesceTransform node with proper structure
       node = {
@@ -65,7 +87,7 @@ export const importMappingConfiguration = (
           label: tx.label,
           transformType: 'coalesce',
           config: {
-            rules: [], // Will be populated from execution steps
+            rules: rules,
             defaultValue: ''
           }
         }
@@ -172,47 +194,65 @@ export const importMappingConfiguration = (
     }
   });
 
-  // 6. Reconstruct coalesce rules from connections
-  const coalesceNodes = nodes.filter(n => n.type === 'coalesceTransform');
-  console.log('Found coalesce nodes:', coalesceNodes.length);
-  
-  coalesceNodes.forEach(coalesceNode => {
-    console.log('Processing coalesce node:', coalesceNode.id);
+  // 6. Enhanced coalesce rule reconstruction from execution config
+  if (config.execution && config.execution.steps) {
+    const coalesceNodes = nodes.filter(n => n.type === 'coalesceTransform');
+    console.log('Found coalesce nodes for rule reconstruction:', coalesceNodes.length);
     
-    // Find all incoming edges to this coalesce node
-    const incomingEdges = edges.filter(edge => 
-      edge.target === coalesceNode.id && 
-      edge.targetHandle && 
-      edge.targetHandle.startsWith('rule-')
-    );
-    
-    console.log('Found incoming edges:', incomingEdges.length);
-    
-    // Group edges by rule ID and create rules
-    const ruleMap = new Map<string, any>();
-    
-    incomingEdges.forEach(edge => {
-      const ruleId = edge.targetHandle;
-      if (ruleId && ruleId.startsWith('rule-')) {
-        if (!ruleMap.has(ruleId)) {
-          ruleMap.set(ruleId, {
-            id: ruleId,
-            priority: ruleMap.size + 1,
-            outputValue: `Value ${ruleMap.size + 1}`,
-            sourceHandle: edge.sourceHandle
+    coalesceNodes.forEach(coalesceNode => {
+      console.log('Processing coalesce node for rule reconstruction:', coalesceNode.id);
+      
+      // Find all transform steps that target this coalesce node's output
+      const relatedSteps = config.execution.steps.filter(step => 
+        step.type === 'transform' && 
+        step.transform?.type === 'coalesce'
+      );
+      
+      console.log('Found related transform steps:', relatedSteps.length);
+      
+      if (relatedSteps.length > 0) {
+        // Use the first related step to get the coalesce configuration
+        const firstStep = relatedSteps[0];
+        if (firstStep.transform?.parameters && 
+            Array.isArray(firstStep.transform.parameters.rules)) {
+          
+          const rules = firstStep.transform.parameters.rules;
+          console.log('Reconstructing rules from execution config:', rules);
+          
+          // Update the coalesce node with the rules
+          if (coalesceNode.data && coalesceNode.data.config) {
+            coalesceNode.data.config.rules = rules;
+            coalesceNode.data.config.defaultValue = firstStep.transform.parameters.defaultValue || '';
+          }
+          
+          // Create edges for each rule
+          rules.forEach(rule => {
+            if (rule.sourceHandle && rule.id) {
+              const sourceNodeId = config.nodes.sources[0]?.id; // Assuming single source for now
+              if (sourceNodeId) {
+                const edgeId = `xy-edge__${sourceNodeId}${rule.sourceHandle}-${coalesceNode.id}${rule.id}`;
+                
+                // Check if edge already exists
+                const existingEdge = edges.find(e => e.id === edgeId);
+                if (!existingEdge) {
+                  edges.push({
+                    id: edgeId,
+                    source: sourceNodeId,
+                    target: coalesceNode.id,
+                    sourceHandle: rule.sourceHandle,
+                    targetHandle: rule.id,
+                    type: 'smoothstep',
+                    animated: true,
+                    style: { strokeWidth: 2, stroke: '#3b82f6' }
+                  });
+                }
+              }
+            }
           });
         }
       }
     });
-    
-    const rules = Array.from(ruleMap.values());
-    console.log('Created rules for coalesce node:', coalesceNode.id, rules);
-    
-    // Update the coalesce node with the rules
-    if (coalesceNode.data && coalesceNode.data.config) {
-      coalesceNode.data.config.rules = rules;
-    }
-  });
+  }
 
   console.log('Import completed:', { 
     nodesCount: nodes.length, 
