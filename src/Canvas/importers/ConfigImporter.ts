@@ -11,6 +11,26 @@ export const importMappingConfiguration = (
   // 1. Sources - use Map for better performance when looking up nodes later
   const nodeMap = new Map<string, Node>();
   
+  // Track which fields have connections to determine expansion
+  const connectedFields = new Set<string>();
+  
+  // Pre-scan execution steps to identify connected fields
+  if (config.execution && config.execution.steps) {
+    config.execution.steps.forEach(step => {
+      if (step.source?.fieldId || step.source?.fieldName) {
+        const fieldId = step.source.fieldId || step.source.fieldName;
+        connectedFields.add(`${step.source.nodeId}.${fieldId}`);
+        
+        // Also mark parent paths for expansion
+        const pathParts = fieldId.split('.');
+        for (let i = 1; i < pathParts.length; i++) {
+          const parentPath = pathParts.slice(0, i).join('.');
+          connectedFields.add(`${step.source.nodeId}.${parentPath}`);
+        }
+      }
+    });
+  }
+  
   config.nodes.sources.forEach(src => {
     const node = {
       id: src.id,
@@ -20,7 +40,8 @@ export const importMappingConfiguration = (
         label: src.label,
         fields: src.schema.fields,
         data: src.sampleData,
-        schemaType: 'source'
+        schemaType: 'source',
+        initialExpandedFields: connectedFields // Pass connected fields for auto-expansion
       }
     };
     nodes.push(node);
@@ -159,13 +180,96 @@ export const importMappingConfiguration = (
   // 6. Enhanced edge reconstruction from execution mappings
   if (config.execution && config.execution.steps) {
     config.execution.steps.forEach(step => {
-      // Handle all types of execution steps to rebuild connections
       const sourceNodeId = step.source?.nodeId;
       const targetNodeId = step.target?.nodeId;
       const sourceFieldId = step.source?.fieldId || step.source?.fieldName;
       const targetFieldId = step.target?.fieldId || step.target?.fieldName;
 
-      if (sourceNodeId && targetNodeId && sourceFieldId && targetFieldId) {
+      console.log('Processing execution step:', {
+        sourceNodeId,
+        targetNodeId,
+        sourceFieldId,
+        targetFieldId,
+        stepType: step.type,
+        transform: step.transform
+      });
+
+      // Handle coalesce transforms specially
+      if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters) {
+        const parameters = step.transform.parameters as any;
+        const coalesceNodeId = targetNodeId;
+        const coalesceNode = nodeMap.get(coalesceNodeId);
+        
+        console.log('Processing coalesce transform:', { coalesceNodeId, parameters });
+        
+        if (coalesceNode && parameters && Array.isArray(parameters.rules)) {
+          // Update the coalesce node with the rules from execution mapping
+          const enhancedRules = parameters.rules.map((rule: any, index: number) => ({
+            id: rule.id || `rule_${index}_${Date.now()}`,
+            priority: rule.priority || (index + 1),
+            outputValue: rule.outputValue || '',
+            sourceField: rule.sourceField || '',
+            sourceHandle: rule.sourceHandle || rule.sourceField || ''
+          }));
+          
+          // Ensure the node data structure is correct
+          if (!coalesceNode.data.config) {
+            coalesceNode.data.config = {};
+          }
+          
+          const nodeConfig = coalesceNode.data.config as any;
+          nodeConfig.rules = enhancedRules;
+          nodeConfig.defaultValue = parameters.defaultValue || '';
+          
+          console.log('Updated coalesce node config:', nodeConfig);
+          
+          // Create input edges for each rule
+          enhancedRules.forEach((rule: any) => {
+            if (rule.sourceHandle || rule.sourceField) {
+              const handleToMatch = rule.sourceHandle || rule.sourceField;
+              
+              console.log('Looking for source field:', handleToMatch);
+              
+              // Find the source node that contains this field
+              const sourceNode = Array.from(nodeMap.values()).find(node => {
+                if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
+                  return findFieldInSource(node.data.fields, handleToMatch);
+                }
+                // Also check data fields if available
+                if (node.type === 'source' && node.data?.data && Array.isArray(node.data.data) && node.data.data.length > 0) {
+                  return hasFieldInData(node.data.data[0], handleToMatch);
+                }
+                return false;
+              });
+              
+              console.log('Found source node for field:', { handleToMatch, sourceNodeId: sourceNode?.id });
+              
+              if (sourceNode) {
+                const edgeId = `coalesce-rule-${sourceNode.id}-${coalesceNodeId}-${rule.id}`;
+                
+                // Only add edge if it doesn't already exist
+                const existingEdge = edges.find(e => e.id === edgeId);
+                if (!existingEdge) {
+                  console.log('Creating coalesce edge:', edgeId);
+                  edges.push({
+                    id: edgeId,
+                    source: sourceNode.id,
+                    target: coalesceNodeId,
+                    sourceHandle: handleToMatch,
+                    targetHandle: rule.id,
+                    type: 'smoothstep',
+                    animated: true,
+                    style: { strokeWidth: 2, stroke: '#3b82f6' }
+                  });
+                }
+              } else {
+                console.warn('Could not find source node for field:', handleToMatch);
+              }
+            }
+          });
+        }
+      } else if (sourceNodeId && targetNodeId && sourceFieldId && targetFieldId) {
+        // Handle regular direct mappings
         const edgeId = `execution-edge-${sourceNodeId}-${targetNodeId}-${sourceFieldId}-${targetFieldId}`;
         
         // Check if edge already exists to avoid duplicates
@@ -177,6 +281,7 @@ export const importMappingConfiguration = (
         );
 
         if (!existingEdge) {
+          console.log('Creating regular edge:', edgeId);
           edges.push({
             id: edgeId,
             source: sourceNodeId,
@@ -189,80 +294,6 @@ export const importMappingConfiguration = (
           });
         }
       }
-
-      // Special handling for coalesce transforms
-      if (step.transform && step.transform.type === 'coalesce' && step.transform.parameters) {
-        const parameters = step.transform.parameters as any;
-        
-        if (parameters && Array.isArray(parameters.rules)) {
-          const coalesceNodeId = step.target.nodeId;
-          const coalesceNode = nodeMap.get(coalesceNodeId);
-          
-          if (coalesceNode) {
-            // Update the coalesce node with the rules from execution mapping
-            const enhancedRules = parameters.rules.map((rule: any) => ({
-              id: rule.id || `rule_${Date.now()}_${Math.random()}`,
-              priority: rule.priority || 1,
-              outputValue: rule.outputValue || '',
-              sourceField: rule.sourceField || '',
-              sourceHandle: rule.sourceHandle || ''
-            }));
-            
-            // Ensure coalesceNode.data exists and has proper structure
-            if (!coalesceNode.data) {
-              coalesceNode.data = {};
-            }
-            
-            // Ensure config exists and is properly typed
-            if (!coalesceNode.data.config) {
-              coalesceNode.data.config = {};
-            }
-            
-            // Update the config with proper typing
-            const nodeConfig = coalesceNode.data.config as any;
-            nodeConfig.rules = enhancedRules;
-            nodeConfig.defaultValue = parameters.defaultValue || '';
-            
-            // Create input edges for each rule with improved field matching
-            enhancedRules.forEach((rule: any) => {
-              if (rule.sourceHandle || rule.sourceField) {
-                const handleToMatch = rule.sourceHandle || rule.sourceField;
-                
-                // Find the source node that contains this field with more flexible matching
-                const sourceNode = Array.from(nodeMap.values()).find(node => {
-                  if (node.type === 'source' && node.data?.fields && Array.isArray(node.data.fields)) {
-                    return findFieldInSource(node.data.fields, handleToMatch);
-                  }
-                  // Also check other node types that might be sources
-                  if ((node.type === 'transform' || node.type === 'staticValue' || node.type === 'ifThen') && node.id.includes(handleToMatch)) {
-                    return true;
-                  }
-                  return false;
-                });
-                
-                if (sourceNode) {
-                  const edgeId = `coalesce-rule-${sourceNode.id}-${coalesceNodeId}-${rule.id}`;
-                  
-                  // Only add edge if it doesn't already exist
-                  const existingEdge = edges.find(e => e.id === edgeId);
-                  if (!existingEdge) {
-                    edges.push({
-                      id: edgeId,
-                      source: sourceNode.id,
-                      target: coalesceNodeId,
-                      sourceHandle: handleToMatch,
-                      targetHandle: rule.id,
-                      type: 'smoothstep',
-                      animated: true,
-                      style: { strokeWidth: 2, stroke: '#3b82f6' }
-                    });
-                  }
-                }
-              }
-            });
-          }
-        }
-      }
     });
   }
 
@@ -270,29 +301,41 @@ export const importMappingConfiguration = (
     nodesCount: nodes.length, 
     edgesCount: edges.length,
     nodeTypes: nodes.map(n => n.type),
-    edgeConnections: edges.map(e => `${e.source} -> ${e.target}`)
+    edgeConnections: edges.map(e => `${e.source}[${e.sourceHandle}] -> ${e.target}[${e.targetHandle}]`),
+    connectedFieldsCount: connectedFields.size
   });
 
   return { nodes, edges };
 };
 
-// Helper function to check if a field exists in source fields (including nested) - improved matching
+// Helper function to check if a field exists in source fields (including nested)
 const findFieldInSource = (fields: any[], handleId: string): boolean => {
   if (!Array.isArray(fields)) return false;
   
   for (const field of fields) {
-    // Check exact ID match
-    if (field.id === handleId) return true;
-    // Check exact name match
-    if (field.name === handleId) return true;
-    // Check partial matches for flexibility
-    if (field.id && field.id.includes(handleId)) return true;
-    if (field.name && field.name.includes(handleId)) return true;
-    // Check nested children
+    if (field.id === handleId || field.name === handleId) return true;
     if (field.children && Array.isArray(field.children)) {
       if (findFieldInSource(field.children, handleId)) return true;
     }
   }
   
   return false;
+};
+
+// Helper function to check if a field exists in data structure
+const hasFieldInData = (data: any, fieldPath: string): boolean => {
+  if (!data || typeof data !== 'object') return false;
+  
+  const pathParts = fieldPath.split('.');
+  let current = data;
+  
+  for (const part of pathParts) {
+    if (current && typeof current === 'object' && part in current) {
+      current = current[part];
+    } else {
+      return false;
+    }
+  }
+  
+  return true;
 };
