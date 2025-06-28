@@ -1,4 +1,3 @@
-
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -17,6 +16,7 @@ import '@xyflow/react/dist/style.css';
 
 import { nodeTypes, useNodeFactories } from './NodeFactories';
 import { useFieldStore } from '../store/fieldStore';
+import { useDataFlowSync } from '../hooks/useDataFlowSync';
 import DataSidebar from '../compontents/DataSidebar';
 import MappingToolbar from '../compontents/MappingToolbar';
 import MappingManager from '../compontents/MappingManager';
@@ -37,7 +37,7 @@ const initialNodes: Node[] = [
 
 const initialEdges: Edge[] = [];
 
-const Pipeline = () => {
+const PipelineContent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -49,6 +49,9 @@ const Pipeline = () => {
 
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
+  
+  // Use the data flow sync hook to keep target nodes updated
+  useDataFlowSync();
 
   // Click outside to close functionality - improved to target canvas specifically
   useEffect(() => {
@@ -81,8 +84,16 @@ const Pipeline = () => {
   }, []);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    (params: Connection) => {
+      const newEdge = addEdge({
+        ...params,
+        type: 'smoothstep',
+        animated: true,
+        style: { strokeWidth: 2, stroke: '#3b82f6' }
+      }, edges);
+      setEdges(newEdge);
+    },
+    [setEdges, edges]
   );
 
   const onDrop = useCallback(
@@ -177,52 +188,58 @@ const Pipeline = () => {
   }, [nodes, edges, currentMappingName]);
 
   return (
-    <ReactFlowProvider>
-      <div className="flex h-screen bg-gray-50">
-        <DataSidebar 
-          side="left"
-          title="Sample Data"
-          data={sampleData}
-          onDataChange={setSampleData}
+    <div className="flex h-screen bg-gray-50">
+      <DataSidebar 
+        side="left"
+        title="Sample Data"
+        data={sampleData}
+        onDataChange={setSampleData}
+      />
+      <div className="flex-1 relative" ref={reactFlowWrapper}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={nodeTypes}
+          fitView
+          className="bg-gray-50"
+          onInit={setReactFlowInstance}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+        >
+          <Background />
+          <Controls />
+        </ReactFlow>
+        
+        <MappingToolbar 
+          onAddTransform={addTransformNode}
+          onAddMappingNode={addMappingNode}
+          onAddSchemaNode={addSchemaNode}
+          isExpanded={isToolbarExpanded}
+          onToggleExpanded={setIsToolbarExpanded}
         />
-        <div className="flex-1 relative" ref={reactFlowWrapper}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            nodeTypes={nodeTypes}
-            fitView
-            className="bg-gray-50"
-            onInit={setReactFlowInstance}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-          >
-            <Background />
-            <Controls />
-          </ReactFlow>
-          
-          <MappingToolbar 
-            onAddTransform={addTransformNode}
-            onAddMappingNode={addMappingNode}
-            onAddSchemaNode={addSchemaNode}
-            isExpanded={isToolbarExpanded}
-            onToggleExpanded={setIsToolbarExpanded}
-          />
-          
-          <MappingManager 
-            onExportMapping={handleExportMapping}
-            onImportMapping={handleImportMapping}
-            onNewMapping={handleNewMapping}
-            onSaveMapping={handleSaveMapping}
-            onExportDocumentation={handleExportDocumentation}
-            currentMappingName={currentMappingName}
-            isExpanded={isManagerExpanded}
-            onToggleExpanded={setIsManagerExpanded}
-          />
-        </div>
+        
+        <MappingManager 
+          onExportMapping={handleExportMapping}
+          onImportMapping={handleImportMapping}
+          onNewMapping={handleNewMapping}
+          onSaveMapping={handleSaveMapping}
+          onExportDocumentation={handleExportDocumentation}
+          currentMappingName={currentMappingName}
+          isExpanded={isManagerExpanded}
+          onToggleExpanded={setIsManagerExpanded}
+        />
       </div>
+    </div>
+  );
+};
+
+const Pipeline = () => {
+  return (
+    <ReactFlowProvider>
+      <PipelineContent />
     </ReactFlowProvider>
   );
 };
