@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 import SourceNode from '../compontents/SourceNode';
@@ -81,6 +82,7 @@ export const useNodeFactories = (
                 defaultValue: '',
             };
         } else if (transformType === 'Concat') {
+            // Use the new concatTransform node type exclusively
             nodeType = 'concatTransform';
             nodeIdPrefix = 'concat';
             nodeData = {

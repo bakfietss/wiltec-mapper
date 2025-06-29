@@ -1,4 +1,5 @@
 
+
 import { Node } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -46,7 +47,8 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
           config: transform.nodeData?.config || {}
         }
       };
-    } else if (transform.type === 'concatTransform' || transform.transformType === 'concat') {
+    } else if (transform.type === 'concatTransform') {
+      // Only handle concatTransform node type - removed old concat logic
       console.log('Importing concat transform:', transform.id);
       console.log('Transform nodeData:', transform.nodeData);
       console.log('Transform config:', transform.config);

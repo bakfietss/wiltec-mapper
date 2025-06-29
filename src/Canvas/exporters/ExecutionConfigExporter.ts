@@ -1,4 +1,5 @@
 
+
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -300,8 +301,8 @@ export const exportExecutionMapping = (
             console.log('=== FINAL COALESCE MAPPING ===');
             console.log('Created coalesce execution mapping:', mapping);
             
-          } else if (sourceNode.type === 'concatTransform' || (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'concat')) {
-            // CONCAT TRANSFORM MAPPING - NEW IMPLEMENTATION
+          } else if (sourceNode.type === 'concatTransform') {
+            // CONCAT TRANSFORM MAPPING - USING NEW CONCAT NODE
             console.log('=== PROCESSING CONCAT TRANSFORM NODE ===');
             console.log('Concat node ID:', sourceNode.id);
             console.log('Concat node data:', sourceNode.data);
@@ -318,8 +319,8 @@ export const exportExecutionMapping = (
             console.log('=== CONCAT INPUT EDGES ===');
             console.log('All edges going to concat node:', concatInputEdges);
             
-            // Build the fields array for concat parameters
-            const fields: string[] = [];
+            // Build the sources array for concat parameters
+            const sources: string[] = [];
             
             // Sort rules by priority to get correct field order
             const sortedRules = rules.sort((a: any, b: any) => a.priority - b.priority);
@@ -337,14 +338,14 @@ export const exportExecutionMapping = (
                   
                   const fieldName = inputField?.name || ruleEdge.sourceHandle || '';
                   if (fieldName) {
-                    fields.push(fieldName);
+                    sources.push(fieldName);
                     console.log(`Added field to concat: ${fieldName} (from rule ${rule.id})`);
                   }
                 }
               }
             });
             
-            console.log('Final concat fields array:', fields);
+            console.log('Final concat sources array:', sources);
             
             mapping = {
               from: null, // For concat, we don't have a single 'from' field
@@ -353,8 +354,8 @@ export const exportExecutionMapping = (
               transform: {
                 type: 'concat',
                 parameters: {
-                  fields: fields,
-                  separator: delimiter
+                  sources: sources,
+                  defaultValue: delimiter
                 }
               }
             };
