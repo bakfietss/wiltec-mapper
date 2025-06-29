@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -45,6 +44,8 @@ export interface ExecutionMapping {
     operation?: string;
     parameters?: {
       sources?: string[];
+      fields?: string[]; // Add support for new concat parameter format
+      separator?: string; // Add support for new concat parameter format
       rules?: Array<{
         id: string;
         priority: number;
