@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Link, Edit3, Plus, Trash2 } from 'lucide-react';
+import { Link2, Edit3, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
 
@@ -64,12 +64,10 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
   }, []);
 
   const removeRule = useCallback((ruleId: string) => {
-    // Don't allow removing the last rule
     if (rules.length <= 1) return;
     
     setRules(prev => {
       const filtered = prev.filter(rule => rule.id !== ruleId);
-      // Update priorities after removal
       return filtered.map((rule, idx) => ({ ...rule, priority: idx + 1 }));
     });
   }, [rules.length]);
@@ -85,7 +83,6 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
       const newRules = [...prev];
       [newRules[index], newRules[newIndex]] = [newRules[newIndex], newRules[index]];
       
-      // Update priorities
       return newRules.map((rule, idx) => ({ ...rule, priority: idx + 1 }));
     });
   }, []);
@@ -102,35 +99,35 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
   const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
 
   return (
-    <div className="relative border-2 rounded-lg shadow-sm min-w-48 border-purple-300 bg-purple-50">
-      {/* Input handles for each rule */}
+    <div className="relative border-2 rounded-lg shadow-lg min-w-64 max-w-80 border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50">
+      {/* Dynamic input handles for each rule */}
       {sortedRules.map((rule, index) => (
         <Handle
           key={rule.id}
           id={rule.id}
           type="target"
           position={Position.Left}
-          className="w-3 h-3 bg-purple-400 border-2 border-white hover:bg-purple-600"
+          className="w-3 h-3 bg-orange-500 border-2 border-white hover:bg-orange-600 shadow-sm"
           style={{ 
             left: '-6px', 
-            top: `${40 + (index * 25)}px`
+            top: `${60 + (index * 32)}px`
           }}
         />
       ))}
       
-      <div className="p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="p-1.5 bg-white rounded-md shadow-sm">
-            <Link className="w-4 h-4 text-purple-600" />
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-white rounded-lg shadow-sm border border-orange-200">
+            <Link2 className="w-5 h-5 text-orange-600" />
           </div>
           <div className="flex-1">
             <div className="font-semibold text-gray-900 text-sm">{data.label}</div>
-            <div className="text-xs text-gray-600">Concatenate {rules.length} field{rules.length !== 1 ? 's' : ''}</div>
+            <div className="text-xs text-gray-600">Join {rules.length} field{rules.length !== 1 ? 's' : ''} with "{delimiter}"</div>
           </div>
           <Sheet>
             <SheetTrigger asChild>
-              <button className="p-1 hover:bg-white/50 rounded">
-                <Edit3 className="w-3 h-3 text-gray-600" />
+              <button className="p-1.5 hover:bg-white/60 rounded-md transition-colors">
+                <Edit3 className="w-4 h-4 text-gray-600" />
               </button>
             </SheetTrigger>
             <SheetContent className="w-[400px] sm:w-[400px]">
@@ -158,7 +155,7 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
                     <label className="block text-sm font-medium">Fields to Concatenate:</label>
                     <button
                       onClick={addRule}
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
                     >
                       <Plus className="w-3 h-3" />
                       Add Field
@@ -167,21 +164,21 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
                   
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {sortedRules.map((rule, index) => (
-                      <div key={rule.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                      <div key={rule.id} className="flex items-center gap-2 p-3 bg-gray-50 rounded border">
                         <div className="flex flex-col gap-1">
                           <button
                             onClick={() => moveRule(rule.id, 'up')}
                             disabled={index === 0}
-                            className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                            className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 p-1"
                           >
-                            ↑
+                            <ArrowUp className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => moveRule(rule.id, 'down')}
                             disabled={index === sortedRules.length - 1}
-                            className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                            className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 p-1"
                           >
-                            ↓
+                            <ArrowDown className="w-3 h-3" />
                           </button>
                         </div>
                         
@@ -202,7 +199,7 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
                         <button
                           onClick={() => removeRule(rule.id)}
                           disabled={rules.length <= 1}
-                          className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed p-1"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -232,11 +229,26 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
           </Sheet>
         </div>
         
-        <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
-          Delimiter: "{delimiter}"
+        {/* Show field rules in the node */}
+        <div className="space-y-1 mb-3">
+          {sortedRules.map((rule, index) => (
+            <div key={rule.id} className="flex items-center gap-2 text-xs">
+              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+              <span className="text-gray-700 truncate flex-1">
+                {index + 1}. {rule.sourceField}
+              </span>
+              <span className="text-gray-500 text-xs">
+                {data.inputValues?.[rule.id] ? '✓' : '○'}
+              </span>
+            </div>
+          ))}
         </div>
         
-        <div className="text-xs text-purple-600 mt-1 font-medium truncate">
+        <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border mb-2">
+          Join with: "{delimiter}"
+        </div>
+        
+        <div className="text-xs text-orange-600 font-medium truncate bg-white px-2 py-1 rounded border">
           {getPreviewValue()}
         </div>
       </div>
@@ -244,7 +256,7 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600"
+        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 shadow-sm"
         style={{ right: '-6px' }}
       />
     </div>
