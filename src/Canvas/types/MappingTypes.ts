@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -60,7 +61,7 @@ export interface ExecutionMapping {
 
 export interface ArrayMappingStructure {
   target: string;
-  groupBy?: string;
+  groupBy?: string; // Make groupBy explicitly optional but supported
   mappings: ExecutionMapping[];
   arrays?: ArrayMappingStructure[];
 }
@@ -198,4 +199,6 @@ export interface SchemaField {
   type: string;
   exampleValue?: any;
   children?: SchemaField[];
+  // Add groupBy support for array fields
+  groupBy?: string;
 }

@@ -57,6 +57,38 @@ const findArrayAncestors = (field: any): any[] => {
   return ancestors;
 };
 
+// Helper function to determine groupBy field for array structures
+const determineGroupBy = (field: any, mappings: ExecutionMapping[]): string | undefined => {
+  console.log(`Determining groupBy for field: ${field.name}`, field);
+  
+  // 1. Use explicitly set groupBy from field configuration
+  if (field.groupBy) {
+    console.log(`Using explicit groupBy: ${field.groupBy}`);
+    return field.groupBy;
+  }
+  
+  // 2. Auto-detect based on common patterns in field names
+  const groupingPatterns = ['Number', 'Id', 'Code', 'Key'];
+  const candidate = mappings.find(m => 
+    groupingPatterns.some(pattern => m.to.toLowerCase().includes(pattern.toLowerCase()))
+  );
+  
+  if (candidate) {
+    console.log(`Auto-detected groupBy from mappings: ${candidate.to}`);
+    return candidate.to;
+  }
+  
+  // 3. Fallback to first child field name if available
+  if (field.children && field.children.length > 0) {
+    const firstChild = field.children[0].name;
+    console.log(`Using first child field as groupBy: ${firstChild}`);
+    return firstChild;
+  }
+  
+  console.log(`No groupBy determined for field: ${field.name}`);
+  return undefined;
+};
+
 export const exportExecutionMapping = (
   nodes: Node[],
   edges: Edge[],
@@ -65,7 +97,7 @@ export const exportExecutionMapping = (
   const rootMappings: ExecutionMapping[] = [];
   const arrayStructures: Map<string, ArrayMappingStructure> = new Map();
   
-  console.log('=== GENERATING ENHANCED EXECUTION MAPPINGS ===');
+  console.log('=== GENERATING ENHANCED EXECUTION MAPPINGS WITH GROUPBY ===');
   console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
 
   const targetNodes = nodes.filter(node => node.type === 'target');
@@ -353,7 +385,7 @@ export const exportExecutionMapping = (
             // Root level mapping
             rootMappings.push(mapping);
           } else {
-            // Nested in arrays - build the nested structure
+            // Nested in arrays - build the nested structure with groupBy support
             let currentStructures = arrayStructures;
             let currentArrays: ArrayMappingStructure[] = [];
             
@@ -361,11 +393,20 @@ export const exportExecutionMapping = (
               const ancestorPath = fieldPath.slice(0, index + 1).join('.');
               
               if (!currentStructures.has(ancestorPath)) {
+                // Determine groupBy for this array structure
+                const currentMappings: ExecutionMapping[] = [];
+                const groupBy = determineGroupBy(ancestor, currentMappings);
+                
                 const newArrayStructure: ArrayMappingStructure = {
                   target: ancestor.name,
+                  groupBy, // Add the determined groupBy field
                   mappings: [],
                   arrays: []
                 };
+                
+                console.log(`=== CREATED ARRAY STRUCTURE WITH GROUPBY ===`);
+                console.log(`Array: ${ancestor.name}, GroupBy: ${groupBy}`);
+                
                 currentStructures.set(ancestorPath, newArrayStructure);
                 
                 if (index === 0) {
@@ -407,8 +448,8 @@ export const exportExecutionMapping = (
     version: '1.0.0',
     mappings: rootMappings,
     metadata: {
-      description: 'Enhanced execution mapping configuration with array support for integration tools',
-      tags: ['execution', 'integration', 'data-transformation', 'arrays'],
+      description: 'Enhanced execution mapping configuration with array support and groupBy functionality for integration tools',
+      tags: ['execution', 'integration', 'data-transformation', 'arrays', 'groupBy'],
       author: 'Lovable Mapping Tool'
     }
   };
@@ -422,7 +463,7 @@ export const exportExecutionMapping = (
     );
   }
 
-  console.log('=== FINAL ENHANCED EXECUTION CONFIG ===');
+  console.log('=== FINAL ENHANCED EXECUTION CONFIG WITH GROUPBY ===');
   console.log(config);
   
   return config;

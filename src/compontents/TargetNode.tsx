@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
-import { FileText, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Plus, Trash2, ChevronDown, ChevronRight, Settings } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { useNodeDataSync } from '../hooks/useNodeDataSync';
 import NodeEditSheet from './NodeEditSheet';
@@ -12,6 +12,7 @@ interface SchemaField {
     type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
     children?: SchemaField[];
     parent?: string;
+    groupBy?: string; // Add groupBy support
 }
 
 interface TargetNodeData {
@@ -36,16 +37,29 @@ const getTypeColor = (type: string) => {
 const TargetField: React.FC<{
     field: SchemaField;
     fieldValues: Record<string, any>;
+    allFields: SchemaField[];
     level?: number;
     expandedFields: Set<string>;
     onFieldExpansionToggle: (fieldId: string) => void;
-}> = ({ field, fieldValues, level = 0, expandedFields, onFieldExpansionToggle }) => {
+    onFieldUpdate: (fieldId: string, updates: Partial<SchemaField>) => void;
+}> = ({ field, fieldValues, allFields, level = 0, expandedFields, onFieldExpansionToggle, onFieldUpdate }) => {
     const fieldValue = fieldValues[field.id];
     const isExpanded = expandedFields.has(field.id);
     const hasChildren = field.children && field.children.length > 0;
     
-    console.log(`TargetField ${field.name} (${field.id}) - looking for value in fieldValues:`, fieldValues);
-    console.log(`Found value for ${field.name}:`, fieldValue);
+    // Get available fields for groupBy dropdown (fields from the same level or source fields)
+    const getGroupByOptions = (): string[] => {
+        const options: string[] = [];
+        
+        // Add child field names if this is an array
+        if (field.type === 'array' && field.children) {
+            field.children.forEach(child => {
+                options.push(child.name);
+            });
+        }
+        
+        return options;
+    };
 
     if (field.type === 'array') {
         return (
@@ -65,6 +79,11 @@ const TargetField: React.FC<{
                     <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
                         {field.name}[]
                     </span>
+                    {field.groupBy && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            group by: {field.groupBy}
+                        </span>
+                    )}
                     {hasChildren && (
                         <span className="text-xs text-gray-500">({field.children!.length} items)</span>
                     )}
@@ -85,16 +104,46 @@ const TargetField: React.FC<{
                     />
                 </div>
                 
-                {isExpanded && hasChildren && field.children!.map((childField) => (
-                    <TargetField
-                        key={childField.id}
-                        field={childField}
-                        fieldValues={fieldValues}
-                        level={level + 1}
-                        expandedFields={expandedFields}
-                        onFieldExpansionToggle={onFieldExpansionToggle}
-                    />
-                ))}
+                {isExpanded && hasChildren && (
+                    <>
+                        {/* GroupBy configuration row */}
+                        <div 
+                            className="flex items-center gap-2 py-1 px-2 pr-8 bg-blue-50 border-l-2 border-blue-200 text-xs"
+                            style={{ paddingLeft: `${20 + level * 12}px` }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Settings className="w-3 h-3 text-blue-600" />
+                            <span className="text-blue-700 font-medium">Group by:</span>
+                            <select
+                                value={field.groupBy || ''}
+                                onChange={(e) => onFieldUpdate(field.id, { groupBy: e.target.value || undefined })}
+                                className="text-xs border rounded px-2 py-1 bg-white"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <option value="">Select field...</option>
+                                {getGroupByOptions().map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                            </select>
+                            <span className="text-blue-600 text-xs italic">
+                                Choose which field to group records by
+                            </span>
+                        </div>
+                        
+                        {field.children!.map((childField) => (
+                            <TargetField
+                                key={childField.id}
+                                field={childField}
+                                fieldValues={fieldValues}
+                                allFields={allFields}
+                                level={level + 1}
+                                expandedFields={expandedFields}
+                                onFieldExpansionToggle={onFieldExpansionToggle}
+                                onFieldUpdate={onFieldUpdate}
+                            />
+                        ))}
+                    </>
+                )}
             </div>
         );
     }
@@ -144,9 +193,11 @@ const TargetField: React.FC<{
                         key={childField.id}
                         field={childField}
                         fieldValues={fieldValues}
+                        allFields={allFields}
                         level={level + 1}
                         expandedFields={expandedFields}
                         onFieldExpansionToggle={onFieldExpansionToggle}
+                        onFieldUpdate={onFieldUpdate}
                     />
                 ))}
             </div>
@@ -203,7 +254,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
     console.log('Field values from centralized system:', fieldValues);
-    console.log('All fields:', fields?.map(f => ({ id: f.id, name: f.name })));
+    console.log('All fields:', fields?.map(f => ({ id: f.id, name: f.name, groupBy: f.groupBy })));
 
     const addField = (parentId?: string) => {
         const newField: SchemaField = {
@@ -240,9 +291,10 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                     if ((updates.type === 'object' || updates.type === 'array') && !updatedField.children) {
                         updatedField.children = [];
                     }
-                    // If changing away from object/array, remove children
+                    // If changing away from object/array, remove children and groupBy
                     if (updates.type && updates.type !== 'object' && updates.type !== 'array') {
                         delete updatedField.children;
+                        delete updatedField.groupBy;
                     }
                     return updatedField;
                 }
@@ -356,6 +408,18 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                     <option value="object">Object</option>
                     <option value="array">Array</option>
                 </select>
+                {field.type === 'array' && (
+                    <select
+                        value={field.groupBy || ''}
+                        onChange={(e) => updateField(field.id, { groupBy: e.target.value || undefined })}
+                        className="border rounded px-2 py-1 text-sm bg-blue-50"
+                    >
+                        <option value="">No grouping</option>
+                        {field.children?.map(child => (
+                            <option key={child.id} value={child.name}>{child.name}</option>
+                        ))}
+                    </select>
+                )}
                 {(field.type === 'object' || field.type === 'array') && (
                     <button
                         onClick={() => addField(field.id)}
@@ -455,8 +519,10 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
                         key={field.id}
                         field={field}
                         fieldValues={fieldValues}
+                        allFields={fields}
                         expandedFields={expandedFields}
                         onFieldExpansionToggle={handleFieldExpansionToggle}
+                        onFieldUpdate={updateField}
                     />
                 ))}
                 
