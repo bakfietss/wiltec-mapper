@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -104,7 +105,7 @@ export const exportExecutionMapping = (
   const rootMappings: ExecutionMapping[] = [];
   const arrayStructures: Map<string, ArrayMappingStructure> = new Map();
   
-  console.log('=== GENERATING ENHANCED EXECUTION MAPPINGS WITH GROUPBY ===');
+  console.log('=== GENERATING ENHANCED EXECUTION MAPPINGS WITH CONCAT SUPPORT ===');
   console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
 
   const targetNodes = nodes.filter(node => node.type === 'target');
@@ -299,6 +300,68 @@ export const exportExecutionMapping = (
             console.log('=== FINAL COALESCE MAPPING ===');
             console.log('Created coalesce execution mapping:', mapping);
             
+          } else if (sourceNode.type === 'concatTransform' || (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'concat')) {
+            // CONCAT TRANSFORM MAPPING - NEW IMPLEMENTATION
+            console.log('=== PROCESSING CONCAT TRANSFORM NODE ===');
+            console.log('Concat node ID:', sourceNode.id);
+            console.log('Concat node data:', sourceNode.data);
+            
+            const sourceData = sourceNode.data as any;
+            const rules = sourceData?.rules || [];
+            const delimiter = sourceData?.delimiter || ',';
+            
+            console.log('Concat rules:', rules);
+            console.log('Concat delimiter:', delimiter);
+            
+            // Find all inputs to the concat node and build the field list
+            const concatInputEdges = edges.filter(e => e.target === sourceNode.id);
+            console.log('=== CONCAT INPUT EDGES ===');
+            console.log('All edges going to concat node:', concatInputEdges);
+            
+            // Build the fields array for concat parameters
+            const fields: string[] = [];
+            
+            // Sort rules by priority to get correct field order
+            const sortedRules = rules.sort((a: any, b: any) => a.priority - b.priority);
+            
+            sortedRules.forEach((rule: any) => {
+              // Find the edge that connects to this specific rule
+              const ruleEdge = concatInputEdges.find(edge => edge.targetHandle === rule.id);
+              
+              if (ruleEdge) {
+                const inputNode = nodes.find(n => n.id === ruleEdge.source);
+                if (inputNode && inputNode.type === 'source') {
+                  const inputData = inputNode.data as any;
+                  const inputFields = inputData?.fields;
+                  const inputField = findSourceFieldByHandle(inputFields, ruleEdge.sourceHandle || '');
+                  
+                  const fieldName = inputField?.name || ruleEdge.sourceHandle || '';
+                  if (fieldName) {
+                    fields.push(fieldName);
+                    console.log(`Added field to concat: ${fieldName} (from rule ${rule.id})`);
+                  }
+                }
+              }
+            });
+            
+            console.log('Final concat fields array:', fields);
+            
+            mapping = {
+              from: null, // For concat, we don't have a single 'from' field
+              to: targetField.name,
+              type: 'transform',
+              transform: {
+                type: 'concat',
+                parameters: {
+                  fields: fields,
+                  separator: delimiter
+                }
+              }
+            };
+            
+            console.log('=== FINAL CONCAT MAPPING ===');
+            console.log('Created concat execution mapping:', mapping);
+            
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
             const sourceData = sourceNode.data as any;
@@ -455,8 +518,8 @@ export const exportExecutionMapping = (
     version: '1.0.0',
     mappings: rootMappings,
     metadata: {
-      description: 'Enhanced execution mapping configuration with array support and groupBy functionality for integration tools',
-      tags: ['execution', 'integration', 'data-transformation', 'arrays', 'groupBy'],
+      description: 'Enhanced execution mapping configuration with array support, concat transforms, and groupBy functionality for integration tools',
+      tags: ['execution', 'integration', 'data-transformation', 'arrays', 'groupBy', 'concat'],
       author: 'Lovable Mapping Tool'
     }
   };
@@ -470,7 +533,7 @@ export const exportExecutionMapping = (
     );
   }
 
-  console.log('=== FINAL ENHANCED EXECUTION CONFIG WITH GROUPBY ===');
+  console.log('=== FINAL ENHANCED EXECUTION CONFIG WITH CONCAT SUPPORT ===');
   console.log(config);
   
   return config;
