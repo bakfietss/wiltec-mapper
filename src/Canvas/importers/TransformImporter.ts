@@ -51,7 +51,7 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
       console.log('Transform nodeData:', transform.nodeData);
       console.log('Transform config:', transform.config);
       
-      // Import the rules with all their properties - check multiple possible locations
+      // Extract rules from multiple possible locations with proper precedence
       const rules = transform.nodeData?.rules || 
                    transform.config?.parameters?.rules || 
                    transform.config?.rules || 
@@ -61,9 +61,13 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
                           transform.config?.parameters?.defaultValue || 
                           transform.config?.defaultValue || 
                           '';
+
+      // Also extract input values if they exist
+      const inputValues = transform.nodeData?.inputValues || {};
       
       console.log('Extracted rules:', rules);
       console.log('Extracted defaultValue:', defaultValue);
+      console.log('Extracted inputValues:', inputValues);
       
       return {
         ...baseNode,
@@ -74,10 +78,15 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
           rules: rules,
           defaultValue: defaultValue,
           outputType: transform.nodeData?.outputType || 'value',
-          inputValues: transform.nodeData?.inputValues || {},
+          inputValues: inputValues,
           config: {
             rules: rules,
             defaultValue: defaultValue,
+            parameters: {
+              rules: rules,
+              defaultValue: defaultValue,
+              outputType: transform.nodeData?.outputType || 'value'
+            },
             ...transform.config
           }
         }
