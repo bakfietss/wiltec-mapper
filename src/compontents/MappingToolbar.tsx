@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Plus, Database, FileText, Shuffle, GitMerge, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 
@@ -21,7 +22,7 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
     { type: 'Math Operation', label: 'Math Operation', icon: Plus },
     { type: 'Date Format', label: 'Date Format', icon: Shuffle },
     { type: 'Text Splitter', label: 'Text Splitter', icon: Shuffle },
-    { type: 'concat', label: 'Concatenate', icon: GitMerge },
+    { type: 'Concat', label: 'Concatenate Fields', icon: GitMerge },
     { type: 'format', label: 'Format', icon: Shuffle },
     { type: 'IF THEN', label: 'IF THEN Logic', icon: GitMerge },
     { type: 'Static Value', label: 'Static Value', icon: Database },
