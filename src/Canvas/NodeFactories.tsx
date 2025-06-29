@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 import SourceNode from '../compontents/SourceNode';
@@ -9,6 +8,7 @@ import IfThenNode from '../compontents/IfThenNode';
 import StaticValueNode from '../compontents/StaticValueNode';
 import ConversionMappingNode from '../compontents/ConversionMappingNode';
 import CoalesceTransformNode from '../compontents/CoalesceTransformNode';
+import ConcatTransformNode from '../compontents/ConcatTransformNode';
 
 export const nodeTypes = {
   source: SourceNode,
@@ -19,6 +19,7 @@ export const nodeTypes = {
   staticValue: StaticValueNode,
   conversionMapping: ConversionMappingNode,
   coalesceTransform: CoalesceTransformNode,
+  concatTransform: ConcatTransformNode,
 };
 
 export const useNodeFactories = (
@@ -78,6 +79,17 @@ export const useNodeFactories = (
                 transformType: 'coalesce',
                 rules: [],
                 defaultValue: '',
+            };
+        } else if (transformType === 'Concat') {
+            nodeType = 'concatTransform';
+            nodeIdPrefix = 'concat';
+            nodeData = {
+                label: 'Concat Transform',
+                transformType: 'concat',
+                rules: [],
+                delimiter: ',',
+                outputType: 'value',
+                inputValues: {},
             };
         }
         

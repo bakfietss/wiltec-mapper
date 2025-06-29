@@ -1,4 +1,3 @@
-
 import { Node } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -44,6 +43,51 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
           delimiter: transform.nodeData?.delimiter || ',',
           splitIndex: transform.nodeData?.splitIndex || 0,
           config: transform.nodeData?.config || {}
+        }
+      };
+    } else if (transform.type === 'concatTransform' || transform.transformType === 'concat') {
+      console.log('Importing concat transform:', transform.id);
+      console.log('Transform nodeData:', transform.nodeData);
+      console.log('Transform config:', transform.config);
+      
+      // Extract rules and delimiter from multiple possible locations
+      const rules = transform.nodeData?.rules || 
+                   transform.config?.parameters?.rules || 
+                   transform.config?.rules || 
+                   [];
+      
+      const delimiter = transform.nodeData?.delimiter || 
+                       transform.config?.parameters?.delimiter || 
+                       transform.config?.delimiter || 
+                       ',';
+
+      // Also extract input values if they exist
+      const inputValues = transform.nodeData?.inputValues || {};
+      
+      console.log('Extracted rules:', rules);
+      console.log('Extracted delimiter:', delimiter);
+      console.log('Extracted inputValues:', inputValues);
+      
+      return {
+        ...baseNode,
+        type: 'concatTransform', // Ensure we use the correct type for concat
+        data: {
+          ...baseNode.data,
+          transformType: 'concat',
+          rules: rules,
+          delimiter: delimiter,
+          outputType: transform.nodeData?.outputType || 'value',
+          inputValues: inputValues,
+          config: {
+            rules: rules,
+            delimiter: delimiter,
+            parameters: {
+              rules: rules,
+              delimiter: delimiter,
+              outputType: transform.nodeData?.outputType || 'value'
+            },
+            ...transform.config
+          }
         }
       };
     } else if (transform.type === 'coalesceTransform' || transform.transformType === 'coalesce') {

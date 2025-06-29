@@ -32,6 +32,12 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
             return calculateCoalesceNodeValues(node, nodes, edges);
         }
         
+        // Handle concat transform nodes
+        if (node.type === 'concatTransform' || (node.type === 'transform' && node.data?.transformType === 'concat')) {
+            console.log('Processing concat node:', node.id);
+            return calculateConcatNodeValues(node, nodes, edges);
+        }
+        
         // Handle IF THEN nodes
         if (node.type === 'ifThen') {
             return calculateIfThenNodeValues(node, nodes, edges);
@@ -169,6 +175,8 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
                 value = getStaticNodeValue(sourceNode, edge.sourceHandle);
             } else if (sourceNode.type === 'transform') {
                 value = getTransformNodeValue(sourceNode, nodes, edges);
+            } else if (sourceNode.type === 'concatTransform') {
+                value = getConcatTransformValue(sourceNode, nodes, edges);
             } else if (sourceNode.type === 'ifThen') {
                 value = getIfThenNodeValue(sourceNode, nodes, edges);
             } else if (sourceNode.type === 'conversionMapping') {
@@ -227,6 +235,35 @@ const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any
         ...coalesceNode,
         data: {
             ...coalesceNode.data,
+            inputValues
+        }
+    };
+};
+
+// Calculate concat node input values
+const calculateConcatNodeValues = (concatNode: any, nodes: any[], edges: any[]) => {
+    console.log('=== CALCULATING CONCAT NODE VALUES ===');
+    console.log('Concat node ID:', concatNode.id);
+    console.log('Concat rules:', concatNode.data?.rules);
+    
+    const inputEdges = edges.filter(e => e.target === concatNode.id);
+    let inputValues: Record<string, any> = {};
+    
+    console.log('Input edges to concat:', inputEdges);
+    
+    inputEdges.forEach(inputEdge => {
+        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (inputSourceNode?.type === 'source') {
+            const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
+            inputValues[inputEdge.targetHandle] = sourceValue;
+            console.log('Set concat input:', inputEdge.targetHandle, '=', sourceValue);
+        }
+    });
+    
+    return {
+        ...concatNode,
+        data: {
+            ...concatNode.data,
             inputValues
         }
     };
@@ -326,6 +363,31 @@ const getTransformNodeValue = (transformNode: any, nodes: any[], edges: any[]): 
     }
     
     return null;
+};
+
+// Get value from concat transform node
+const getConcatTransformValue = (concatNode: any, nodes: any[], edges: any[]): any => {
+    const rules = concatNode.data?.rules || [];
+    const delimiter = concatNode.data?.delimiter || ',';
+    
+    const inputEdges = edges.filter(e => e.target === concatNode.id);
+    let inputValues: Record<string, any> = {};
+    
+    inputEdges.forEach(inputEdge => {
+        const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
+        if (inputSourceNode?.type === 'source') {
+            const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
+            inputValues[inputEdge.targetHandle] = sourceValue;
+        }
+    });
+    
+    // Sort rules by priority and concatenate values
+    const sortedRules = rules.sort((a: any, b: any) => a.priority - b.priority);
+    const values = sortedRules
+        .map((rule: any) => inputValues[rule.id])
+        .filter((val: any) => val !== undefined && val !== null && val !== '');
+    
+    return values.length > 0 ? values.join(delimiter) : '';
 };
 
 // Get value from IF THEN node

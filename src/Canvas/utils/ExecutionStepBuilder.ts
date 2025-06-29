@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionStep } from '../types/MappingTypes';
 
@@ -73,7 +72,8 @@ export const buildExecutionSteps = (
     // Transform step (source to transform, then transform to target)
     if (sourceNode.type === 'source' && 
         (targetNode.type === 'transform' || targetNode.type === 'splitterTransform' || 
-         targetNode.type === 'ifThen' || targetNode.type === 'staticValue')) {
+         targetNode.type === 'ifThen' || targetNode.type === 'staticValue' || 
+         targetNode.type === 'concatTransform')) {
       
       // Use the edge map for faster lookup
       const transformToTargetEdges = edgesBySource.get(targetNode.id) || [];
