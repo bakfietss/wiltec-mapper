@@ -131,7 +131,7 @@ export interface TargetNodeConfig {
 
 export interface TransformNodeConfig {
   id: string;
-  type: 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue' | 'coalesceTransform';
+  type: 'transform' | 'splitterTransform' | 'ifThen' | 'staticValue' | 'coalesceTransform' | 'concatTransform';
   label: string;
   position: { x: number; y: number };
   transformType: string;
@@ -139,6 +139,8 @@ export interface TransformNodeConfig {
     operation?: string;
     parameters?: Record<string, any>;
     expression?: string;
+    // Add delimiter support for concat transforms
+    delimiter?: string;
     // Coalesce-specific properties
     rules?: Array<{
       id: string;

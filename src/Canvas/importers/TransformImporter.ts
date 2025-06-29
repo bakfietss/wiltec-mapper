@@ -1,3 +1,4 @@
+
 import { Node } from '@xyflow/react';
 import { MappingConfiguration } from '../types/MappingTypes';
 
@@ -58,7 +59,7 @@ export const importTransformNodes = (transforms: MappingConfiguration['nodes']['
       
       const delimiter = transform.nodeData?.delimiter || 
                        transform.config?.parameters?.delimiter || 
-                       transform.config?.delimiter || 
+                       (transform.config as any)?.delimiter || 
                        ',';
 
       // Also extract input values if they exist
