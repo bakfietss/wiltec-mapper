@@ -1,3 +1,4 @@
+
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -20,7 +21,7 @@ import DataSidebar from '../compontents/DataSidebar';
 import MappingToolbar from '../compontents/MappingToolbar';
 import MappingManager from '../compontents/MappingManager';
 import { downloadBothMappingFiles } from './utils/FileDownloader';
-import { importMappingConfiguration } from './importers/ConfigImporter';
+import { importConfiguration } from './importers/ConfigImporter';
 import { MappingConfiguration } from './types/MappingTypes';
 import { exportMappingDocumentation } from './DocumentationExporter';
 import { useNodeValueUpdates } from '../hooks/useNodeValueUpdates';
@@ -189,7 +190,7 @@ const Pipeline = () => {
     reader.onload = (event) => {
       try {
         const config: MappingConfiguration = JSON.parse(event.target?.result as string);
-        const { nodes: importedNodes, edges: importedEdges } = importMappingConfiguration(config);
+        const { nodes: importedNodes, edges: importedEdges } = importConfiguration(config);
         setNodes(importedNodes);
         setEdges(importedEdges);
         setCurrentMappingName(config.name || 'Untitled Mapping');

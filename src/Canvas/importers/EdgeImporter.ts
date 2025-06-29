@@ -1,14 +1,14 @@
 
 import { Edge } from '@xyflow/react';
-import { MappingConfiguration } from '../types/MappingTypes';
+import { ConnectionConfig } from '../types/MappingTypes';
 
-export const importEdges = (connections: MappingConfiguration['connections']): Edge[] => {
-  return connections.map(conn => ({
-    id: conn.id,
-    source: conn.sourceNodeId,
-    target: conn.targetNodeId,
-    sourceHandle: conn.sourceHandle || undefined,
-    targetHandle: conn.targetHandle || undefined,
+export const importEdge = (connectionConfig: ConnectionConfig): Edge => {
+  return {
+    id: connectionConfig.id,
+    source: connectionConfig.sourceNodeId,
+    target: connectionConfig.targetNodeId,
+    sourceHandle: connectionConfig.sourceHandle || undefined,
+    targetHandle: connectionConfig.targetHandle || undefined,
     type: 'smoothstep',
     animated: true,
     style: { 
@@ -16,5 +16,9 @@ export const importEdges = (connections: MappingConfiguration['connections']): E
       stroke: '#3b82f6',
       strokeDasharray: '5,5'
     }
-  }));
+  };
+};
+
+export const importEdges = (connections: ConnectionConfig[]): Edge[] => {
+  return connections.map(conn => importEdge(conn));
 };

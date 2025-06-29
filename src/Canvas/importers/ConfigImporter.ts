@@ -1,3 +1,4 @@
+
 import { Node, Edge } from '@xyflow/react';
 import { MappingConfiguration, ExecutionMappingConfig } from '../types/MappingTypes';
 import { importSourceNode, importTargetNode, importTransformNode, importMappingNode } from './NodeImporter';
@@ -18,7 +19,7 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
       const edges: Edge[] = [];
       
       // Import nodes with array configurations if available
-      const arrayConfigs = ('arrays' in mappingConfig) ? mappingConfig.arrays : undefined;
+      const arrayConfigs = ('arrays' in mappingConfig && Array.isArray(mappingConfig.arrays)) ? mappingConfig.arrays : undefined;
       
       // Import source nodes
       mappingConfig.nodes.sources.forEach(sourceConfig => {
