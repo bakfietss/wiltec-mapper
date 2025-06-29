@@ -1,5 +1,3 @@
-
-
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
 
@@ -319,8 +317,8 @@ export const exportExecutionMapping = (
             console.log('=== CONCAT INPUT EDGES ===');
             console.log('All edges going to concat node:', concatInputEdges);
             
-            // Build the sources array for concat parameters
-            const sources: string[] = [];
+            // Build the fields array for concat parameters (using correct parameter name)
+            const fields: string[] = [];
             
             // Sort rules by priority to get correct field order
             const sortedRules = rules.sort((a: any, b: any) => a.priority - b.priority);
@@ -338,14 +336,14 @@ export const exportExecutionMapping = (
                   
                   const fieldName = inputField?.name || ruleEdge.sourceHandle || '';
                   if (fieldName) {
-                    sources.push(fieldName);
+                    fields.push(fieldName);
                     console.log(`Added field to concat: ${fieldName} (from rule ${rule.id})`);
                   }
                 }
               }
             });
             
-            console.log('Final concat sources array:', sources);
+            console.log('Final concat fields array:', fields);
             
             mapping = {
               from: null, // For concat, we don't have a single 'from' field
@@ -354,8 +352,8 @@ export const exportExecutionMapping = (
               transform: {
                 type: 'concat',
                 parameters: {
-                  sources: sources,
-                  defaultValue: delimiter
+                  fields: fields,        // Changed from 'sources' to 'fields'
+                  separator: delimiter   // Changed from 'defaultValue' to 'separator'
                 }
               }
             };
