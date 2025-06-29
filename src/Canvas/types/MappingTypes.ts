@@ -1,4 +1,3 @@
-
 import { Node, Edge } from '@xyflow/react';
 
 export interface MappingConfiguration {
@@ -59,10 +58,18 @@ export interface ExecutionMapping {
   };
 }
 
+export interface ArrayMappingStructure {
+  target: string;
+  groupBy?: string;
+  mappings: ExecutionMapping[];
+  arrays?: ArrayMappingStructure[];
+}
+
 export interface ExecutionMappingConfig {
   name: string;
   version: string;
   mappings: ExecutionMapping[];
+  arrays?: ArrayMappingStructure[];
   metadata?: {
     description?: string;
     tags?: string[];

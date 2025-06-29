@@ -1,15 +1,71 @@
-
 import { Node, Edge } from '@xyflow/react';
 import { ExecutionMapping, ExecutionMappingConfig } from '../types/MappingTypes';
+
+interface ArrayMappingStructure {
+  target: string;
+  groupBy?: string;
+  mappings: ExecutionMapping[];
+  arrays?: ArrayMappingStructure[];
+}
+
+interface EnhancedExecutionMappingConfig extends Omit<ExecutionMappingConfig, 'mappings'> {
+  mappings: ExecutionMapping[];
+  arrays?: ArrayMappingStructure[];
+}
+
+// Helper function to detect if a field is part of an array structure
+const getFieldPath = (field: any): string[] => {
+  const path: string[] = [];
+  let current = field;
+  
+  while (current) {
+    path.unshift(current.name);
+    current = current.parent;
+  }
+  
+  return path;
+};
+
+// Helper function to build field hierarchy with parent references
+const buildFieldHierarchy = (fields: any[], parent: any = null): any[] => {
+  return fields.map(field => {
+    const enhancedField = { ...field, parent };
+    if (field.children && Array.isArray(field.children)) {
+      enhancedField.children = buildFieldHierarchy(field.children, enhancedField);
+    }
+    return enhancedField;
+  });
+};
+
+// Helper function to check if a field is an array type
+const isArrayField = (field: any): boolean => {
+  return field.type === 'array' || (field.children && Array.isArray(field.children) && field.children.length > 0);
+};
+
+// Helper function to find array ancestors for a field
+const findArrayAncestors = (field: any): any[] => {
+  const ancestors: any[] = [];
+  let current = field.parent;
+  
+  while (current) {
+    if (isArrayField(current)) {
+      ancestors.unshift(current);
+    }
+    current = current.parent;
+  }
+  
+  return ancestors;
+};
 
 export const exportExecutionMapping = (
   nodes: Node[],
   edges: Edge[],
   name: string = 'Untitled Mapping'
-): ExecutionMappingConfig => {
-  const mappings: ExecutionMapping[] = [];
+): EnhancedExecutionMappingConfig => {
+  const rootMappings: ExecutionMapping[] = [];
+  const arrayStructures: Map<string, ArrayMappingStructure> = new Map();
   
-  console.log('=== GENERATING EXECUTION MAPPINGS ===');
+  console.log('=== GENERATING ENHANCED EXECUTION MAPPINGS ===');
   console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
 
   const targetNodes = nodes.filter(node => node.type === 'target');
@@ -48,7 +104,6 @@ export const exportExecutionMapping = (
     }
     
     // If still not found, try to match by the handle itself as field name
-    // This handles cases where the handle is the actual field path like "itinerary.actual_time_of_arrival"
     console.log(`No exact match found, using handle as field name: "${handleId}"`);
     return { id: handleId, name: handleId };
   };
@@ -59,14 +114,20 @@ export const exportExecutionMapping = (
     const targetFields = nodeData?.fields || [];
     console.log(`Processing target node: ${targetNode.id} with ${targetFields.length} fields`);
     
-    if (Array.isArray(targetFields)) {
-      targetFields.forEach(targetField => {
+    // Build field hierarchy with parent references
+    const enhancedFields = buildFieldHierarchy(targetFields);
+    
+    // Recursive function to process fields and their children
+    const processFields = (fields: any[], currentPath: string[] = []) => {
+      fields.forEach(targetField => {
+        const fieldPath = [...currentPath, targetField.name];
+        
         // Find edges that connect to this target field
         const incomingEdges = edges.filter(edge => 
           edge.target === targetNode.id && edge.targetHandle === targetField.id
         );
         
-        console.log(`Target field ${targetField.name} (${targetField.id}) has ${incomingEdges.length} incoming edges`);
+        console.log(`Target field ${targetField.name} (${targetField.id}) at path ${fieldPath.join('.')} has ${incomingEdges.length} incoming edges`);
         
         incomingEdges.forEach(edge => {
           const sourceNode = nodes.find(n => n.id === edge.source);
@@ -81,10 +142,6 @@ export const exportExecutionMapping = (
             const sourceData = sourceNode.data as any;
             const sourceFields = sourceData?.fields;
             const sourceField = findSourceFieldByHandle(sourceFields, edge.sourceHandle || '');
-            
-            console.log(`Looking for source field with handle: "${edge.sourceHandle}"`);
-            console.log('Available source fields:', sourceFields);
-            console.log('Found source field:', sourceField);
             
             mapping = {
               from: sourceField?.name || edge.sourceHandle || '',
@@ -289,27 +346,83 @@ export const exportExecutionMapping = (
             return;
           }
           
-          if (mapping!) {
-            console.log('Generated mapping:', mapping);
-            mappings.push(mapping);
+          // Determine where to place this mapping based on field path
+          const arrayAncestors = findArrayAncestors(targetField);
+          
+          if (arrayAncestors.length === 0) {
+            // Root level mapping
+            rootMappings.push(mapping);
+          } else {
+            // Nested in arrays - build the nested structure
+            let currentStructures = arrayStructures;
+            let currentArrays: ArrayMappingStructure[] = [];
+            
+            arrayAncestors.forEach((ancestor, index) => {
+              const ancestorPath = fieldPath.slice(0, index + 1).join('.');
+              
+              if (!currentStructures.has(ancestorPath)) {
+                const newArrayStructure: ArrayMappingStructure = {
+                  target: ancestor.name,
+                  mappings: [],
+                  arrays: []
+                };
+                currentStructures.set(ancestorPath, newArrayStructure);
+                
+                if (index === 0) {
+                  // Top level array
+                  currentArrays.push(newArrayStructure);
+                } else {
+                  // Nested array - add to parent
+                  const parentPath = fieldPath.slice(0, index).join('.');
+                  const parentStructure = currentStructures.get(parentPath);
+                  if (parentStructure) {
+                    parentStructure.arrays = parentStructure.arrays || [];
+                    parentStructure.arrays.push(newArrayStructure);
+                  }
+                }
+              }
+              
+              const structure = currentStructures.get(ancestorPath)!;
+              
+              // Add mapping to the deepest array structure
+              if (index === arrayAncestors.length - 1) {
+                structure.mappings.push(mapping);
+              }
+            });
           }
         });
+        
+        // Process children recursively
+        if (targetField.children && Array.isArray(targetField.children)) {
+          processFields(targetField.children, fieldPath);
+        }
       });
-    }
+    };
+    
+    processFields(enhancedFields);
   });
 
-  const config: ExecutionMappingConfig = {
+  const config: EnhancedExecutionMappingConfig = {
     name,
     version: '1.0.0',
-    mappings,
+    mappings: rootMappings,
     metadata: {
-      description: 'Simplified execution mapping configuration for integration tools',
-      tags: ['execution', 'integration', 'data-transformation'],
+      description: 'Enhanced execution mapping configuration with array support for integration tools',
+      tags: ['execution', 'integration', 'data-transformation', 'arrays'],
       author: 'Lovable Mapping Tool'
     }
   };
 
-  console.log('=== FINAL EXECUTION CONFIG ===');
+  // Add arrays if any exist
+  if (arrayStructures.size > 0) {
+    config.arrays = Array.from(arrayStructures.values()).filter(structure => 
+      !Array.from(arrayStructures.values()).some(other => 
+        other.arrays?.includes(structure)
+      )
+    );
+  }
+
+  console.log('=== FINAL ENHANCED EXECUTION CONFIG ===');
   console.log(config);
   
   return config;
