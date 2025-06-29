@@ -1,50 +1,85 @@
 
 import { Node } from '@xyflow/react';
-import { MappingConfiguration } from '../types/MappingTypes';
+import { TargetNodeConfig, SourceNodeConfig, TransformNodeConfig, MappingNodeConfig, SchemaField } from '../types/MappingTypes';
 
-export const importSourceNodes = (sources: MappingConfiguration['nodes']['sources']): Node[] => {
-  return sources.map(src => ({
-    id: src.id,
-    type: 'source',
-    position: src.position,
-    data: {
-      label: src.label,
-      fields: src.schema?.fields || [],
-      data: src.sampleData || [],
-      schemaType: 'source'
+// Helper function to reconstruct schema fields with groupBy information
+const reconstructSchemaFields = (fields: SchemaField[], arrayConfigs?: any[]): SchemaField[] => {
+  return fields.map(field => {
+    const reconstructedField = { ...field };
+    
+    // If this is an array field, try to find its groupBy configuration
+    if (field.type === 'array' && arrayConfigs) {
+      const arrayConfig = arrayConfigs.find(config => config.target === field.name);
+      if (arrayConfig) {
+        reconstructedField.groupBy = arrayConfig.groupBy || undefined;
+      }
     }
-  }));
-};
-
-export const importTargetNodes = (targets: MappingConfiguration['nodes']['targets']): Node[] => {
-  return targets.map(tgt => {
-    const nodeData: any = {
-      label: tgt.label,
-      fields: tgt.schema?.fields || [],
-      data: tgt.outputData ?? [],
-      schemaType: 'target'
-    };
-    if ((tgt as any).fieldValues) {
-      nodeData.fieldValues = (tgt as any).fieldValues;
+    
+    // Recursively process children
+    if (field.children && Array.isArray(field.children)) {
+      reconstructedField.children = reconstructSchemaFields(field.children, arrayConfigs);
     }
-    return {
-      id: tgt.id,
-      type: 'target',
-      position: tgt.position,
-      data: nodeData
-    };
+    
+    return reconstructedField;
   });
 };
 
-export const importMappingNodes = (mappings: MappingConfiguration['nodes']['mappings']): Node[] => {
-  return mappings.map(mp => ({
-    id: mp.id,
-    type: 'conversionMapping',
-    position: mp.position,
+export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[]): Node => {
+  // Reconstruct fields with groupBy information from array configurations
+  const fieldsWithGroupBy = reconstructSchemaFields(config.schema.fields, arrayConfigs);
+  
+  return {
+    id: config.id,
+    type: 'target',
+    position: config.position,
     data: {
-      label: mp.label,
-      mappings: mp.mappings,
-      isExpanded: false
+      label: config.label,
+      fields: fieldsWithGroupBy,
+      data: config.outputData || [],
+      fieldValues: {} // This will be populated by the centralized system
     }
-  }));
+  };
+};
+
+export const importSourceNode = (config: SourceNodeConfig): Node => {
+  return {
+    id: config.id,
+    type: 'source',
+    position: config.position,
+    data: {
+      label: config.label,
+      fields: config.schema.fields,
+      data: config.sampleData || []
+    }
+  };
+};
+
+export const importTransformNode = (config: TransformNodeConfig): Node => {
+  // Handle different transform node types
+  const nodeData = {
+    label: config.label,
+    transformType: config.transformType,
+    config: config.config,
+    // Copy nodeData if it exists (for backward compatibility)
+    ...config.nodeData
+  };
+
+  return {
+    id: config.id,
+    type: config.type,
+    position: config.position,
+    data: nodeData
+  };
+};
+
+export const importMappingNode = (config: MappingNodeConfig): Node => {
+  return {
+    id: config.id,
+    type: 'mapping',
+    position: config.position,
+    data: {
+      label: config.label,
+      mappings: config.mappings
+    }
+  };
 };

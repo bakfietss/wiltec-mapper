@@ -67,7 +67,14 @@ const determineGroupBy = (field: any, mappings: ExecutionMapping[]): string | un
     return field.groupBy;
   }
   
-  // 2. Auto-detect based on common patterns in field names
+  // 2. If groupBy is explicitly set to empty string or null, respect that choice (no grouping)
+  if (field.hasOwnProperty('groupBy') && (field.groupBy === '' || field.groupBy === null)) {
+    console.log(`GroupBy explicitly set to empty - no grouping will be applied`);
+    return undefined;
+  }
+  
+  // 3. Only auto-detect if groupBy is completely undefined (legacy support)
+  // Auto-detect based on common patterns in field names
   const groupingPatterns = ['Number', 'Id', 'Code', 'Key'];
   const candidate = mappings.find(m => 
     groupingPatterns.some(pattern => m.to.toLowerCase().includes(pattern.toLowerCase()))
@@ -78,7 +85,7 @@ const determineGroupBy = (field: any, mappings: ExecutionMapping[]): string | un
     return candidate.to;
   }
   
-  // 3. Fallback to first child field name if available
+  // 4. Fallback to first child field name if available (legacy support)
   if (field.children && field.children.length > 0) {
     const firstChild = field.children[0].name;
     console.log(`Using first child field as groupBy: ${firstChild}`);
