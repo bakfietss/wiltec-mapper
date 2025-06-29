@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Link, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
@@ -25,6 +25,19 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
   const [rules, setRules] = useState<ConcatRule[]>(data.rules || []);
   const [delimiter, setDelimiter] = useState(data.delimiter || ',');
   
+  // Ensure we always have at least one rule for connection
+  useEffect(() => {
+    if (rules.length === 0) {
+      const defaultRule: ConcatRule = {
+        id: `rule-${Date.now()}`,
+        priority: 1,
+        sourceField: 'Field 1',
+        sourceHandle: `rule-${Date.now()}`
+      };
+      setRules([defaultRule]);
+    }
+  }, []);
+  
   // Sync data changes with centralized system
   useNodeDataSync(id, { 
     rules, 
@@ -38,8 +51,8 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
     const newRule: ConcatRule = {
       id: `rule-${Date.now()}`,
       priority: rules.length + 1,
-      sourceField: '',
-      sourceHandle: ''
+      sourceField: `Field ${rules.length + 1}`,
+      sourceHandle: `rule-${Date.now()}`
     };
     setRules(prev => [...prev, newRule]);
   }, [rules.length]);
@@ -51,8 +64,15 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
   }, []);
 
   const removeRule = useCallback((ruleId: string) => {
-    setRules(prev => prev.filter(rule => rule.id !== ruleId));
-  }, []);
+    // Don't allow removing the last rule
+    if (rules.length <= 1) return;
+    
+    setRules(prev => {
+      const filtered = prev.filter(rule => rule.id !== ruleId);
+      // Update priorities after removal
+      return filtered.map((rule, idx) => ({ ...rule, priority: idx + 1 }));
+    });
+  }, [rules.length]);
 
   const moveRule = useCallback((ruleId: string, direction: 'up' | 'down') => {
     setRules(prev => {
@@ -93,7 +113,7 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
           className="w-3 h-3 bg-purple-400 border-2 border-white hover:bg-purple-600"
           style={{ 
             left: '-6px', 
-            top: `${30 + (index * 20)}px`
+            top: `${40 + (index * 25)}px`
           }}
         />
       ))}
@@ -105,7 +125,7 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
           </div>
           <div className="flex-1">
             <div className="font-semibold text-gray-900 text-sm">{data.label}</div>
-            <div className="text-xs text-gray-600">Concatenate fields</div>
+            <div className="text-xs text-gray-600">Concatenate {rules.length} field{rules.length !== 1 ? 's' : ''}</div>
           </div>
           <Sheet>
             <SheetTrigger asChild>
@@ -128,11 +148,14 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
                     className="w-full border rounded px-3 py-2"
                     placeholder="Enter delimiter (e.g., ,)"
                   />
+                  <div className="text-xs text-gray-500 mt-1">
+                    This will be used to join the fields together
+                  </div>
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-sm font-medium">Concatenation Order:</label>
+                    <label className="block text-sm font-medium">Fields to Concatenate:</label>
                     <button
                       onClick={addRule}
                       className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
@@ -163,13 +186,13 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
                         </div>
                         
                         <div className="flex-1">
-                          <div className="text-xs text-gray-500 mb-1">Priority {rule.priority}</div>
+                          <div className="text-xs text-gray-500 mb-1">Position {rule.priority}</div>
                           <input
                             type="text"
                             value={rule.sourceField}
                             onChange={(e) => updateRule(rule.id, { sourceField: e.target.value })}
                             className="w-full text-xs border rounded px-2 py-1"
-                            placeholder="Source field name"
+                            placeholder="Field name"
                           />
                           <div className="text-xs text-gray-500 mt-1">
                             Value: {data.inputValues?.[rule.id] || 'Not connected'}
@@ -178,7 +201,8 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
                         
                         <button
                           onClick={() => removeRule(rule.id)}
-                          className="text-red-500 hover:text-red-700"
+                          disabled={rules.length <= 1}
+                          className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -193,17 +217,27 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
                     {getPreviewValue()}
                   </div>
                 </div>
+                
+                <div className="mt-4 p-3 bg-blue-50 rounded">
+                  <h4 className="font-medium mb-2 text-blue-800">How to use:</h4>
+                  <ol className="text-xs text-blue-700 space-y-1">
+                    <li>1. Connect source fields to the input handles on the left</li>
+                    <li>2. Configure the delimiter (comma, space, etc.)</li>
+                    <li>3. Arrange field order using the arrows</li>
+                    <li>4. Connect the output to your target field</li>
+                  </ol>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
         </div>
         
         <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
-          Concat Transform
+          Delimiter: "{delimiter}"
         </div>
         
-        <div className="text-xs text-purple-600 mt-1 font-medium">
-          {rules.length} field{rules.length !== 1 ? 's' : ''} → {getPreviewValue()}
+        <div className="text-xs text-purple-600 mt-1 font-medium truncate">
+          {getPreviewValue()}
         </div>
       </div>
       
