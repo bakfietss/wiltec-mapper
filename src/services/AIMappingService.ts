@@ -1,13 +1,13 @@
-
 export interface AIMappingSuggestion {
   sourceField: string;
   targetField: string;
   confidence: number;
   reasoning: string;
   transformSuggestion?: string;
-  nodeType?: 'direct' | 'transform' | 'group' | 'computed';
+  nodeType?: 'direct' | 'transform' | 'group' | 'computed' | 'static';
   groupBy?: string;
   computeLogic?: string;
+  staticValue?: string;
 }
 
 export interface NodeGenerationResult {
@@ -60,61 +60,47 @@ export class AIMappingService {
   private generateHierarchicalMappings(sampleData: any, allFields: string[]): AIMappingSuggestion[] {
     const suggestions: AIMappingSuggestion[] = [];
 
-    // Include ALL fields from source data
-    allFields.forEach(field => {
-      if (field === 'orderCode') {
-        // Root level mappings
-        suggestions.push({
-          sourceField: 'orderCode',
-          targetField: 'id',
-          confidence: 95,
-          reasoning: 'Order code maps to root ID',
-          nodeType: 'direct'
-        });
+    console.log('Generating hierarchical mappings for fields:', allFields);
+    console.log('Sample data:', sampleData);
 
-        suggestions.push({
-          sourceField: 'orderCode',
-          targetField: 'orderCode',
-          confidence: 100,
-          reasoning: 'Direct field mapping',
-          nodeType: 'direct'
-        });
-      } else if (field === 'adminCode') {
-        suggestions.push({
-          sourceField: 'adminCode',
-          targetField: 'adminCode',
-          confidence: 100,
-          reasoning: 'Direct field mapping',
-          nodeType: 'direct'
-        });
-      } else if (field === 'lineNumber') {
-        suggestions.push({
-          sourceField: 'lineNumber',
-          targetField: 'lines[].lineNumber',
-          confidence: 90,
-          reasoning: 'Group by line number to create nested structure',
-          nodeType: 'group',
-          groupBy: 'lineNumber'
-        });
-      } else if (field === 'deliveryLineNumber') {
-        suggestions.push({
-          sourceField: 'deliveryLineNumber',
-          targetField: 'lines[].deliveryLines[].deliveryLineNumber',
-          confidence: 90,
-          reasoning: 'Group delivery lines within order lines',
-          nodeType: 'group',
-          groupBy: 'deliveryLineNumber'
-        });
-      } else {
-        // Handle other fields like dates
-        suggestions.push({
-          sourceField: field,
-          targetField: `lines[].deliveryLines[].${field}`,
-          confidence: 85,
-          reasoning: `Map ${field} to delivery line level`,
-          nodeType: 'direct'
-        });
-      }
+    // ROOT LEVEL MAPPINGS
+    // orderCode -> id (root level)
+    suggestions.push({
+      sourceField: 'orderCode',
+      targetField: 'id',
+      confidence: 95,
+      reasoning: 'Order code maps to root ID',
+      nodeType: 'direct'
+    });
+
+    // orderCode -> orderCode (root level)
+    suggestions.push({
+      sourceField: 'orderCode',
+      targetField: 'orderCode',
+      confidence: 100,
+      reasoning: 'Direct field mapping',
+      nodeType: 'direct'
+    });
+
+    // Static adminCode (root level)
+    suggestions.push({
+      sourceField: 'static',
+      targetField: 'adminCode',
+      confidence: 100,
+      reasoning: 'Static admin code value',
+      nodeType: 'static',
+      staticValue: '01'
+    });
+
+    // LINES ARRAY LEVEL MAPPINGS
+    // lineNumber grouping
+    suggestions.push({
+      sourceField: 'lineNumber',
+      targetField: 'lines[].lineNumber',
+      confidence: 90,
+      reasoning: 'Group by line number to create nested structure',
+      nodeType: 'group',
+      groupBy: 'lineNumber'
     });
 
     // Computed line ID
@@ -127,6 +113,57 @@ export class AIMappingService {
       computeLogic: 'CONCAT(orderCode, ",", lineNumber)'
     });
 
+    // Direct fields at line level
+    suggestions.push({
+      sourceField: 'orderCode',
+      targetField: 'lines[].orderCode',
+      confidence: 100,
+      reasoning: 'Direct orderCode mapping to line level',
+      nodeType: 'direct'
+    });
+
+    // Static adminCode at line level
+    suggestions.push({
+      sourceField: 'static',
+      targetField: 'lines[].adminCode',
+      confidence: 100,
+      reasoning: 'Static admin code at line level',
+      nodeType: 'static',
+      staticValue: '01'
+    });
+
+    // Date fields at line level
+    if (allFields.includes('deliveryAfter')) {
+      suggestions.push({
+        sourceField: 'deliveryAfter',
+        targetField: 'lines[].deliveryAfter',
+        confidence: 95,
+        reasoning: 'Delivery after date maps to line level',
+        nodeType: 'direct'
+      });
+    }
+
+    if (allFields.includes('deliveryBefore')) {
+      suggestions.push({
+        sourceField: 'deliveryBefore',
+        targetField: 'lines[].deliveryBefore',
+        confidence: 95,
+        reasoning: 'Delivery before date maps to line level',
+        nodeType: 'direct'
+      });
+    }
+
+    // DELIVERY LINES ARRAY LEVEL MAPPINGS
+    // deliveryLineNumber grouping
+    suggestions.push({
+      sourceField: 'deliveryLineNumber',
+      targetField: 'lines[].deliveryLines[].deliveryLineNumber',
+      confidence: 90,
+      reasoning: 'Group delivery lines within order lines',
+      nodeType: 'group',
+      groupBy: 'deliveryLineNumber'
+    });
+
     // Computed delivery line ID
     suggestions.push({
       sourceField: 'orderCode,lineNumber,deliveryLineNumber',
@@ -137,12 +174,74 @@ export class AIMappingService {
       computeLogic: 'CONCAT(orderCode, ",", lineNumber, ",", deliveryLineNumber)'
     });
 
+    // Direct fields at delivery line level
+    suggestions.push({
+      sourceField: 'orderCode',
+      targetField: 'lines[].deliveryLines[].orderCode',
+      confidence: 100,
+      reasoning: 'Direct orderCode mapping to delivery line level',
+      nodeType: 'direct'
+    });
+
+    // Static adminCode at delivery line level
+    suggestions.push({
+      sourceField: 'static',
+      targetField: 'lines[].deliveryLines[].adminCode',
+      confidence: 100,
+      reasoning: 'Static admin code at delivery line level',
+      nodeType: 'static',
+      staticValue: '01'
+    });
+
+    // lineNumber as orderLineNumber at delivery line level
+    suggestions.push({
+      sourceField: 'lineNumber',
+      targetField: 'lines[].deliveryLines[].orderLineNumber',
+      confidence: 95,
+      reasoning: 'Line number maps to order line number at delivery line level',
+      nodeType: 'direct'
+    });
+
+    // Date fields at delivery line level
+    if (allFields.includes('confirmationDate')) {
+      suggestions.push({
+        sourceField: 'confirmationDate',
+        targetField: 'lines[].deliveryLines[].confirmationDate',
+        confidence: 95,
+        reasoning: 'Confirmation date maps to delivery line level',
+        nodeType: 'direct'
+      });
+    }
+
+    if (allFields.includes('deliveryAfter')) {
+      suggestions.push({
+        sourceField: 'deliveryAfter',
+        targetField: 'lines[].deliveryLines[].deliveryAfter',
+        confidence: 95,
+        reasoning: 'Delivery after date maps to delivery line level',
+        nodeType: 'direct'
+      });
+    }
+
+    if (allFields.includes('deliveryBefore')) {
+      suggestions.push({
+        sourceField: 'deliveryBefore',
+        targetField: 'lines[].deliveryLines[].deliveryBefore',
+        confidence: 95,
+        reasoning: 'Delivery before date maps to delivery line level',
+        nodeType: 'direct'
+      });
+    }
+
+    console.log('Generated suggestions:', suggestions);
     return suggestions;
   }
 
   async generateNodesFromMappings(mappings: AIMappingSuggestion[]): Promise<NodeGenerationResult> {
     const nodes: any[] = [];
     const edges: any[] = [];
+    
+    console.log('Generating nodes from mappings:', mappings);
     
     // Smart positioning system
     const positions = this.calculateSmartPositions(mappings);
@@ -165,6 +264,29 @@ export class AIMappingService {
       }
     };
     nodes.push(sourceNode);
+
+    // Create static value nodes for static mappings
+    const staticMappings = mappings.filter(m => m.nodeType === 'static');
+    staticMappings.forEach((mapping, index) => {
+      const staticId = `ai-static-${index}`;
+      const staticNode = {
+        id: staticId,
+        type: 'staticValue',
+        position: {
+          x: positions.source.x + 50,
+          y: positions.source.y + 300 + (index * 100)
+        },
+        data: {
+          label: `Static: ${mapping.staticValue}`,
+          values: [{
+            id: 'static-output',
+            name: 'Static Value',
+            value: mapping.staticValue || '01'
+          }]
+        }
+      };
+      nodes.push(staticNode);
+    });
 
     // Create transform nodes for computed fields with proper configuration
     const computedMappings = mappings.filter(m => m.nodeType === 'computed');
@@ -250,12 +372,31 @@ export class AIMappingService {
         source: 'ai-source',
         sourceHandle: mapping.sourceField,
         target: 'ai-target',
-        targetHandle: mapping.targetField.replace('[]', '').replace('.', '_'),
+        targetHandle: mapping.targetField.replace('[]', '').replace(/\./g, '_'),
         type: 'smoothstep',
         animated: true,
         style: { 
           strokeWidth: 2,
           stroke: '#10b981',
+          strokeDasharray: '5,5'
+        }
+      });
+    });
+
+    // Add edges from static nodes to target
+    staticMappings.forEach((mapping, index) => {
+      const staticId = `ai-static-${index}`;
+      edges.push({
+        id: `edge-static-${index}`,
+        source: staticId,
+        sourceHandle: 'static-output',
+        target: 'ai-target',
+        targetHandle: mapping.targetField.replace('[]', '').replace(/\./g, '_'),
+        type: 'smoothstep',
+        animated: true,
+        style: { 
+          strokeWidth: 2,
+          stroke: '#8b5cf6',
           strokeDasharray: '5,5'
         }
       });
@@ -269,7 +410,7 @@ export class AIMappingService {
         source: transformId,
         sourceHandle: 'output',
         target: 'ai-target',
-        targetHandle: mapping.targetField.replace('[]', '').replace('.', '_'),
+        targetHandle: mapping.targetField.replace('[]', '').replace(/\./g, '_'),
         type: 'smoothstep',
         animated: true,
         style: { 
@@ -280,20 +421,26 @@ export class AIMappingService {
       });
     });
 
+    console.log('Generated nodes:', nodes.length, 'edges:', edges.length);
     return { nodes, edges, mappings };
   }
 
   private calculateSmartPositions(mappings: AIMappingSuggestion[]) {
     const computedCount = mappings.filter(m => m.nodeType === 'computed').length;
-    const canvasWidth = 1200;
-    const nodeSpacing = 300;
+    const staticCount = mappings.filter(m => m.nodeType === 'static').length;
+    const canvasWidth = 1400;
+    const nodeSpacing = 250;
     
     return {
       source: { x: 100, y: 200 },
-      target: { x: canvasWidth - 200, y: 200 },
+      target: { x: canvasWidth - 300, y: 200 },
       transforms: Array.from({ length: computedCount }, (_, i) => ({
-        x: 400 + (i * nodeSpacing / Math.max(computedCount, 1)),
-        y: 100 + (i * 150)
+        x: 450 + (i * nodeSpacing / Math.max(computedCount, 1)),
+        y: 100 + (i * 120)
+      })),
+      statics: Array.from({ length: staticCount }, (_, i) => ({
+        x: 150,
+        y: 500 + (i * 120)
       }))
     };
   }
@@ -304,7 +451,7 @@ export class AIMappingService {
     mappings.forEach(mapping => {
       if (mapping.nodeType === 'computed') {
         mapping.sourceField.split(',').forEach(field => fields.add(field.trim()));
-      } else {
+      } else if (mapping.nodeType !== 'static') {
         fields.add(mapping.sourceField);
       }
     });
@@ -328,18 +475,19 @@ export class AIMappingService {
   }
 
   private generateTargetSchema(mappings: AIMappingSuggestion[]): any[] {
+    // Enhanced target schema that includes all the mapped fields
     return [
       { 
         id: 'id',
         name: 'id', 
         type: 'string',
-        exampleValue: 'ORDER123'
+        exampleValue: 'PU211861'
       },
       { 
         id: 'orderCode',
         name: 'orderCode', 
         type: 'string',
-        exampleValue: 'ORDER123'
+        exampleValue: 'PU211861'
       },
       { 
         id: 'adminCode',
@@ -358,7 +506,7 @@ export class AIMappingService {
             id: 'lines_id',
             name: 'id', 
             type: 'string',
-            exampleValue: 'ORDER123,1'
+            exampleValue: 'PU211861,1'
           },
           { 
             id: 'lines_lineNumber',
@@ -370,7 +518,7 @@ export class AIMappingService {
             id: 'lines_orderCode',
             name: 'orderCode', 
             type: 'string',
-            exampleValue: 'ORDER123'
+            exampleValue: 'PU211861'
           },
           { 
             id: 'lines_adminCode',
@@ -382,13 +530,13 @@ export class AIMappingService {
             id: 'lines_deliveryAfter',
             name: 'deliveryAfter', 
             type: 'date',
-            exampleValue: '2025-06-25'
+            exampleValue: '2025-07-01'
           },
           { 
             id: 'lines_deliveryBefore',
             name: 'deliveryBefore', 
             type: 'date',
-            exampleValue: '2025-06-27'
+            exampleValue: '2025-07-01'
           },
           {
             id: 'lines_deliveryLines',
@@ -401,13 +549,13 @@ export class AIMappingService {
                 id: 'deliveryLines_id',
                 name: 'id', 
                 type: 'string',
-                exampleValue: 'ORDER123,1,1'
+                exampleValue: 'PU211861,1,1'
               },
               { 
                 id: 'deliveryLines_orderCode',
                 name: 'orderCode', 
                 type: 'string',
-                exampleValue: 'ORDER123'
+                exampleValue: 'PU211861'
               },
               { 
                 id: 'deliveryLines_adminCode',
@@ -431,19 +579,19 @@ export class AIMappingService {
                 id: 'deliveryLines_confirmationDate',
                 name: 'confirmationDate', 
                 type: 'date',
-                exampleValue: '2025-06-26'
+                exampleValue: '2025-07-02'
               },
               { 
                 id: 'deliveryLines_deliveryAfter',
                 name: 'deliveryAfter', 
                 type: 'date',
-                exampleValue: '2025-06-25'
+                exampleValue: '2025-07-01'
               },
               { 
                 id: 'deliveryLines_deliveryBefore',
                 name: 'deliveryBefore', 
                 type: 'date',
-                exampleValue: '2025-06-27'
+                exampleValue: '2025-07-01'
               }
             ]
           }
