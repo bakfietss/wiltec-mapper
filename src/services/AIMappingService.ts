@@ -28,6 +28,9 @@ export class AIMappingService {
     const sourceFields = Object.keys(sourceData[0]);
     const suggestions: AIMappingSuggestion[] = [];
 
+    console.log('Source fields detected:', sourceFields);
+    console.log('Sample data:', sourceData[0]);
+
     // Detect if this looks like a hierarchical transformation
     const hasHierarchicalPattern = this.detectHierarchicalPattern(sourceData[0]);
     
@@ -61,10 +64,8 @@ export class AIMappingService {
     const suggestions: AIMappingSuggestion[] = [];
 
     console.log('Generating hierarchical mappings for fields:', allFields);
-    console.log('Sample data:', sampleData);
 
     // ROOT LEVEL MAPPINGS
-    // orderCode -> id (root level)
     suggestions.push({
       sourceField: 'orderCode',
       targetField: 'id',
@@ -73,7 +74,6 @@ export class AIMappingService {
       nodeType: 'direct'
     });
 
-    // orderCode -> orderCode (root level)
     suggestions.push({
       sourceField: 'orderCode',
       targetField: 'orderCode',
@@ -82,18 +82,17 @@ export class AIMappingService {
       nodeType: 'direct'
     });
 
-    // Static adminCode (root level)
+    // Only add adminCode static once at root level
     suggestions.push({
       sourceField: 'static',
       targetField: 'adminCode',
       confidence: 100,
-      reasoning: 'Static admin code value',
+      reasoning: 'Static admin code value at root level',
       nodeType: 'static',
       staticValue: '01'
     });
 
     // LINES ARRAY LEVEL MAPPINGS
-    // lineNumber grouping
     suggestions.push({
       sourceField: 'lineNumber',
       targetField: 'lines[].lineNumber',
@@ -103,7 +102,6 @@ export class AIMappingService {
       groupBy: 'lineNumber'
     });
 
-    // Computed line ID
     suggestions.push({
       sourceField: 'orderCode,lineNumber',
       targetField: 'lines[].id',
@@ -113,7 +111,6 @@ export class AIMappingService {
       computeLogic: 'CONCAT(orderCode, ",", lineNumber)'
     });
 
-    // Direct fields at line level
     suggestions.push({
       sourceField: 'orderCode',
       targetField: 'lines[].orderCode',
@@ -122,17 +119,7 @@ export class AIMappingService {
       nodeType: 'direct'
     });
 
-    // Static adminCode at line level
-    suggestions.push({
-      sourceField: 'static',
-      targetField: 'lines[].adminCode',
-      confidence: 100,
-      reasoning: 'Static admin code at line level',
-      nodeType: 'static',
-      staticValue: '01'
-    });
-
-    // Date fields at line level
+    // Add ALL available date fields at line level
     if (allFields.includes('deliveryAfter')) {
       suggestions.push({
         sourceField: 'deliveryAfter',
@@ -154,7 +141,6 @@ export class AIMappingService {
     }
 
     // DELIVERY LINES ARRAY LEVEL MAPPINGS
-    // deliveryLineNumber grouping
     suggestions.push({
       sourceField: 'deliveryLineNumber',
       targetField: 'lines[].deliveryLines[].deliveryLineNumber',
@@ -164,7 +150,6 @@ export class AIMappingService {
       groupBy: 'deliveryLineNumber'
     });
 
-    // Computed delivery line ID
     suggestions.push({
       sourceField: 'orderCode,lineNumber,deliveryLineNumber',
       targetField: 'lines[].deliveryLines[].id',
@@ -174,7 +159,6 @@ export class AIMappingService {
       computeLogic: 'CONCAT(orderCode, ",", lineNumber, ",", deliveryLineNumber)'
     });
 
-    // Direct fields at delivery line level
     suggestions.push({
       sourceField: 'orderCode',
       targetField: 'lines[].deliveryLines[].orderCode',
@@ -183,17 +167,6 @@ export class AIMappingService {
       nodeType: 'direct'
     });
 
-    // Static adminCode at delivery line level
-    suggestions.push({
-      sourceField: 'static',
-      targetField: 'lines[].deliveryLines[].adminCode',
-      confidence: 100,
-      reasoning: 'Static admin code at delivery line level',
-      nodeType: 'static',
-      staticValue: '01'
-    });
-
-    // lineNumber as orderLineNumber at delivery line level
     suggestions.push({
       sourceField: 'lineNumber',
       targetField: 'lines[].deliveryLines[].orderLineNumber',
@@ -202,7 +175,7 @@ export class AIMappingService {
       nodeType: 'direct'
     });
 
-    // Date fields at delivery line level
+    // Add ALL available fields at delivery line level
     if (allFields.includes('confirmationDate')) {
       suggestions.push({
         sourceField: 'confirmationDate',
@@ -232,6 +205,20 @@ export class AIMappingService {
         nodeType: 'direct'
       });
     }
+
+    // Add any other fields that exist but haven't been mapped yet
+    const mappedSourceFields = new Set(suggestions.map(s => s.sourceField).filter(f => f !== 'static' && !f.includes(',')));
+    allFields.forEach(field => {
+      if (!mappedSourceFields.has(field)) {
+        suggestions.push({
+          sourceField: field,
+          targetField: `lines[].deliveryLines[].${field}`,
+          confidence: 80,
+          reasoning: `Additional field ${field} mapped to delivery line level`,
+          nodeType: 'direct'
+        });
+      }
+    });
 
     console.log('Generated suggestions:', suggestions);
     return suggestions;
