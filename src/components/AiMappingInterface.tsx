@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -10,6 +9,8 @@ import { Alert, AlertDescription } from './ui/alert';
 import DataUploadZone from './DataUploadZone';
 import MappingSuggestions from './MappingSuggestions';
 import { AIMappingService } from '../services/AIMappingService';
+import { SmartAlertService } from '../services/SmartAlertService';
+import { TemplateService } from '../services/TemplateService';
 
 interface AiMappingInterfaceProps {
   isProcessing: boolean;
@@ -46,45 +47,7 @@ const AiMappingInterface: React.FC<AiMappingInterfaceProps> = ({
   const analyzeDataForAlerts = useCallback((data: any[]) => {
     if (!data.length) return;
     
-    const alerts = [];
-    const sampleRecord = data[0];
-    
-    // Check for fields that might need mapping tables
-    Object.entries(sampleRecord).forEach(([fieldName, value]) => {
-      const uniqueValues = [...new Set(data.map(record => record[fieldName]))];
-      
-      // Alert for categorical fields with multiple values
-      if (uniqueValues.length > 1 && uniqueValues.length < data.length * 0.5) {
-        alerts.push({
-          type: 'mapping_table',
-          field: fieldName,
-          message: `Field "${fieldName}" has ${uniqueValues.length} unique values - consider a mapping table`,
-          severity: 'warning',
-          values: uniqueValues.slice(0, 5)
-        });
-      }
-      
-      // Alert for potential ID fields
-      if (fieldName.toLowerCase().includes('id') || fieldName.toLowerCase().includes('code')) {
-        alerts.push({
-          type: 'id_field',
-          field: fieldName,
-          message: `Field "${fieldName}" appears to be an identifier - might need substring or lookup`,
-          severity: 'info'
-        });
-      }
-      
-      // Alert for date fields
-      if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-        alerts.push({
-          type: 'date_field',
-          field: fieldName,
-          message: `Field "${fieldName}" contains dates - might need formatting`,
-          severity: 'info'
-        });
-      }
-    });
-    
+    const alerts = SmartAlertService.analyzeData(data);
     setSmartAlerts(alerts);
   }, []);
 
@@ -104,7 +67,7 @@ const AiMappingInterface: React.FC<AiMappingInterfaceProps> = ({
       setProgress(40);
 
       // Step 2: Generate template suggestions
-      const templates = await generateTemplateSuggestions(sourceData);
+      const templates = TemplateService.analyzeForTemplates(sourceData);
       setTemplateSuggestions(templates);
       setProgress(60);
 
@@ -115,59 +78,14 @@ const AiMappingInterface: React.FC<AiMappingInterfaceProps> = ({
       const aiService = new AIMappingService();
       const suggestions = await aiService.generateMappingSuggestions(sourceData, targetSchema);
       
-      // Add smart alerts to suggestions
-      const enhancedSuggestions = {
-        ...suggestions,
-        smartAlerts,
-        templateSuggestions,
-        structureOnly: true // Flag to indicate this is structure-focused
-      };
-      
       setProgress(100);
-      onMappingComplete(enhancedSuggestions);
+      // Pass the suggestions array directly, not wrapped in an object
+      onMappingComplete(suggestions);
       setStep('results');
     } catch (error) {
       onMappingError('Failed to generate mapping structure');
     }
-  }, [sourceData, targetSchema, onMappingComplete, onMappingError, onProcessingChange, smartAlerts]);
-
-  const generateTemplateSuggestions = useCallback(async (data: any[]) => {
-    // Analyze data patterns to suggest templates
-    const sampleRecord = data[0];
-    const templates = [];
-    
-    // Employee data template
-    if (sampleRecord.Medewerker || sampleRecord.employee_id || sampleRecord.firstname) {
-      templates.push({
-        name: 'Employee Data Mapping',
-        description: 'Common employee/HR data transformation',
-        confidence: 85,
-        nodes: ['source', 'mapping_table', 'if_then', 'target']
-      });
-    }
-    
-    // Shipment data template
-    if (sampleRecord.id && sampleRecord.containers) {
-      templates.push({
-        name: 'Shipment Data Mapping',
-        description: 'Logistics/shipping data transformation',
-        confidence: 90,
-        nodes: ['source', 'array_access', 'coalesce', 'target']
-      });
-    }
-    
-    // Simple flat data template  
-    if (Object.keys(sampleRecord).length < 10) {
-      templates.push({
-        name: 'Simple Data Mapping',
-        description: 'Direct field-to-field mapping',
-        confidence: 70,
-        nodes: ['source', 'static_values', 'target']
-      });
-    }
-    
-    return templates;
-  }, []);
+  }, [sourceData, targetSchema, onMappingComplete, onMappingError, onProcessingChange]);
 
   const handleGenerateVisualMapping = useCallback(async (suggestions: any[]) => {
     try {
