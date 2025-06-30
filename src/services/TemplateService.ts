@@ -77,8 +77,9 @@ export class TemplateService {
   private static isShipmentData(fieldNames: string[], sampleRecord: any): boolean {
     const shipmentFields = ['shipment', 'container', 'client', 'itinerary', 'events'];
     return shipmentFields.some(field => 
-      fieldNames.some(name => name.toLowerCase().includes(field)) ||
-      (typeof sampleRecord[name] === 'object' && sampleRecord[name] !== null)
+      fieldNames.some(name => name.toLowerCase().includes(field))
+    ) || Object.values(sampleRecord).some(value => 
+      typeof value === 'object' && value !== null
     );
   }
   

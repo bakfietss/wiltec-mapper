@@ -93,8 +93,13 @@ export class SmartAlertService {
   }
   
   private static isDateField(value: any): boolean {
-    return typeof value === 'string' && 
-           (value.match(/^\d{4}-\d{2}-\d{2}/) || value.match(/^\d{2}\/\d{2}\/\d{4}/));
+    if (typeof value !== 'string') return false;
+    
+    // Check for common date patterns
+    const datePattern1 = /^\d{4}-\d{2}-\d{2}/;
+    const datePattern2 = /^\d{2}\/\d{2}\/\d{4}/;
+    
+    return datePattern1.test(value) || datePattern2.test(value);
   }
   
   private static isNestedData(value: any): boolean {
