@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { ThemeProvider } from '../Theme/ThemeContext';
 import UserHeader from '../components/UserHeader';
+import NavigationBar from '../components/NavigationBar';
 import AiMappingInterface from '../components/AiMappingInterface';
 import { toast } from 'sonner';
 
@@ -24,9 +25,10 @@ const AiMapper = () => {
     <ThemeProvider>
       <div className="w-full h-screen relative bg-gradient-to-br from-blue-50 to-indigo-100">
         <UserHeader />
+        <NavigationBar />
         <div className="container mx-auto px-4 py-8 h-full">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
+            <div className="text-center mb-8 mt-16">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
                 AI-Powered Data Mapping
               </h1>

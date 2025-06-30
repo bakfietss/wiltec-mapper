@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'sonner';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import Index from './pages/Index';
 import AiMapper from './pages/AiMapper';
 import NotFound from './pages/NotFound';
@@ -24,7 +25,7 @@ function App() {
                 path="/" 
                 element={
                   <ProtectedRoute>
-                    <Index />
+                    <Landing />
                   </ProtectedRoute>
                 } 
               />
