@@ -66,10 +66,34 @@ const AiMappingInterface: React.FC<AiMappingInterfaceProps> = ({
     }
   }, [sourceData, targetSchema, onMappingComplete, onMappingError, onProcessingChange]);
 
+  const handleGenerateVisualMapping = useCallback(async (suggestions: any[]) => {
+    try {
+      const aiService = new AIMappingService();
+      const nodeGeneration = await aiService.generateNodesFromMappings(suggestions);
+      
+      // Store the generated nodes and edges in localStorage for the manual editor
+      localStorage.setItem('ai-generated-mapping', JSON.stringify({
+        nodes: nodeGeneration.nodes,
+        edges: nodeGeneration.edges,
+        mappings: nodeGeneration.mappings,
+        sourceData: sourceData
+      }));
+      
+      console.log('Generated visual mapping:', nodeGeneration);
+    } catch (error) {
+      console.error('Failed to generate visual mapping:', error);
+      onMappingError('Failed to generate visual mapping');
+    }
+  }, [sourceData, onMappingError]);
+
   const handleRefineInManualTool = useCallback(() => {
-    // TODO: Navigate to manual tool with pre-populated data
-    window.location.href = '/manual?import=ai-suggestions';
-  }, []);
+    // Store current state for manual tool
+    localStorage.setItem('ai-suggestions', JSON.stringify({
+      suggestions: mappingResult,
+      sourceData: sourceData,
+      targetSchema: targetSchema
+    }));
+  }, [mappingResult, sourceData, targetSchema]);
 
   if (step === 'configure' && isProcessing) {
     return (
@@ -111,6 +135,7 @@ const AiMappingInterface: React.FC<AiMappingInterfaceProps> = ({
               suggestions={mappingResult}
               onExport={() => {}}
               onRefineManually={handleRefineInManualTool}
+              onGenerateVisualMapping={handleGenerateVisualMapping}
             />
           </CardContent>
         </Card>

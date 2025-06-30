@@ -1,4 +1,3 @@
-
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -55,6 +54,42 @@ const Pipeline = () => {
   // Centralized update system - FIXED to pass edges
   const { updateTrigger, triggerUpdate } = useManualUpdateTrigger();
   const { enhancedNodes } = useNodeValueUpdates(updateTrigger, nodes, edges);
+
+  // Check for AI-generated mapping on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromAI = urlParams.get('from');
+    
+    if (fromAI === 'ai-generated') {
+      const aiMapping = localStorage.getItem('ai-generated-mapping');
+      if (aiMapping) {
+        try {
+          const { nodes: aiNodes, edges: aiEdges, sourceData } = JSON.parse(aiMapping);
+          setNodes(aiNodes);
+          setEdges(aiEdges);
+          setSampleData(sourceData || []);
+          setCurrentMappingName('AI Generated Mapping');
+          localStorage.removeItem('ai-generated-mapping');
+          toast.success('AI-generated mapping loaded successfully!');
+        } catch (error) {
+          console.error('Failed to load AI-generated mapping:', error);
+          toast.error('Failed to load AI-generated mapping');
+        }
+      }
+    } else if (fromAI === 'ai-suggestions') {
+      const aiSuggestions = localStorage.getItem('ai-suggestions');
+      if (aiSuggestions) {
+        try {
+          const { sourceData } = JSON.parse(aiSuggestions);
+          setSampleData(sourceData || []);
+          localStorage.removeItem('ai-suggestions');
+          toast.success('AI suggestions available for manual refinement');
+        } catch (error) {
+          console.error('Failed to load AI suggestions:', error);
+        }
+      }
+    }
+  }, [setNodes, setEdges]);
 
   // Click outside to close functionality
   useEffect(() => {

@@ -3,7 +3,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { ArrowRight, Download, Settings, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { ArrowRight, Download, Settings, CheckCircle, AlertTriangle, HelpCircle, Workflow } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface MappingSuggestion {
   sourceField: string;
@@ -11,19 +12,26 @@ interface MappingSuggestion {
   confidence: number;
   reasoning: string;
   transformSuggestion?: string;
+  nodeType?: 'direct' | 'transform' | 'group' | 'computed';
+  groupBy?: string;
+  computeLogic?: string;
 }
 
 interface MappingSuggestionsProps {
   suggestions: MappingSuggestion[];
   onExport: () => void;
   onRefineManually: () => void;
+  onGenerateVisualMapping?: (suggestions: MappingSuggestion[]) => void;
 }
 
 const MappingSuggestions: React.FC<MappingSuggestionsProps> = ({
   suggestions,
   onExport,
-  onRefineManually
+  onRefineManually,
+  onGenerateVisualMapping
 }) => {
+  const navigate = useNavigate();
+
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return 'bg-green-100 text-green-800';
     if (confidence >= 60) return 'bg-yellow-100 text-yellow-800';
@@ -34,6 +42,19 @@ const MappingSuggestions: React.FC<MappingSuggestionsProps> = ({
     if (confidence >= 80) return <CheckCircle className="h-4 w-4" />;
     if (confidence >= 60) return <AlertTriangle className="h-4 w-4" />;
     return <HelpCircle className="h-4 w-4" />;
+  };
+
+  const handleGenerateVisualMapping = () => {
+    if (onGenerateVisualMapping) {
+      onGenerateVisualMapping(suggestions);
+    }
+    // Navigate to manual editor with the generated mapping
+    navigate('/manual?from=ai-generated');
+  };
+
+  const handleRefineManually = () => {
+    // Navigate to manual editor
+    navigate('/manual?from=ai-suggestions');
   };
 
   const highConfidence = suggestions.filter(s => s.confidence >= 80);
@@ -50,7 +71,11 @@ const MappingSuggestions: React.FC<MappingSuggestionsProps> = ({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onRefineManually}>
+          <Button variant="outline" onClick={handleGenerateVisualMapping}>
+            <Workflow className="h-4 w-4 mr-2" />
+            Generate Visual Mapping
+          </Button>
+          <Button variant="outline" onClick={handleRefineManually}>
             <Settings className="h-4 w-4 mr-2" />
             Refine Manually
           </Button>
@@ -79,6 +104,11 @@ const MappingSuggestions: React.FC<MappingSuggestionsProps> = ({
                 {suggestion.transformSuggestion && (
                   <Badge variant="outline" className="text-xs">
                     {suggestion.transformSuggestion}
+                  </Badge>
+                )}
+                {suggestion.nodeType && suggestion.nodeType !== 'direct' && (
+                  <Badge variant="outline" className="text-xs">
+                    {suggestion.nodeType}
                   </Badge>
                 )}
                 <Badge className={`text-xs ${getConfidenceColor(suggestion.confidence)}`}>

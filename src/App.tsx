@@ -3,8 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'sonner';
-import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
 import Landing from './pages/Landing';
 import Index from './pages/Index';
 import AiMapper from './pages/AiMapper';
@@ -20,31 +18,9 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route 
-                path="/" 
-                element={
-                  <ProtectedRoute>
-                    <Landing />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/manual" 
-                element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/ai-mapper" 
-                element={
-                  <ProtectedRoute>
-                    <AiMapper />
-                  </ProtectedRoute>
-                } 
-              />
+              <Route path="/" element={<Landing />} />
+              <Route path="/manual" element={<Index />} />
+              <Route path="/ai-mapper" element={<AiMapper />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
