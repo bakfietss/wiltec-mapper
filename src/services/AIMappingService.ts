@@ -4,10 +4,17 @@ export interface AIMappingSuggestion {
   confidence: number;
   reasoning: string;
   transformSuggestion?: string;
-  nodeType?: 'direct' | 'transform' | 'group' | 'computed' | 'static';
+  nodeType?: 'direct' | 'transform' | 'group' | 'computed' | 'static' | 'map' | 'ifThen' | 'coalesce';
   groupBy?: string;
   computeLogic?: string;
   staticValue?: string;
+  mapValues?: Record<string, string>;
+  ifThenLogic?: {
+    operator: string;
+    value: string;
+    thenValue: string;
+    elseValue: string;
+  };
 }
 
 export interface NodeGenerationResult {
@@ -16,7 +23,43 @@ export interface NodeGenerationResult {
   mappings: AIMappingSuggestion[];
 }
 
+export interface DataPattern {
+  type: 'hierarchical' | 'flat_to_flat' | 'nested_extraction' | 'simple_transform';
+  confidence: number;
+  characteristics: string[];
+  template: string;
+}
+
 export class AIMappingService {
+  private templates = {
+    employee_to_xml: {
+      patterns: ['Medewerker', 'Functiebenaming', 'PTperc', 'Geslacht', 'Mailadres'],
+      mappings: {
+        direct: ['Medewerker->personid_extern', 'Roepnaam->firstname', 'Achternaam->lastname', 'Mailadres->email'],
+        map: ['Functiebenaming->functionid_extern', 'Geslacht->genderid'],
+        ifThen: ['PTperc->employmenttypeid_extern'],
+        static: ['isolanguage->nl-NL', 'authorised->Y']
+      }
+    },
+    shipment_extraction: {
+      patterns: ['containers', 'client_reference', 'itinerary', 'actual_time'],
+      mappings: {
+        direct: ['id->1', 'client_reference->2'],
+        arrayAccess: ['containers[0].container_number->3'],
+        coalesce: ['time_fields->5'],
+        static: ['status_type->4']
+      }
+    },
+    hierarchical_orders: {
+      patterns: ['orderCode', 'lineNumber', 'deliveryLineNumber'],
+      mappings: {
+        groupBy: ['lineNumber', 'deliveryLineNumber'],
+        computed: ['orderCode+lineNumber->lines[].id'],
+        direct: ['orderCode->id', 'confirmationDate->lines[].deliveryLines[].confirmationDate']
+      }
+    }
+  };
+
   async generateMappingSuggestions(
     sourceData: any[], 
     targetSchema?: any[]
@@ -26,38 +69,248 @@ export class AIMappingService {
     }
 
     const sourceFields = Object.keys(sourceData[0]);
-    const suggestions: AIMappingSuggestion[] = [];
-
     console.log('Source fields detected:', sourceFields);
     console.log('Sample data:', sourceData[0]);
 
-    // Detect if this looks like a hierarchical transformation
-    const hasHierarchicalPattern = this.detectHierarchicalPattern(sourceData[0]);
-    
-    if (hasHierarchicalPattern) {
-      return this.generateHierarchicalMappings(sourceData[0], sourceFields);
+    // Detect data pattern using enhanced pattern recognition
+    const pattern = this.detectDataPattern(sourceData[0], sourceFields);
+    console.log('Detected pattern:', pattern);
+
+    // Generate suggestions based on detected pattern
+    switch (pattern.type) {
+      case 'hierarchical':
+        return this.generateHierarchicalMappings(sourceData[0], sourceFields);
+      case 'flat_to_flat':
+        return this.generateFlatMappings(sourceData[0], sourceFields);
+      case 'nested_extraction':
+        return this.generateExtractionMappings(sourceData[0], sourceFields);
+      case 'simple_transform':
+        return this.generateSimpleMappings(sourceData[0], sourceFields);
+      default:
+        return this.generateFallbackMappings(sourceData[0], sourceFields);
+    }
+  }
+
+  private detectDataPattern(sampleData: any, fields: string[]): DataPattern {
+    // Check for hierarchical pattern (orders with lines)
+    if (this.hasHierarchicalPattern(fields)) {
+      return {
+        type: 'hierarchical',
+        confidence: 95,
+        characteristics: ['orderCode', 'lineNumber', 'deliveryLineNumber'],
+        template: 'hierarchical_orders'
+      };
     }
 
-    // Standard field matching
-    sourceFields.forEach(sourceField => {
-      const suggestion = this.matchField(sourceField, sourceFields, targetSchema);
-      if (suggestion) {
-        suggestions.push(suggestion);
-      }
-    });
+    // Check for employee data pattern
+    if (this.hasEmployeePattern(fields)) {
+      return {
+        type: 'flat_to_flat',
+        confidence: 90,
+        characteristics: ['employee fields', 'percentage fields', 'date fields'],
+        template: 'employee_to_xml'
+      };
+    }
+
+    // Check for complex nested extraction (like shipment data)
+    if (this.hasNestedExtractionPattern(sampleData)) {
+      return {
+        type: 'nested_extraction',
+        confidence: 85,
+        characteristics: ['nested objects', 'arrays', 'complex structure'],
+        template: 'shipment_extraction'
+      };
+    }
+
+    // Default to simple transformation
+    return {
+      type: 'simple_transform',
+      confidence: 60,
+      characteristics: ['basic fields'],
+      template: 'generic'
+    };
+  }
+
+  private hasHierarchicalPattern(fields: string[]): boolean {
+    const hierarchicalIndicators = ['orderCode', 'lineNumber', 'deliveryLineNumber'];
+    return hierarchicalIndicators.every(indicator => fields.includes(indicator));
+  }
+
+  private hasEmployeePattern(fields: string[]): boolean {
+    const employeeIndicators = ['Medewerker', 'Functiebenaming', 'PTperc', 'Geslacht'];
+    return employeeIndicators.some(indicator => fields.includes(indicator));
+  }
+
+  private hasNestedExtractionPattern(sampleData: any): boolean {
+    // Check for complex nested structures like containers, events, etc.
+    const nestedIndicators = ['containers', 'events', 'itinerary', 'client'];
+    return Object.keys(sampleData).some(key => 
+      nestedIndicators.includes(key) && 
+      (Array.isArray(sampleData[key]) || typeof sampleData[key] === 'object')
+    );
+  }
+
+  private generateFlatMappings(sampleData: any, fields: string[]): AIMappingSuggestion[] {
+    const suggestions: AIMappingSuggestion[] = [];
+
+    // Employee data specific mappings
+    if (fields.includes('Medewerker')) {
+      // Direct mappings
+      suggestions.push({
+        sourceField: 'Medewerker',
+        targetField: 'personid_extern',
+        confidence: 100,
+        reasoning: 'Employee ID direct mapping',
+        nodeType: 'direct'
+      });
+
+      suggestions.push({
+        sourceField: 'Roepnaam',
+        targetField: 'firstname',
+        confidence: 100,
+        reasoning: 'First name direct mapping',
+        nodeType: 'direct'
+      });
+
+      suggestions.push({
+        sourceField: 'Achternaam',
+        targetField: 'lastname',
+        confidence: 100,
+        reasoning: 'Last name direct mapping',
+        nodeType: 'direct'
+      });
+
+      suggestions.push({
+        sourceField: 'Mailadres',
+        targetField: 'email',
+        confidence: 100,
+        reasoning: 'Email direct mapping',
+        nodeType: 'direct'
+      });
+
+      // Map-based transformations
+      suggestions.push({
+        sourceField: 'Functiebenaming',
+        targetField: 'functionid_extern',
+        confidence: 90,
+        reasoning: 'Function name requires mapping transformation',
+        nodeType: 'map',
+        mapValues: {
+          'Algemeen': 'ALGEMEEN',
+          'Allround medewerker boorploeg': 'ALLROUNDMEDEWERKER-BOORPLOEG',
+          'Uitvoerder': 'UITVOERDER'
+        }
+      });
+
+      suggestions.push({
+        sourceField: 'Geslacht',
+        targetField: 'genderid',
+        confidence: 95,
+        reasoning: 'Gender code mapping',
+        nodeType: 'map',
+        mapValues: {
+          'V': 'F',
+          'M': 'M'
+        }
+      });
+
+      // If-Then logic
+      suggestions.push({
+        sourceField: 'PTperc',
+        targetField: 'employmenttypeid_extern',
+        confidence: 90,
+        reasoning: 'Employment type based on percentage',
+        nodeType: 'ifThen',
+        ifThenLogic: {
+          operator: '>=',
+          value: '100',
+          thenValue: 'FT',
+          elseValue: 'PT'
+        }
+      });
+
+      // Static values
+      suggestions.push({
+        sourceField: 'static',
+        targetField: 'isolanguage',
+        confidence: 100,
+        reasoning: 'Static language code',
+        nodeType: 'static',
+        staticValue: 'nl-NL'
+      });
+
+      suggestions.push({
+        sourceField: 'static',
+        targetField: 'authorised',
+        confidence: 100,
+        reasoning: 'Static authorization flag',
+        nodeType: 'static',
+        staticValue: 'Y'
+      });
+    }
 
     return suggestions;
   }
 
-  private detectHierarchicalPattern(sampleData: any): boolean {
-    const fields = Object.keys(sampleData);
-    
-    // Look for patterns that suggest hierarchical structure
-    const hasOrderCode = fields.includes('orderCode');
-    const hasLineNumber = fields.includes('lineNumber');
-    const hasDeliveryLineNumber = fields.includes('deliveryLineNumber');
-    
-    return hasOrderCode && hasLineNumber && hasDeliveryLineNumber;
+  private generateExtractionMappings(sampleData: any, fields: string[]): AIMappingSuggestion[] {
+    const suggestions: AIMappingSuggestion[] = [];
+
+    // Shipment data specific mappings
+    if (fields.includes('id')) {
+      suggestions.push({
+        sourceField: 'id',
+        targetField: '1',
+        confidence: 100,
+        reasoning: 'Shipment ID direct mapping',
+        nodeType: 'direct'
+      });
+    }
+
+    if (fields.includes('client_reference')) {
+      suggestions.push({
+        sourceField: 'client_reference',
+        targetField: '2',
+        confidence: 100,
+        reasoning: 'Client reference direct mapping',
+        nodeType: 'direct'
+      });
+    }
+
+    // Array access patterns
+    if (sampleData.containers && Array.isArray(sampleData.containers)) {
+      suggestions.push({
+        sourceField: 'containers[0].container_number',
+        targetField: '3',
+        confidence: 90,
+        reasoning: 'First container number extraction',
+        nodeType: 'transform',
+        transformSuggestion: 'Array access [0] then property access'
+      });
+    }
+
+    // Coalesce pattern for time fields
+    const timeFields = ['actual_time_of_arrival', 'planned_time_of_arrival', 'estimated_time_of_arrival'];
+    if (timeFields.some(field => this.hasNestedField(sampleData, field))) {
+      suggestions.push({
+        sourceField: timeFields.join(','),
+        targetField: '5',
+        confidence: 85,
+        reasoning: 'Coalesce time fields in priority order',
+        nodeType: 'coalesce'
+      });
+    }
+
+    // Static value for status
+    suggestions.push({
+      sourceField: 'static',
+      targetField: '4',
+      confidence: 80,
+      reasoning: 'Static status type',
+      nodeType: 'static',
+      staticValue: 'ATA'
+    });
+
+    return suggestions;
   }
 
   private generateHierarchicalMappings(sampleData: any, allFields: string[]): AIMappingSuggestion[] {
@@ -222,6 +475,38 @@ export class AIMappingService {
 
     console.log('Generated suggestions:', suggestions);
     return suggestions;
+  }
+
+  private generateSimpleMappings(sampleData: any, fields: string[]): AIMappingSuggestion[] {
+    const suggestions: AIMappingSuggestion[] = [];
+    
+    fields.forEach(field => {
+      const mapping = this.matchField(field, fields);
+      if (mapping) {
+        suggestions.push(mapping);
+      }
+    });
+
+    return suggestions;
+  }
+
+  private generateFallbackMappings(sampleData: any, fields: string[]): AIMappingSuggestion[] {
+    return this.generateSimpleMappings(sampleData, fields);
+  }
+
+  private hasNestedField(obj: any, fieldPath: string): boolean {
+    const parts = fieldPath.split('.');
+    let current = obj;
+    
+    for (const part of parts) {
+      if (current && typeof current === 'object' && part in current) {
+        current = current[part];
+      } else {
+        return false;
+      }
+    }
+    
+    return true;
   }
 
   async generateNodesFromMappings(mappings: AIMappingSuggestion[]): Promise<NodeGenerationResult> {
@@ -450,6 +735,7 @@ export class AIMappingService {
     if (fieldName.toLowerCase().includes('date')) return 'date';
     if (fieldName.toLowerCase().includes('number')) return 'number';
     if (fieldName.toLowerCase().includes('code')) return 'string';
+    if (fieldName.toLowerCase().includes('perc')) return 'number';
     return 'string';
   }
 
@@ -457,7 +743,9 @@ export class AIMappingService {
     if (fieldName.toLowerCase().includes('date')) return '2025-07-01';
     if (fieldName.toLowerCase().includes('number')) return 1;
     if (fieldName === 'orderCode') return 'PU211861';
-    if (fieldName === 'adminCode') return '01';
+    if (fieldName === 'Medewerker') return '1000257';
+    if (fieldName === 'PTperc') return 100.0;
+    if (fieldName === 'Geslacht') return 'M';
     return 'example';
   }
 
@@ -508,12 +796,6 @@ export class AIMappingService {
             exampleValue: 'PU211861'
           },
           { 
-            id: 'lines_adminCode',
-            name: 'adminCode', 
-            type: 'string',
-            exampleValue: '01'
-          },
-          { 
             id: 'lines_deliveryAfter',
             name: 'deliveryAfter', 
             type: 'date',
@@ -543,12 +825,6 @@ export class AIMappingService {
                 name: 'orderCode', 
                 type: 'string',
                 exampleValue: 'PU211861'
-              },
-              { 
-                id: 'deliveryLines_adminCode',
-                name: 'adminCode', 
-                type: 'string',
-                exampleValue: '01'
               },
               { 
                 id: 'deliveryLines_orderLineNumber',
