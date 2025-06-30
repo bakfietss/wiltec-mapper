@@ -9,8 +9,11 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
+  
+  // For development - bypass authentication if in dev mode
+  const isDevelopment = import.meta.env.DEV;
+  
+  if (!isAuthenticated && !isDevelopment) {
     return <Navigate to="/login" replace />;
   }
 
