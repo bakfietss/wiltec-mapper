@@ -1,10 +1,9 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Upload, Play, Copy, Check, Download } from 'lucide-react';
+import { Upload, Play, Copy, Check, Download, ArrowRight } from 'lucide-react';
 import NavigationBar from '../components/NavigationBar';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
@@ -13,6 +12,7 @@ const TemplateMapper = () => {
   const [sourceData, setSourceData] = useState('');
   const [outputTemplate, setOutputTemplate] = useState('');
   const [transformedResults, setTransformedResults] = useState('');
+  const [fieldConnections, setFieldConnections] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -42,6 +42,7 @@ const TemplateMapper = () => {
   const handleDataUpload = useCallback((data: any[]) => {
     setSourceData(JSON.stringify(data, null, 2));
     setTransformedResults('');
+    setFieldConnections([]);
     toast({ title: "Data uploaded successfully!" });
   }, [toast]);
 
@@ -89,13 +90,14 @@ const TemplateMapper = () => {
 
     try {
       let data = JSON.parse(sourceData);
+      const connections: any[] = [];
       
       // If it's not an array, make it an array for consistent processing
       if (!Array.isArray(data)) {
         data = [data];
       }
 
-      const results = data.map(record => {
+      const results = data.map((record, recordIndex) => {
         let processed = outputTemplate;
         
         // Find all template variables in the format {{ variable }}
@@ -104,19 +106,29 @@ const TemplateMapper = () => {
         templateVars.forEach(templateVar => {
           const cleanVar = templateVar.replace(/\{\{\s*|\s*\}\}/g, '');
           let value = undefined;
+          let sourcePath = '';
+          let connectionType = 'not_found';
           
           // Try different ways to find the value
           // 1. Direct property access
           if (record.hasOwnProperty(cleanVar)) {
             value = record[cleanVar];
+            sourcePath = cleanVar;
+            connectionType = 'direct';
           }
           // 2. Nested path access (e.g., "client.company.company_name")
           else if (cleanVar.includes('.')) {
             value = getNestedValue(record, cleanVar);
+            sourcePath = cleanVar;
+            connectionType = 'nested';
           }
           // 3. Search recursively in the object
           else {
             value = findValueInObject(record, cleanVar);
+            if (value !== undefined) {
+              sourcePath = `[found: ${cleanVar}]`;
+              connectionType = 'search';
+            }
           }
           
           // Handle special cases for your specific data structure
@@ -124,25 +136,50 @@ const TemplateMapper = () => {
             switch (cleanVar.toLowerCase()) {
               case 'id':
                 value = record.id || record._id || record.ID;
+                sourcePath = record.id ? 'id' : record._id ? '_id' : 'ID';
+                connectionType = 'mapped';
                 break;
               case 'reference':
                 value = record.client_reference || record.reference || record.Reference;
+                sourcePath = record.client_reference ? 'client_reference' : 
+                           record.reference ? 'reference' : 'Reference';
+                connectionType = 'mapped';
                 break;
               case 'container_number':
                 value = record.containers?.[0]?.container_number || 
                         record.container_number || 
                         record.Container_number;
+                sourcePath = record.containers?.[0]?.container_number ? 'containers[0].container_number' :
+                           record.container_number ? 'container_number' : 'Container_number';
+                connectionType = 'mapped';
                 break;
               case 'deliverydate_type':
                 value = 'ATA'; // Default value as shown in your template
+                sourcePath = '[static value]';
+                connectionType = 'static';
                 break;
               case 'delivery_date':
                 value = record.itinerary?.actual_time_of_arrival || 
                         record.actual_time_of_arrival ||
                         record.delivery_date ||
                         record.Delivery_date;
+                sourcePath = record.itinerary?.actual_time_of_arrival ? 'itinerary.actual_time_of_arrival' :
+                           record.actual_time_of_arrival ? 'actual_time_of_arrival' :
+                           record.delivery_date ? 'delivery_date' : 'Delivery_date';
+                connectionType = 'mapped';
                 break;
             }
+          }
+          
+          // Add connection info (only for first record to avoid duplicates)
+          if (recordIndex === 0) {
+            connections.push({
+              templateField: cleanVar,
+              sourceField: sourcePath,
+              connectionType,
+              value: value !== undefined ? String(value) : '[not found]',
+              found: value !== undefined
+            });
           }
           
           // Replace the template variable with the actual value
@@ -153,6 +190,7 @@ const TemplateMapper = () => {
         return JSON.parse(processed);
       });
 
+      setFieldConnections(connections);
       setTransformedResults(JSON.stringify(results, null, 2));
       toast({ title: "Template executed successfully!", description: `Transformed ${results.length} records` });
     } catch (error) {
@@ -228,6 +266,7 @@ const TemplateMapper = () => {
                     onChange={(e) => {
                       setSourceData(e.target.value);
                       setTransformedResults('');
+                      setFieldConnections([]);
                     }}
                     placeholder={sampleSourceData}
                     className="flex-1 min-h-[400px] font-mono text-sm resize-none border-2 focus:border-blue-500"
@@ -269,6 +308,7 @@ const TemplateMapper = () => {
                 onChange={(e) => {
                   setOutputTemplate(e.target.value);
                   setTransformedResults('');
+                  setFieldConnections([]);
                 }}
                 placeholder={sampleTemplate}
                 className="flex-1 font-mono text-sm resize-none border-2 focus:border-green-500 mb-4"
@@ -292,7 +332,7 @@ const TemplateMapper = () => {
             </CardContent>
           </Card>
 
-          {/* Panel 3: Results Preview */}
+          {/* Panel 3: Results & Field Connections */}
           <Card className="flex flex-col h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 justify-between text-xl">
@@ -300,7 +340,7 @@ const TemplateMapper = () => {
                   <div className="w-5 h-5 bg-purple-600 rounded flex items-center justify-center">
                     <span className="text-white text-xs font-bold">R</span>
                   </div>
-                  Results Preview
+                  Results & Connections
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -321,26 +361,70 @@ const TemplateMapper = () => {
                   </Button>
                 </div>
               </CardTitle>
-              <p className="text-sm text-gray-500">View your transformed data</p>
+              <p className="text-sm text-gray-500">View field connections and transformed data</p>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-4">
-              <div className="flex-1 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4 overflow-auto">
-                {transformedResults ? (
-                  <pre className="text-sm whitespace-pre-wrap font-mono text-gray-800">
-                    {transformedResults}
-                  </pre>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-                        <Play className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <p className="text-lg font-medium">Ready to Transform</p>
-                      <p className="text-sm">Click "Run Transformation" to see results</p>
+              {transformedResults && fieldConnections.length > 0 ? (
+                <Tabs defaultValue="connections" className="flex-1 flex flex-col">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="connections">Field Connections</TabsTrigger>
+                    <TabsTrigger value="results">JSON Results</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="connections" className="flex-1 overflow-auto">
+                    <div className="space-y-3">
+                      {fieldConnections.map((conn, index) => (
+                        <div 
+                          key={index} 
+                          className={`p-3 rounded-lg border-l-4 ${
+                            conn.found 
+                              ? 'bg-green-50 border-green-500' 
+                              : 'bg-red-50 border-red-500'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-mono text-sm bg-purple-100 px-2 py-1 rounded">
+                              {conn.templateField}
+                            </span>
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                            <span className="font-mono text-sm bg-blue-100 px-2 py-1 rounded">
+                              {conn.sourceField}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                              conn.connectionType === 'direct' ? 'bg-green-100 text-green-800' :
+                              conn.connectionType === 'nested' ? 'bg-blue-100 text-blue-800' :
+                              conn.connectionType === 'mapped' ? 'bg-orange-100 text-orange-800' :
+                              conn.connectionType === 'static' ? 'bg-purple-100 text-purple-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {conn.connectionType}
+                            </span>
+                            <span className="ml-2">Value: <code className="bg-gray-100 px-1 rounded">{conn.value}</code></span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="results" className="flex-1 overflow-auto">
+                    <pre className="text-sm whitespace-pre-wrap font-mono text-gray-800 bg-gray-50 p-4 rounded">
+                      {transformedResults}
+                    </pre>
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
+                      <Play className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-lg font-medium">Ready to Transform</p>
+                    <p className="text-sm">Click "Run Transformation" to see connections and results</p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               
               {transformedResults && (
                 <div className="mt-3 p-2 bg-purple-50 rounded text-sm text-purple-700">
