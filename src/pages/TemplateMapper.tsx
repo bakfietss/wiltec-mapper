@@ -335,8 +335,8 @@ const TemplateMapper = () => {
         description: "Opening canvas with generated nodes..." 
       });
       
-      // Navigate to the main canvas page with conversion flag
-      navigate('/?from=template-conversion');
+      // Navigate to the manual mapping canvas page with conversion flag
+      navigate('/manual?from=template-conversion');
       
     } catch (error) {
       console.error('Conversion error:', error);
