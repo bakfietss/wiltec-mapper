@@ -1,4 +1,3 @@
-
 export class TemplateGenerationService {
   static generateTemplateFromExamples(sourceData: any[], outputExample: any): string {
     if (!sourceData.length || !outputExample) {
@@ -112,22 +111,22 @@ export class TemplateGenerationService {
           // Determine what field this part should map to based on position and context
           if (i === 0) {
             // First part is usually orderCode
-            templateParts.push('orderCode');
+            templateParts.push('{{ orderCode }}');
           } else if (i === 1) {
             // Second part is lineNumber for both lines and deliveryLines
-            templateParts.push('lineNumber');
+            templateParts.push('{{ lineNumber }}');
           } else if (i === 2) {
             // Third part is deliveryLineNumber (only in deliveryLines context)
-            templateParts.push('deliveryLineNumber');
+            templateParts.push('{{ deliveryLineNumber }}');
           } else {
             // For additional parts, try to find matching field
             const matchingField = this.findBestFieldMatch(part, sourceObj);
-            templateParts.push(matchingField || part);
+            templateParts.push(matchingField ? `{{ ${matchingField} }}` : `{{ ${part} }}`);
           }
         }
         
-        // Return as a single template variable with comma-separated field names
-        return `{{ ${templateParts.join(',')} }}`;
+        // Return as comma-separated individual template variables
+        return templateParts.join(',');
       } else {
         // Simple ID, try to find the best matching field
         const matchingField = this.findBestFieldMatch(outputValue, sourceObj);
