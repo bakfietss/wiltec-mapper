@@ -6,6 +6,7 @@ import NavigationBar from '../components/NavigationBar';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Wand2, X } from 'lucide-react';
+import { TemplateToNodesConverter } from '../services/TemplateToNodesConverter';
 
 const Index = () => {
   const [showDataSidebar, setShowDataSidebar] = useState(false);
@@ -31,13 +32,25 @@ const Index = () => {
   const handleConvertTemplate = useCallback(() => {
     if (!templateConversion) return;
 
-    // Here we would implement the template-to-nodes conversion logic
-    // For now, just clear the notification
-    setTemplateConversion(null);
-    localStorage.removeItem('template-conversion');
-    
-    // TODO: Parse template and create nodes based on the patterns found
-    console.log('Converting template to nodes:', templateConversion);
+    try {
+      // Dispatch event to Canvas to load the converted nodes and edges
+      const event = new CustomEvent('loadTemplateConversion', {
+        detail: {
+          nodes: templateConversion.nodes,
+          edges: templateConversion.edges,
+          sourceData: templateConversion.sourceData
+        }
+      });
+      window.dispatchEvent(event);
+      
+      // Clear the notification and storage
+      setTemplateConversion(null);
+      TemplateToNodesConverter.clearConversionData();
+      
+      console.log('Template converted to nodes successfully:', templateConversion);
+    } catch (error) {
+      console.error('Error applying template conversion:', error);
+    }
   }, [templateConversion]);
 
   const handleDismissConversion = useCallback(() => {

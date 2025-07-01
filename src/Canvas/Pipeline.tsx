@@ -102,12 +102,31 @@ const Pipeline = () => {
       addMappingNode();
     };
 
+    const handleLoadTemplateConversion = (event: CustomEvent) => {
+      const { nodes: templateNodes, edges: templateEdges, sourceData } = event.detail;
+      
+      console.log('Loading template conversion:', { templateNodes, templateEdges, sourceData });
+      
+      // Replace current nodes and edges with the converted ones
+      setNodes(templateNodes);
+      setEdges(templateEdges);
+      
+      // Update sample data if provided
+      if (sourceData && sourceData.length > 0) {
+        setSampleData(sourceData);
+      }
+      
+      toast.success('Visual mapping loaded from template!');
+    };
+
     window.addEventListener('addTransformNode', handleAddTransformNode as EventListener);
     window.addEventListener('addMappingNode', handleAddMappingNode);
+    window.addEventListener('loadTemplateConversion', handleLoadTemplateConversion as EventListener);
 
     return () => {
       window.removeEventListener('addTransformNode', handleAddTransformNode as EventListener);
       window.removeEventListener('addMappingNode', handleAddMappingNode);
+      window.removeEventListener('loadTemplateConversion', handleLoadTemplateConversion as EventListener);
     };
   }, [addTransformNode, addMappingNode]);
 

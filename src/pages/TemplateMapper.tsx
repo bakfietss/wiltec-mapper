@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Upload, Play, Copy, Check, Download, ArrowRight, Sparkles, Wand2 } from 'lucide-react';
+import { Upload, Play, Copy, Check, Download, ArrowRight, Sparkles, Wand2, Map } from 'lucide-react';
 import NavigationBar from '../components/NavigationBar';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
 import { TemplateGenerationService } from '../services/TemplateGenerationService';
+import { TemplateToNodesConverter } from '../services/TemplateToNodesConverter';
+import { useNavigate } from 'react-router-dom';
 
 const TemplateMapper = () => {
   const [sourceData, setSourceData] = useState('');
@@ -19,6 +21,7 @@ const TemplateMapper = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const sampleSourceData = `[
   {
@@ -306,6 +309,46 @@ const TemplateMapper = () => {
     toast({ title: "File downloaded!" });
   }, [transformedResults, toast]);
 
+  const handleConvertToVisualMapping = useCallback(() => {
+    if (!outputTemplate || !sourceData) {
+      toast({ 
+        title: "Missing Data", 
+        description: "Please generate a template first and have source data",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    try {
+      const parsedSourceData = JSON.parse(sourceData);
+      const sourceArray = Array.isArray(parsedSourceData) ? parsedSourceData : [parsedSourceData];
+      
+      const conversionResult = TemplateToNodesConverter.convertTemplateToNodes(
+        outputTemplate, 
+        sourceArray
+      );
+      
+      TemplateToNodesConverter.storeConversionData(conversionResult);
+      
+      toast({ 
+        title: "Converting to visual mapping!", 
+        description: "Opening canvas with generated nodes..." 
+      });
+      
+      // Navigate to the main canvas page with conversion flag
+      navigate('/?from=template-conversion');
+      
+    } catch (error) {
+      console.error('Conversion error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to convert template';
+      toast({ 
+        title: "Conversion failed", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+    }
+  }, [outputTemplate, sourceData, navigate, toast]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
@@ -441,15 +484,28 @@ const TemplateMapper = () => {
                       className="flex-1 min-h-[300px] font-mono text-sm resize-none border-2 focus:border-green-500 mb-4"
                     />
                     
-                    <Button
-                      onClick={executeTemplate}
-                      disabled={!outputTemplate || !sourceData || isExecuting}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      size="lg"
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      {isExecuting ? "Transforming..." : "Run Transformation"}
-                    </Button>
+                    <div className="space-y-3">
+                      <Button
+                        onClick={executeTemplate}
+                        disabled={!outputTemplate || !sourceData || isExecuting}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        size="lg"
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        {isExecuting ? "Transforming..." : "Run Transformation"}
+                      </Button>
+                      
+                      <Button
+                        onClick={handleConvertToVisualMapping}
+                        disabled={!outputTemplate || !sourceData}
+                        variant="outline"
+                        className="w-full border-purple-500 text-purple-700 hover:bg-purple-50"
+                        size="lg"
+                      >
+                        <Map className="h-4 w-4 mr-2" />
+                        Convert to Visual Mapping
+                      </Button>
+                    </div>
                   </TabsContent>
                   
                   <TabsContent value="results" className="flex-1 overflow-auto">
