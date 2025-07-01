@@ -5,9 +5,12 @@ import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'sonner';
 import Landing from './pages/Landing';
 import Index from './pages/Index';
-import AiMapper from './pages/AiMapper';
+import TemplateMapper from './pages/TemplateMapper';
 import NotFound from './pages/NotFound';
 import './App.css';
+
+// Temporary AI pages (preserved but not in main navigation)
+import AiMapper from './pages/temp-ai-pages/AiMapper';
 
 const queryClient = new QueryClient();
 
@@ -20,7 +23,11 @@ function App() {
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/manual" element={<Index />} />
-              <Route path="/ai-mapper" element={<AiMapper />} />
+              <Route path="/template-mapper" element={<TemplateMapper />} />
+              
+              {/* Temporary AI routes - preserved but not in main nav */}
+              <Route path="/temp/ai-mapper" element={<AiMapper />} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

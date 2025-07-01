@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from './ui/button';
-import { Brain, Settings, Home } from 'lucide-react';
+import { Brain, Settings, Home, Wand2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const NavigationBar = () => {
@@ -29,13 +29,13 @@ const NavigationBar = () => {
         </Button>
         
         <Button
-          variant={isActive('/ai-mapper') ? "default" : "ghost"}
+          variant={isActive('/template-mapper') ? "default" : "ghost"}
           size="sm"
-          onClick={() => navigate('/ai-mapper')}
+          onClick={() => navigate('/template-mapper')}
           className="flex items-center gap-2"
         >
-          <Brain className="w-4 h-4" />
-          AI Mapper
+          <Wand2 className="w-4 h-4" />
+          Template Mapper
         </Button>
         
         <Button
