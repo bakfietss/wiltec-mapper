@@ -51,26 +51,26 @@ export class TemplateGenerationService {
     if (directMatch) {
       // Check if this should be a number field
       const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, directMatch);
-      return isNumberField ? `{{ ${directMatch} }}` : `"{{ ${directMatch} }}"`;
+      return isNumberField ? `{{ ${directMatch} }}` : `{{ ${directMatch} }}`;
     }
 
     // 2. Value-based matching for static values
     if (typeof outputValue === 'string' && this.isStaticValue(outputValue)) {
-      return `"${outputValue}"`; // Keep static values as quoted strings
+      return outputValue; // Keep static values as-is
     }
 
     // 3. Smart field mapping based on common patterns
     const smartMatch = this.getSmartMapping(outputKey, sourceObj);
     if (smartMatch) {
       const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, smartMatch);
-      return isNumberField ? `{{ ${smartMatch} }}` : `"{{ ${smartMatch} }}"`;
+      return isNumberField ? `{{ ${smartMatch} }}` : `{{ ${smartMatch} }}`;
     }
 
     // 4. Nested field search
     const nestedMatch = this.findNestedField(outputKey, sourceObj);
     if (nestedMatch) {
       const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, nestedMatch);
-      return isNumberField ? `{{ ${nestedMatch} }}` : `"{{ ${nestedMatch} }}"`;
+      return isNumberField ? `{{ ${nestedMatch} }}` : `{{ ${nestedMatch} }}`;
     }
 
     return null;
@@ -102,26 +102,26 @@ export class TemplateGenerationService {
           }
         }
         
-        return `"${templateParts.join(',')}"`;
+        return `{{ ${templateParts.join(',')} }}`;
       } else {
         // Simple ID, try to find the best matching field
         const matchingField = this.findBestFieldMatch(outputValue, sourceObj);
         if (matchingField) {
-          return `"{{ ${matchingField} }}"`;
+          return `{{ ${matchingField} }}`;
         }
         
         // Try common ID field names
         const commonIdFields = ['id', 'orderCode', 'code', 'identifier'];
         for (const field of commonIdFields) {
           if (this.hasField(sourceObj, field)) {
-            return `"{{ ${field} }}"`;
+            return `{{ ${field} }}`;
           }
         }
       }
     }
     
     // Fallback to the original value
-    return `"${outputValue}"`;
+    return outputValue;
   }
 
   private static findBestFieldMatch(value: string, sourceObj: any): string | null {
