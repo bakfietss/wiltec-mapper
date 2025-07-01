@@ -28,8 +28,19 @@ export class TemplateGenerationService {
           result[key] = processObject(value, sourceObj, currentPath);
         } else {
           // Try to find a matching field in source data
-          const templateVar = this.findMatchingSourceField(key, value, sourceObj, currentPath);
-          result[key] = templateVar !== null ? `"${templateVar}"` : value;
+          const mappingResult = this.findMatchingSourceField(key, value, sourceObj, currentPath);
+          if (mappingResult !== null) {
+            // Check if it's a static value or template variable
+            if (mappingResult.startsWith('{{ ') && mappingResult.endsWith(' }}')) {
+              result[key] = mappingResult; // Template variable without quotes
+            } else {
+              result[key] = `"${mappingResult}"`; // Static value with quotes
+            }
+          } else {
+            // Unmapped value - add comment to indicate it's static
+            result[key] = value;
+            result[`${key}_UNMAPPED`] = "// This value could not be mapped to source data";
+          }
         }
       }
       
@@ -43,6 +54,14 @@ export class TemplateGenerationService {
     
     // Remove quotes from numeric template variables
     jsonString = this.formatNumericFields(jsonString);
+    
+    // Clean up unmapped field comments and add header for unmapped values
+    const hasUnmapped = jsonString.includes('_UNMAPPED');
+    jsonString = jsonString.replace(/,?\s*"[^"]+_UNMAPPED":\s*"[^"]*"/g, '');
+    
+    if (hasUnmapped) {
+      jsonString = '// Note: Some values could not be mapped and remain static\n' + jsonString;
+    }
     
     return jsonString;
   }
