@@ -84,21 +84,27 @@ export class TemplateGenerationService {
         const parts = outputValue.split(',');
         const templateParts: string[] = [];
         
-        for (const part of parts) {
-          const trimmedPart = part.trim();
-          // Try to find a matching field for each part
-          const matchingField = this.findBestFieldMatch(trimmedPart, sourceObj);
-          if (matchingField) {
-            templateParts.push(`{{ ${matchingField} }}`);
-          } else {
-            // If no match found, keep as literal or try common field names
-            if (this.looksLikeNumber(trimmedPart)) {
-              // Could be lineNumber, deliveryLineNumber, etc.
-              const numberField = this.findNumberFieldMatch(fullPath, sourceObj);
-              templateParts.push(numberField ? `{{ ${numberField} }}` : trimmedPart);
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i].trim();
+          
+          // Determine what field this part should map to based on position and context
+          if (i === 0) {
+            // First part is usually orderCode
+            templateParts.push('{{ orderCode }}');
+          } else if (i === 1) {
+            // Second part depends on context
+            if (fullPath.includes('deliveryLines[')) {
+              templateParts.push('{{ lineNumber }}');
             } else {
-              templateParts.push(trimmedPart);
+              templateParts.push('{{ lineNumber }}');
             }
+          } else if (i === 2) {
+            // Third part is usually deliveryLineNumber
+            templateParts.push('{{ deliveryLineNumber }}');
+          } else {
+            // For additional parts, keep as-is or try to find matching field
+            const matchingField = this.findBestFieldMatch(part, sourceObj);
+            templateParts.push(matchingField ? `{{ ${matchingField} }}` : part);
           }
         }
         
