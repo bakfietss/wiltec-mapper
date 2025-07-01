@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Upload, Play, ArrowRight, Copy, Check } from 'lucide-react';
+import { Upload, Play, Copy, Check, Download } from 'lucide-react';
 import NavigationBar from '../components/NavigationBar';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
@@ -19,30 +19,39 @@ const TemplateMapper = () => {
 
   const sampleSourceData = `[
   {
-    "ID": "ACC047105-SHIPMENT-NLRTM-SIF-30244573",
-    "Reference": "PU211861",
-    "Container_number": "MSKU9025828",
-    "DeliveryDate_Type": "ATA",
-    "Delivery_date": "2025-05-03T22:00:00Z"
+    "customerName": "John Smith",
+    "orderId": "ORD-12345",
+    "amount": 99.99,
+    "status": "completed"
+  },
+  {
+    "customerName": "Jane Doe", 
+    "orderId": "ORD-12346",
+    "amount": 149.50,
+    "status": "pending"
   }
 ]`;
 
   const sampleTemplate = `{
-  "ID": "{{ ID }}",
-  "Reference": "{{ Reference }}",
-  "Container_number": "{{ Container_number }}",
-  "DeliveryDate_Type": "{{ DeliveryDate_Type }}",
-  "Delivery_date": "{{ Delivery_date }}"
+  "customer": "{{ customerName }}",
+  "order": "{{ orderId }}",
+  "total": "{{ amount }}",
+  "orderStatus": "{{ status }}"
 }`;
 
   const handleDataUpload = useCallback((data: any[]) => {
     setSourceData(JSON.stringify(data, null, 2));
     setTransformedResults('');
-  }, []);
+    toast({ title: "Data uploaded successfully!" });
+  }, [toast]);
 
   const executeTemplate = useCallback(() => {
     if (!sourceData || !outputTemplate) {
-      toast({ title: "Please provide both source data and template", variant: "destructive" });
+      toast({ 
+        title: "Missing Data", 
+        description: "Please provide both source data and template",
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -66,42 +75,65 @@ const TemplateMapper = () => {
       });
 
       setTransformedResults(JSON.stringify(results, null, 2));
-      toast({ title: "Template executed successfully!" });
+      toast({ title: "Template executed successfully!", description: `Transformed ${results.length} records` });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ title: "Execution failed", description: errorMessage, variant: "destructive" });
+      toast({ 
+        title: "Execution failed", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
     } finally {
       setIsExecuting(false);
     }
   }, [sourceData, outputTemplate, toast]);
 
-  const handleCopyTemplate = useCallback(() => {
-    navigator.clipboard.writeText(outputTemplate);
+  const handleCopyResults = useCallback(() => {
+    if (!transformedResults) return;
+    
+    navigator.clipboard.writeText(transformedResults);
     setCopied(true);
-    toast({ title: "Template copied to clipboard!" });
+    toast({ title: "Results copied to clipboard!" });
     setTimeout(() => setCopied(false), 2000);
-  }, [outputTemplate, toast]);
+  }, [transformedResults, toast]);
+
+  const downloadResults = useCallback(() => {
+    if (!transformedResults) return;
+    
+    const blob = new Blob([transformedResults], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'transformed-data.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({ title: "File downloaded!" });
+  }, [transformedResults, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
       
-      <div className="container mx-auto px-4 py-8 mt-20">
+      <div className="container mx-auto px-6 py-8 mt-16">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Template Mapper</h1>
-          <p className="text-gray-600">Transform data using templates with Weavo-style interface</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Template Mapper</h1>
+          <p className="text-lg text-gray-600">Transform your data using custom templates with our Weavo-style interface</p>
         </div>
 
-        {/* Weavo-style 3-panel layout */}
-        <div className="grid grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+        {/* 3-Panel Weavo Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-240px)]">
           
-          {/* Left Panel - Source Data Input */}
-          <Card className="flex flex-col">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Upload className="h-5 w-5" />
+          {/* Panel 1: Source Data Input */}
+          <Card className="flex flex-col h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Upload className="h-5 w-5 text-blue-600" />
                 Source Data
               </CardTitle>
+              <p className="text-sm text-gray-500">Input your data to transform</p>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-4">
               <Tabs defaultValue="paste" className="flex-1 flex flex-col">
@@ -118,7 +150,7 @@ const TemplateMapper = () => {
                       setTransformedResults('');
                     }}
                     placeholder={sampleSourceData}
-                    className="flex-1 font-mono text-xs resize-none"
+                    className="flex-1 font-mono text-sm resize-none border-2 focus:border-blue-500"
                   />
                 </TabsContent>
                 
@@ -127,31 +159,29 @@ const TemplateMapper = () => {
                     onDataUpload={handleDataUpload}
                     acceptedTypes={['.json', '.csv', '.xlsx']}
                     title="Upload Source Data"
-                    description="JSON, CSV, or Excel files"
+                    description="Drag & drop or click to upload JSON, CSV, or Excel files"
                   />
                 </TabsContent>
               </Tabs>
               
-              <div className="mt-2 text-xs text-gray-500">
-                {sourceData && `${JSON.parse(sourceData || '[]').length || 0} records`}
+              <div className="mt-3 p-2 bg-blue-50 rounded text-sm text-blue-700">
+                {sourceData ? `${JSON.parse(sourceData || '[]').length || 0} records loaded` : 'No data loaded'}
               </div>
             </CardContent>
           </Card>
 
-          {/* Middle Panel - Template Builder */}
-          <Card className="flex flex-col">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 justify-between text-lg">
-                <span>Output Template</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyTemplate}
-                  disabled={!outputTemplate}
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+          {/* Panel 2: Template Builder */}
+          <Card className="flex flex-col h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 justify-between text-xl">
+                <span className="flex items-center gap-2">
+                  <div className="w-5 h-5 bg-green-600 rounded flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">T</span>
+                  </div>
+                  Output Template
+                </span>
               </CardTitle>
+              <p className="text-sm text-gray-500">Design your output structure</p>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-4">
               <Textarea
@@ -161,37 +191,80 @@ const TemplateMapper = () => {
                   setTransformedResults('');
                 }}
                 placeholder={sampleTemplate}
-                className="flex-1 font-mono text-xs resize-none"
+                className="flex-1 font-mono text-sm resize-none border-2 focus:border-green-500 mb-4"
               />
               
-              <div className="mt-4">
+              <div className="space-y-3">
+                <div className="p-3 bg-green-50 rounded text-sm text-green-700">
+                  <strong>Template Syntax:</strong> Use {`{{ fieldName }}`} to reference source data fields
+                </div>
+                
                 <Button
                   onClick={executeTemplate}
                   disabled={!outputTemplate || !sourceData || isExecuting}
-                  className="w-full"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  size="lg"
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  {isExecuting ? "Running..." : "Run Template"}
+                  {isExecuting ? "Transforming..." : "Run Transformation"}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Right Panel - Output Preview */}
-          <Card className="flex flex-col">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Preview</CardTitle>
+          {/* Panel 3: Results Preview */}
+          <Card className="flex flex-col h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 justify-between text-xl">
+                <span className="flex items-center gap-2">
+                  <div className="w-5 h-5 bg-purple-600 rounded flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">R</span>
+                  </div>
+                  Results Preview
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyResults}
+                    disabled={!transformedResults}
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadResults}
+                    disabled={!transformedResults}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardTitle>
+              <p className="text-sm text-gray-500">View your transformed data</p>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-4">
-              <div className="flex-1 bg-gray-50 border rounded p-3 overflow-auto">
-                <pre className="text-xs whitespace-pre-wrap font-mono">
-                  {transformedResults || 'Click "Run Template" to see output preview...'}
-                </pre>
+              <div className="flex-1 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4 overflow-auto">
+                {transformedResults ? (
+                  <pre className="text-sm whitespace-pre-wrap font-mono text-gray-800">
+                    {transformedResults}
+                  </pre>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
+                        <Play className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-lg font-medium">Ready to Transform</p>
+                      <p className="text-sm">Click "Run Transformation" to see results</p>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {transformedResults && (
-                <div className="mt-2 text-xs text-gray-500">
-                  {JSON.parse(transformedResults || '[]').length || 0} transformed records
+                <div className="mt-3 p-2 bg-purple-50 rounded text-sm text-purple-700">
+                  ✅ {JSON.parse(transformedResults || '[]').length || 0} records transformed successfully
                 </div>
               )}
             </CardContent>
