@@ -58,14 +58,22 @@ const Index = () => {
     console.log('Add transform:', type);
     // Force toolbar to close after action
     setToolbarExpanded(false);
-    // TODO: Implement actual transform node creation
+    
+    // Dispatch custom event to add transform node to canvas
+    const event = new CustomEvent('addTransformNode', {
+      detail: { type }
+    });
+    window.dispatchEvent(event);
   }, []);
 
   const handleAddMappingNode = useCallback(() => {
     console.log('Add mapping node');
     // Force toolbar to close after action
     setToolbarExpanded(false);
-    // TODO: Implement actual mapping node creation
+    
+    // Dispatch custom event to add mapping node to canvas
+    const event = new CustomEvent('addMappingNode');
+    window.dispatchEvent(event);
   }, []);
 
   return (
