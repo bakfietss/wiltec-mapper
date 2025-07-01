@@ -1,4 +1,3 @@
-
 export class TemplateGenerationService {
   static generateTemplateFromExamples(sourceData: any[], outputExample: any): string {
     if (!sourceData.length || !outputExample) {
@@ -29,8 +28,8 @@ export class TemplateGenerationService {
           result[key] = processObject(value, sourceObj, currentPath);
         } else {
           // Try to find a matching field in source data
-          const templateVar = this.findMatchingSourceField(key, value, sourceObj);
-          result[key] = templateVar || value;
+          const templateVar = this.findMatchingSourceField(key, value, sourceObj, currentPath);
+          result[key] = templateVar !== null ? templateVar : value;
         }
       }
       
@@ -41,25 +40,177 @@ export class TemplateGenerationService {
     return JSON.stringify(template, null, 2);
   }
 
-  private static findMatchingSourceField(outputKey: string, outputValue: any, sourceObj: any): string | null {
+  private static findMatchingSourceField(outputKey: string, outputValue: any, sourceObj: any, fullPath: string): string | null {
+    // Handle special ID field logic
+    if (outputKey.toLowerCase() === 'id') {
+      return this.generateIdTemplate(outputValue, sourceObj, fullPath);
+    }
+
     // 1. Direct key match (case insensitive)
     const directMatch = this.findDirectMatch(outputKey, sourceObj);
-    if (directMatch) return `{{ ${directMatch} }}`;
+    if (directMatch) {
+      // Check if this should be a number field
+      const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, directMatch);
+      return isNumberField ? `{{ ${directMatch} }}` : `"{{ ${directMatch} }}"`;
+    }
 
     // 2. Value-based matching for static values
-    if (typeof outputValue === 'string' && outputValue === 'ATA') {
-      return outputValue; // Keep static values as is
+    if (typeof outputValue === 'string' && this.isStaticValue(outputValue)) {
+      return `"${outputValue}"`; // Keep static values as quoted strings
     }
 
     // 3. Smart field mapping based on common patterns
     const smartMatch = this.getSmartMapping(outputKey, sourceObj);
-    if (smartMatch) return `{{ ${smartMatch} }}`;
+    if (smartMatch) {
+      const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, smartMatch);
+      return isNumberField ? `{{ ${smartMatch} }}` : `"{{ ${smartMatch} }}"`;
+    }
 
     // 4. Nested field search
     const nestedMatch = this.findNestedField(outputKey, sourceObj);
-    if (nestedMatch) return `{{ ${nestedMatch} }}`;
+    if (nestedMatch) {
+      const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, nestedMatch);
+      return isNumberField ? `{{ ${nestedMatch} }}` : `"{{ ${nestedMatch} }}"`;
+    }
 
     return null;
+  }
+
+  private static generateIdTemplate(outputValue: any, sourceObj: any, fullPath: string): string {
+    // Analyze the output value to understand the ID pattern
+    if (typeof outputValue === 'string') {
+      // Check if it's a composite ID (contains commas or other separators)
+      if (outputValue.includes(',')) {
+        const parts = outputValue.split(',');
+        const templateParts: string[] = [];
+        
+        for (const part of parts) {
+          const trimmedPart = part.trim();
+          // Try to find a matching field for each part
+          const matchingField = this.findBestFieldMatch(trimmedPart, sourceObj);
+          if (matchingField) {
+            templateParts.push(`{{ ${matchingField} }}`);
+          } else {
+            // If no match found, keep as literal or try common field names
+            if (this.looksLikeNumber(trimmedPart)) {
+              // Could be lineNumber, deliveryLineNumber, etc.
+              const numberField = this.findNumberFieldMatch(fullPath, sourceObj);
+              templateParts.push(numberField ? `{{ ${numberField} }}` : trimmedPart);
+            } else {
+              templateParts.push(trimmedPart);
+            }
+          }
+        }
+        
+        return `"${templateParts.join(',')}"`;
+      } else {
+        // Simple ID, try to find the best matching field
+        const matchingField = this.findBestFieldMatch(outputValue, sourceObj);
+        if (matchingField) {
+          return `"{{ ${matchingField} }}"`;
+        }
+        
+        // Try common ID field names
+        const commonIdFields = ['id', 'orderCode', 'code', 'identifier'];
+        for (const field of commonIdFields) {
+          if (this.hasField(sourceObj, field)) {
+            return `"{{ ${field} }}"`;
+          }
+        }
+      }
+    }
+    
+    // Fallback to the original value
+    return `"${outputValue}"`;
+  }
+
+  private static findBestFieldMatch(value: string, sourceObj: any): string | null {
+    // Try direct match first
+    if (this.hasField(sourceObj, value)) {
+      return value;
+    }
+    
+    // Try case-insensitive match
+    const directMatch = this.findDirectMatch(value, sourceObj);
+    if (directMatch) {
+      return directMatch;
+    }
+    
+    // For specific patterns
+    if (value.toLowerCase().includes('order')) {
+      const orderField = this.findDirectMatch('orderCode', sourceObj) || 
+                        this.findDirectMatch('order', sourceObj);
+      if (orderField) return orderField;
+    }
+    
+    return null;
+  }
+
+  private static findNumberFieldMatch(fullPath: string, sourceObj: any): string | null {
+    // Based on the path, determine what kind of number field this might be
+    if (fullPath.includes('lines[') && !fullPath.includes('deliveryLines[')) {
+      return this.findDirectMatch('lineNumber', sourceObj);
+    } else if (fullPath.includes('deliveryLines[')) {
+      return this.findDirectMatch('deliveryLineNumber', sourceObj);
+    }
+    return null;
+  }
+
+  private static isNumberField(outputKey: string, outputValue: any, sourceObj: any, fieldPath: string): boolean {
+    // Check if the field should be treated as a number (without quotes)
+    const numberFieldPatterns = [
+      'number', 'count', 'index', 'id', 'line', 'quantity', 'amount'
+    ];
+    
+    const keyLower = outputKey.toLowerCase();
+    const isNumberPattern = numberFieldPatterns.some(pattern => keyLower.includes(pattern));
+    
+    // Also check if the source field contains numeric values
+    const sourceValue = this.getFieldValue(sourceObj, fieldPath);
+    const isNumericValue = typeof sourceValue === 'number' || 
+                          (typeof sourceValue === 'string' && !isNaN(Number(sourceValue)) && sourceValue.trim() !== '');
+    
+    return isNumberPattern || isNumericValue;
+  }
+
+  private static isStaticValue(value: string): boolean {
+    // Values that should remain static (not converted to template variables)
+    const staticValues = ['ATA', 'ETD', 'ETA', 'CONFIRMED', 'PENDING'];
+    return staticValues.includes(value.toUpperCase());
+  }
+
+  private static looksLikeNumber(value: string): boolean {
+    return /^\d+$/.test(value.trim());
+  }
+
+  private static hasField(obj: any, fieldName: string): boolean {
+    return obj && typeof obj === 'object' && fieldName in obj;
+  }
+
+  private static getFieldValue(obj: any, path: string): any {
+    try {
+      const parts = path.split('.');
+      let current = obj;
+      
+      for (const part of parts) {
+        if (part.includes('[') && part.includes(']')) {
+          const [arrayName, indexStr] = part.split('[');
+          const index = parseInt(indexStr.replace(']', ''));
+          current = current[arrayName];
+          if (!Array.isArray(current) || !current[index]) return undefined;
+          current = current[index];
+        } else {
+          if (!current || typeof current !== 'object' || !(part in current)) {
+            return undefined;
+          }
+          current = current[part];
+        }
+      }
+      
+      return current;
+    } catch {
+      return undefined;
+    }
   }
 
   private static findDirectMatch(key: string, obj: any, prefix: string = ''): string | null {
@@ -84,11 +235,11 @@ export class TemplateGenerationService {
 
   private static getSmartMapping(outputKey: string, sourceObj: any): string | null {
     const mappings: Record<string, string[]> = {
-      'ID': ['id', '_id', 'ID', 'identifier'],
+      'ID': ['id', '_id', 'ID', 'identifier', 'orderCode'],
       'Reference': ['client_reference', 'reference', 'ref', 'Reference'],
       'Container_number': ['containers[0].container_number', 'container_number', 'containerNumber'],
       'Delivery_date': ['itinerary.actual_time_of_arrival', 'actual_time_of_arrival', 'delivery_date', 'deliveryDate'],
-      'DeliveryDate_Type': ['delivery_type', 'date_type'] // Usually static
+      'DeliveryDate_Type': ['delivery_type', 'date_type']
     };
 
     const possibleFields = mappings[outputKey];
