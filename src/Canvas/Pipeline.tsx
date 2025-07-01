@@ -91,6 +91,26 @@ const Pipeline = () => {
     }
   }, [setNodes, setEdges]);
 
+  // Listen for custom events from Index page
+  useEffect(() => {
+    const handleAddTransformNode = (event: CustomEvent) => {
+      const { type } = event.detail;
+      addTransformNode(type);
+    };
+
+    const handleAddMappingNode = () => {
+      addMappingNode();
+    };
+
+    window.addEventListener('addTransformNode', handleAddTransformNode as EventListener);
+    window.addEventListener('addMappingNode', handleAddMappingNode);
+
+    return () => {
+      window.removeEventListener('addTransformNode', handleAddTransformNode as EventListener);
+      window.removeEventListener('addMappingNode', handleAddMappingNode);
+    };
+  }, [addTransformNode, addMappingNode]);
+
   // Click outside to close functionality
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

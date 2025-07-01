@@ -29,7 +29,7 @@ export class TemplateGenerationService {
         } else {
           // Try to find a matching field in source data
           const templateVar = this.findMatchingSourceField(key, value, sourceObj, currentPath);
-          result[key] = templateVar !== null ? templateVar : value;
+          result[key] = templateVar !== null ? `"${templateVar}"` : value;
         }
       }
       
