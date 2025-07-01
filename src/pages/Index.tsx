@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import Canvas from '../Canvas/Canvas';
 import MappingToolbar from '../compontents/MappingToolbar';
@@ -52,6 +53,17 @@ const Index = () => {
     setSidebarData(data);
   }, []);
 
+  // Add proper handlers for toolbar actions
+  const handleAddTransform = useCallback((type: string) => {
+    console.log('Add transform:', type);
+    // TODO: Implement actual transform node creation
+  }, []);
+
+  const handleAddMappingNode = useCallback(() => {
+    console.log('Add mapping node');
+    // TODO: Implement actual mapping node creation
+  }, []);
+
   return (
     <div className="h-screen bg-gray-100 relative overflow-hidden">
       <NavigationBar />
@@ -77,8 +89,8 @@ const Index = () => {
       )}
       
       <MappingToolbar 
-        onAddTransform={(type) => console.log('Add transform:', type)}
-        onAddMappingNode={() => console.log('Add mapping node')}
+        onAddTransform={handleAddTransform}
+        onAddMappingNode={handleAddMappingNode}
         isExpanded={toolbarExpanded}
         onToggleExpanded={setToolbarExpanded}
       />

@@ -6,15 +6,19 @@ import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Upload, Download, Wand2, ArrowRight, MessageCircle, Copy, Check } from 'lucide-react';
+import { Upload, Download, Wand2, ArrowRight, MessageCircle, Copy, Check, Play, AlertCircle } from 'lucide-react';
 import NavigationBar from '../components/NavigationBar';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
+import { Alert, AlertDescription } from '../components/ui/alert';
 
 const TemplateMapper = () => {
   const [sourceData, setSourceData] = useState('');
   const [outputTemplate, setOutputTemplate] = useState('');
-  const [livePreview, setLivePreview] = useState('');
+  const [transformedResults, setTransformedResults] = useState('');
+  const [hasExecuted, setHasExecuted] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionError, setExecutionError] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [chatInput, setChatInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -81,38 +85,50 @@ const TemplateMapper = () => {
 
   const handleDataUpload = useCallback((data: any[]) => {
     setSourceData(JSON.stringify(data, null, 2));
+    setHasExecuted(false);
+    setTransformedResults('');
   }, []);
 
-  const generatePreview = useCallback(() => {
+  // Execute the template transformation (like Weavo's "Run" button)
+  const executeTemplate = useCallback(() => {
     if (!sourceData || !outputTemplate) {
-      setLivePreview('');
+      toast({ title: "Please provide both source data and template", variant: "destructive" });
       return;
     }
+
+    setIsExecuting(true);
+    setExecutionError('');
 
     try {
       const data = JSON.parse(sourceData);
       if (!Array.isArray(data) || data.length === 0) {
-        setLivePreview('Source data must be a non-empty array');
-        return;
+        throw new Error('Source data must be a non-empty array');
       }
 
-      // Simple template processing - replace {{ field }} with actual values from first record
-      const firstRecord = data[0];
-      let processed = outputTemplate;
-      
-      // Replace template variables
-      Object.entries(firstRecord).forEach(([key, value]) => {
-        const regex = new RegExp(`{{ ${key} }}`, 'g');
-        processed = processed.replace(regex, typeof value === 'string' ? `"${value}"` : String(value));
+      // Process template for each record
+      const results = data.map(record => {
+        let processed = outputTemplate;
+        
+        // Replace template variables
+        Object.entries(record).forEach(([key, value]) => {
+          const regex = new RegExp(`{{ ${key} }}`, 'g');
+          processed = processed.replace(regex, typeof value === 'string' ? `"${value}"` : String(value));
+        });
+
+        return JSON.parse(processed);
       });
 
-      // Try to parse as JSON to validate and format
-      const parsed = JSON.parse(processed);
-      setLivePreview(JSON.stringify(parsed, null, 2));
+      setTransformedResults(JSON.stringify(results, null, 2));
+      setHasExecuted(true);
+      toast({ title: "Template executed successfully!" });
     } catch (error) {
-      setLivePreview(`Preview Error: ${error instanceof Error ? error.message : 'Invalid template or data'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setExecutionError(errorMessage);
+      toast({ title: "Execution failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsExecuting(false);
     }
-  }, [sourceData, outputTemplate]);
+  }, [sourceData, outputTemplate, toast]);
 
   const handleAIChat = useCallback(async (message: string) => {
     if (!message.trim()) return;
@@ -125,15 +141,19 @@ const TemplateMapper = () => {
       let response = '';
       
       if (message.toLowerCase().includes('example') || message.toLowerCase().includes('sample')) {
-        response = "I've added sample data and template to help you get started. The template shows how to group delivery lines by order and line number.";
+        response = "I've added sample data and template to help you get started. Click 'Run Template' to see the transformation results.";
         setSourceData(sampleSourceData);
         setOutputTemplate(sampleTemplate);
+        setHasExecuted(false);
+        setTransformedResults('');
       } else if (message.toLowerCase().includes('group')) {
         response = "To group data, use array structures in your template. For example, wrap related items in `[]` and use the same grouping field like `{{ orderCode }}`.";
       } else if (message.toLowerCase().includes('concat')) {
         response = "To concatenate fields, use comma-separated template variables like `{{ field1 }},{{ field2 }}`. This will combine the values with a comma.";
+      } else if (message.toLowerCase().includes('run') || message.toLowerCase().includes('execute')) {
+        response = "Click the 'Run Template' button to execute your template against the source data and see the actual transformation results.";
       } else {
-        response = "I can help you build templates! Try asking me to 'show an example', help with 'grouping data', or explain 'concatenation'.";
+        response = "I can help you build templates! Try asking me to 'show an example', help with 'grouping data', 'concatenation', or how to 'run the template'.";
       }
 
       setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
@@ -151,6 +171,11 @@ const TemplateMapper = () => {
   }, [outputTemplate, toast]);
 
   const handleConvertToNodes = useCallback(() => {
+    if (!hasExecuted) {
+      toast({ title: "Please run the template first to verify it works correctly", variant: "destructive" });
+      return;
+    }
+
     if (!outputTemplate || !sourceData) {
       toast({ title: "Please add source data and template first", variant: "destructive" });
       return;
@@ -160,19 +185,14 @@ const TemplateMapper = () => {
     localStorage.setItem('template-conversion', JSON.stringify({
       sourceData: JSON.parse(sourceData),
       template: outputTemplate,
-      preview: livePreview
+      transformedResults: transformedResults
     }));
 
     toast({ title: "Template ready for conversion!" });
     
     // Navigate to manual editor with conversion flag
     window.location.href = '/manual?from=template-conversion';
-  }, [outputTemplate, sourceData, livePreview, toast]);
-
-  // Update preview when data or template changes
-  React.useEffect(() => {
-    generatePreview();
-  }, [generatePreview]);
+  }, [outputTemplate, sourceData, transformedResults, hasExecuted, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -204,7 +224,11 @@ const TemplateMapper = () => {
                   <Label className="mb-2">Paste your JSON array:</Label>
                   <Textarea
                     value={sourceData}
-                    onChange={(e) => setSourceData(e.target.value)}
+                    onChange={(e) => {
+                      setSourceData(e.target.value);
+                      setHasExecuted(false);
+                      setTransformedResults('');
+                    }}
                     placeholder="[{...your data...}]"
                     className="flex-1 font-mono text-sm"
                   />
@@ -248,40 +272,65 @@ const TemplateMapper = () => {
               <Label className="mb-2">Build your output structure:</Label>
               <Textarea
                 value={outputTemplate}
-                onChange={(e) => setOutputTemplate(e.target.value)}
+                onChange={(e) => {
+                  setOutputTemplate(e.target.value);
+                  setHasExecuted(false);
+                  setTransformedResults('');
+                }}
                 placeholder='{"id": "{{ fieldName }}", ...}'
                 className="flex-1 font-mono text-sm"
               />
-              <div className="mt-4">
+              
+              {/* Run Template Button (like Weavo) */}
+              <div className="mt-4 space-y-2">
                 <Button
-                  onClick={handleConvertToNodes}
-                  disabled={!outputTemplate || !sourceData}
+                  onClick={executeTemplate}
+                  disabled={!outputTemplate || !sourceData || isExecuting}
                   className="w-full"
+                  variant={hasExecuted ? "secondary" : "default"}
                 >
-                  Convert to Visual Nodes
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  <Play className="h-4 w-4 mr-2" />
+                  {isExecuting ? "Running..." : hasExecuted ? "Run Again" : "Run Template"}
                 </Button>
+                
+                {executionError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{executionError}</AlertDescription>
+                  </Alert>
+                )}
+                
+                {hasExecuted && (
+                  <Button
+                    onClick={handleConvertToNodes}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    Convert to Visual Nodes
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Preview and AI Chat Panel */}
+          {/* Results and AI Chat Panel */}
           <Card className="flex flex-col">
             <CardHeader>
-              <CardTitle>Live Preview & AI Assistant</CardTitle>
+              <CardTitle>Transformation Results & AI Assistant</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
-              <Tabs defaultValue="preview" className="flex-1 flex flex-col">
+              <Tabs defaultValue="results" className="flex-1 flex flex-col">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
+                  <TabsTrigger value="results">Results</TabsTrigger>
                   <TabsTrigger value="chat">AI Chat</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="preview" className="flex-1 flex flex-col">
-                  <Label className="mb-2">Result preview:</Label>
+                <TabsContent value="results" className="flex-1 flex flex-col">
+                  <Label className="mb-2">Transformation results:</Label>
                   <div className="flex-1 bg-gray-50 border rounded p-3 overflow-auto">
                     <pre className="text-xs whitespace-pre-wrap">
-                      {livePreview || 'Add source data and template to see preview...'}
+                      {transformedResults || (hasExecuted ? 'No results generated' : 'Click "Run Template" to execute and see results...')}
                     </pre>
                   </div>
                 </TabsContent>
