@@ -45,6 +45,36 @@ const TemplateMapper = () => {
     toast({ title: "Data uploaded successfully!" });
   }, [toast]);
 
+  // Helper function to get nested object value by path
+  const getNestedValue = (obj: any, path: string): any => {
+    return path.split('.').reduce((current, key) => {
+      if (current && typeof current === 'object') {
+        return current[key];
+      }
+      return undefined;
+    }, obj);
+  };
+
+  // Helper function to find value in nested object (more flexible search)
+  const findValueInObject = (obj: any, searchKey: string): any => {
+    if (!obj || typeof obj !== 'object') return undefined;
+    
+    // Direct key match
+    if (obj.hasOwnProperty(searchKey)) {
+      return obj[searchKey];
+    }
+    
+    // Search recursively
+    for (const key in obj) {
+      if (typeof obj[key] === 'object' && obj[key] !== null) {
+        const found = findValueInObject(obj[key], searchKey);
+        if (found !== undefined) return found;
+      }
+    }
+    
+    return undefined;
+  };
+
   const executeTemplate = useCallback(() => {
     if (!sourceData || !outputTemplate) {
       toast({ 
@@ -58,17 +88,66 @@ const TemplateMapper = () => {
     setIsExecuting(true);
 
     try {
-      const data = JSON.parse(sourceData);
+      let data = JSON.parse(sourceData);
+      
+      // If it's not an array, make it an array for consistent processing
       if (!Array.isArray(data)) {
-        throw new Error('Source data must be an array');
+        data = [data];
       }
 
       const results = data.map(record => {
         let processed = outputTemplate;
         
-        Object.entries(record).forEach(([key, value]) => {
-          const regex = new RegExp(`{{ ${key} }}`, 'g');
-          processed = processed.replace(regex, String(value));
+        // Find all template variables in the format {{ variable }}
+        const templateVars = processed.match(/\{\{\s*([^}]+)\s*\}\}/g) || [];
+        
+        templateVars.forEach(templateVar => {
+          const cleanVar = templateVar.replace(/\{\{\s*|\s*\}\}/g, '');
+          let value = undefined;
+          
+          // Try different ways to find the value
+          // 1. Direct property access
+          if (record.hasOwnProperty(cleanVar)) {
+            value = record[cleanVar];
+          }
+          // 2. Nested path access (e.g., "client.company.company_name")
+          else if (cleanVar.includes('.')) {
+            value = getNestedValue(record, cleanVar);
+          }
+          // 3. Search recursively in the object
+          else {
+            value = findValueInObject(record, cleanVar);
+          }
+          
+          // Handle special cases for your specific data structure
+          if (value === undefined) {
+            switch (cleanVar.toLowerCase()) {
+              case 'id':
+                value = record.id || record._id || record.ID;
+                break;
+              case 'reference':
+                value = record.client_reference || record.reference || record.Reference;
+                break;
+              case 'container_number':
+                value = record.containers?.[0]?.container_number || 
+                        record.container_number || 
+                        record.Container_number;
+                break;
+              case 'deliverydate_type':
+                value = 'ATA'; // Default value as shown in your template
+                break;
+              case 'delivery_date':
+                value = record.itinerary?.actual_time_of_arrival || 
+                        record.actual_time_of_arrival ||
+                        record.delivery_date ||
+                        record.Delivery_date;
+                break;
+            }
+          }
+          
+          // Replace the template variable with the actual value
+          const regex = new RegExp(templateVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+          processed = processed.replace(regex, value !== undefined ? String(value) : '');
         });
 
         return JSON.parse(processed);
@@ -77,6 +156,7 @@ const TemplateMapper = () => {
       setTransformedResults(JSON.stringify(results, null, 2));
       toast({ title: "Template executed successfully!", description: `Transformed ${results.length} records` });
     } catch (error) {
+      console.error('Template execution error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({ 
         title: "Execution failed", 
