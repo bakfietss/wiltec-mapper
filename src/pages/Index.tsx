@@ -1,8 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import Canvas from '../Canvas/Canvas';
-import MappingToolbar from '../compontents/MappingToolbar';
-import MappingManager from '../compontents/MappingManager';
 import DataSidebar from '../compontents/DataSidebar';
 import NavigationBar from '../components/NavigationBar';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -11,8 +9,6 @@ import { Wand2, X } from 'lucide-react';
 
 const Index = () => {
   const [showDataSidebar, setShowDataSidebar] = useState(false);
-  const [toolbarExpanded, setToolbarExpanded] = useState(false);
-  const [managerExpanded, setManagerExpanded] = useState(false);
   const [templateConversion, setTemplateConversion] = useState<any>(null);
   const [sidebarData, setSidebarData] = useState<any[]>([]);
 
@@ -53,29 +49,6 @@ const Index = () => {
     setSidebarData(data);
   }, []);
 
-  // Fixed handlers for toolbar actions
-  const handleAddTransform = useCallback((type: string) => {
-    console.log('Add transform:', type);
-    // Force toolbar to close after action
-    setToolbarExpanded(false);
-    
-    // Dispatch custom event to add transform node to canvas
-    const event = new CustomEvent('addTransformNode', {
-      detail: { type }
-    });
-    window.dispatchEvent(event);
-  }, []);
-
-  const handleAddMappingNode = useCallback(() => {
-    console.log('Add mapping node');
-    // Force toolbar to close after action
-    setToolbarExpanded(false);
-    
-    // Dispatch custom event to add mapping node to canvas
-    const event = new CustomEvent('addMappingNode');
-    window.dispatchEvent(event);
-  }, []);
-
   return (
     <div className="h-screen bg-gray-100 relative overflow-hidden">
       <NavigationBar />
@@ -99,18 +72,6 @@ const Index = () => {
           </Alert>
         </div>
       )}
-      
-      <MappingToolbar 
-        onAddTransform={handleAddTransform}
-        onAddMappingNode={handleAddMappingNode}
-        isExpanded={toolbarExpanded}
-        onToggleExpanded={setToolbarExpanded}
-      />
-      
-      <MappingManager 
-        isExpanded={managerExpanded}
-        onToggleExpanded={setManagerExpanded}
-      />
       
       <Canvas />
       
