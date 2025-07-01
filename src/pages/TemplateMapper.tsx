@@ -97,17 +97,23 @@ const TemplateMapper = () => {
         data = [data];
       }
 
+      console.log('Processing data:', data);
+      console.log('Template:', outputTemplate);
+
       const results = data.map((record, recordIndex) => {
         let processed = outputTemplate;
         
         // Find all template variables in the format {{ variable }}
         const templateVars = processed.match(/\{\{\s*([^}]+)\s*\}\}/g) || [];
+        console.log('Found template variables:', templateVars);
         
         templateVars.forEach(templateVar => {
           const cleanVar = templateVar.replace(/\{\{\s*|\s*\}\}/g, '');
           let value = undefined;
           let sourcePath = '';
           let connectionType = 'not_found';
+          
+          console.log('Processing variable:', cleanVar);
           
           // Try different ways to find the value
           // 1. Direct property access
@@ -131,21 +137,21 @@ const TemplateMapper = () => {
             }
           }
           
-          // Handle special cases for your specific data structure
+          // Handle special field mappings for your specific case
           if (value === undefined) {
-            switch (cleanVar.toLowerCase()) {
-              case 'id':
+            switch (cleanVar) {
+              case 'ID':
                 value = record.id || record._id || record.ID;
                 sourcePath = record.id ? 'id' : record._id ? '_id' : 'ID';
                 connectionType = 'mapped';
                 break;
-              case 'reference':
+              case 'Reference':
                 value = record.client_reference || record.reference || record.Reference;
                 sourcePath = record.client_reference ? 'client_reference' : 
                            record.reference ? 'reference' : 'Reference';
                 connectionType = 'mapped';
                 break;
-              case 'container_number':
+              case 'Container_number':
                 value = record.containers?.[0]?.container_number || 
                         record.container_number || 
                         record.Container_number;
@@ -153,12 +159,12 @@ const TemplateMapper = () => {
                            record.container_number ? 'container_number' : 'Container_number';
                 connectionType = 'mapped';
                 break;
-              case 'deliverydate_type':
-                value = 'ATA'; // Default value as shown in your template
+              case 'DeliveryDate_Type':
+                value = 'ATA'; // Default value
                 sourcePath = '[static value]';
                 connectionType = 'static';
                 break;
-              case 'delivery_date':
+              case 'Delivery_date':
                 value = record.itinerary?.actual_time_of_arrival || 
                         record.actual_time_of_arrival ||
                         record.delivery_date ||
@@ -170,6 +176,8 @@ const TemplateMapper = () => {
                 break;
             }
           }
+          
+          console.log(`Variable ${cleanVar}: value=${value}, sourcePath=${sourcePath}, type=${connectionType}`);
           
           // Add connection info (only for first record to avoid duplicates)
           if (recordIndex === 0) {
@@ -190,8 +198,17 @@ const TemplateMapper = () => {
         return JSON.parse(processed);
       });
 
+      console.log('Final results:', results);
+      console.log('Field connections:', connections);
+
+      const resultsJson = JSON.stringify(results, null, 2);
+      
       setFieldConnections(connections);
-      setTransformedResults(JSON.stringify(results, null, 2));
+      setTransformedResults(resultsJson);
+      
+      console.log('State updated - transformedResults:', resultsJson);
+      console.log('State updated - fieldConnections:', connections);
+      
       toast({ title: "Template executed successfully!", description: `Transformed ${results.length} records` });
     } catch (error) {
       console.error('Template execution error:', error);
