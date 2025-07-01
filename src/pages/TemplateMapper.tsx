@@ -150,7 +150,7 @@ const TemplateMapper = () => {
                       setTransformedResults('');
                     }}
                     placeholder={sampleSourceData}
-                    className="flex-1 font-mono text-sm resize-none border-2 focus:border-blue-500"
+                    className="flex-1 min-h-[400px] font-mono text-sm resize-none border-2 focus:border-blue-500"
                   />
                 </TabsContent>
                 
