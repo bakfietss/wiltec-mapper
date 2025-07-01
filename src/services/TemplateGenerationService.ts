@@ -1,3 +1,4 @@
+
 export class TemplateGenerationService {
   static generateTemplateFromExamples(sourceData: any[], outputExample: any): string {
     if (!sourceData.length || !outputExample) {
@@ -125,6 +126,7 @@ export class TemplateGenerationService {
           }
         }
         
+        // Return as a single template variable with comma-separated field names
         return `{{ ${templateParts.join(',')} }}`;
       } else {
         // Simple ID, try to find the best matching field
