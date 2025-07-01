@@ -37,7 +37,32 @@ export class TemplateGenerationService {
     };
 
     const template = processObject(outputExample, firstRecord);
-    return JSON.stringify(template, null, 2);
+    
+    // Convert to JSON string and then fix numeric field formatting
+    let jsonString = JSON.stringify(template, null, 2);
+    
+    // Remove quotes from numeric template variables
+    jsonString = this.formatNumericFields(jsonString);
+    
+    return jsonString;
+  }
+
+  private static formatNumericFields(jsonString: string): string {
+    // Pattern to match numeric field template variables that are quoted
+    // This will match: "fieldName": "{{ variableName }}" where fieldName suggests it's numeric
+    const numericFieldPatterns = [
+      /("(?:line|Line)Number":\s*)"(\{\{\s*[^}]+\s*\}\})"/g,
+      /("(?:delivery|Delivery)LineNumber":\s*)"(\{\{\s*[^}]+\s*\}\})"/g,
+      /("(?:order|Order)LineNumber":\s*)"(\{\{\s*[^}]+\s*\}\})"/g,
+      /("(?:number|Number|count|Count|index|Index|quantity|Quantity)":\s*)"(\{\{\s*[^}]+\s*\}\})"/g
+    ];
+
+    let result = jsonString;
+    numericFieldPatterns.forEach(pattern => {
+      result = result.replace(pattern, '$1$2');
+    });
+
+    return result;
   }
 
   private static findMatchingSourceField(outputKey: string, outputValue: any, sourceObj: any, fullPath: string): string | null {
@@ -49,9 +74,7 @@ export class TemplateGenerationService {
     // 1. Direct key match (case insensitive)
     const directMatch = this.findDirectMatch(outputKey, sourceObj);
     if (directMatch) {
-      // Check if this should be a number field
-      const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, directMatch);
-      return isNumberField ? `{{ ${directMatch} }}` : `{{ ${directMatch} }}`;
+      return `{{ ${directMatch} }}`;
     }
 
     // 2. Value-based matching for static values
@@ -62,15 +85,13 @@ export class TemplateGenerationService {
     // 3. Smart field mapping based on common patterns
     const smartMatch = this.getSmartMapping(outputKey, sourceObj);
     if (smartMatch) {
-      const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, smartMatch);
-      return isNumberField ? `{{ ${smartMatch} }}` : `{{ ${smartMatch} }}`;
+      return `{{ ${smartMatch} }}`;
     }
 
     // 4. Nested field search
     const nestedMatch = this.findNestedField(outputKey, sourceObj);
     if (nestedMatch) {
-      const isNumberField = this.isNumberField(outputKey, outputValue, sourceObj, nestedMatch);
-      return isNumberField ? `{{ ${nestedMatch} }}` : `{{ ${nestedMatch} }}`;
+      return `{{ ${nestedMatch} }}`;
     }
 
     return null;
@@ -90,21 +111,17 @@ export class TemplateGenerationService {
           // Determine what field this part should map to based on position and context
           if (i === 0) {
             // First part is usually orderCode
-            templateParts.push('{{ orderCode }}');
+            templateParts.push('orderCode');
           } else if (i === 1) {
-            // Second part depends on context
-            if (fullPath.includes('deliveryLines[')) {
-              templateParts.push('{{ lineNumber }}');
-            } else {
-              templateParts.push('{{ lineNumber }}');
-            }
+            // Second part is lineNumber for both lines and deliveryLines
+            templateParts.push('lineNumber');
           } else if (i === 2) {
-            // Third part is usually deliveryLineNumber
-            templateParts.push('{{ deliveryLineNumber }}');
+            // Third part is deliveryLineNumber (only in deliveryLines context)
+            templateParts.push('deliveryLineNumber');
           } else {
-            // For additional parts, keep as-is or try to find matching field
+            // For additional parts, try to find matching field
             const matchingField = this.findBestFieldMatch(part, sourceObj);
-            templateParts.push(matchingField ? `{{ ${matchingField} }}` : part);
+            templateParts.push(matchingField || part);
           }
         }
         
