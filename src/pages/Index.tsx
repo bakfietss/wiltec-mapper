@@ -87,7 +87,7 @@ const Index = () => {
       <Canvas />
       
       {showDataSidebar && (
-        <DataSidebar onClose={() => setShowDataSidebar(false)} />
+        <DataSidebar />
       )}
     </div>
   );

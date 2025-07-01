@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Upload, Download, Wand2, ArrowRight, MessageCircle, Copy, Check } from 'lucide-react';
 import NavigationBar from '../components/NavigationBar';
+import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
 
 const TemplateMapper = () => {
@@ -77,6 +78,10 @@ const TemplateMapper = () => {
     }
   ]
 }`;
+
+  const handleDataUpload = useCallback((data: any[]) => {
+    setSourceData(JSON.stringify(data, null, 2));
+  }, []);
 
   const generatePreview = useCallback(() => {
     if (!sourceData || !outputTemplate) {
@@ -189,13 +194,32 @@ const TemplateMapper = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
-              <Label className="mb-2">Paste your JSON array:</Label>
-              <Textarea
-                value={sourceData}
-                onChange={(e) => setSourceData(e.target.value)}
-                placeholder="[{...your data...}]"
-                className="flex-1 font-mono text-sm"
-              />
+              <Tabs defaultValue="paste" className="flex-1 flex flex-col">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="paste">Paste JSON</TabsTrigger>
+                  <TabsTrigger value="upload">Upload File</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="paste" className="flex-1 flex flex-col">
+                  <Label className="mb-2">Paste your JSON array:</Label>
+                  <Textarea
+                    value={sourceData}
+                    onChange={(e) => setSourceData(e.target.value)}
+                    placeholder="[{...your data...}]"
+                    className="flex-1 font-mono text-sm"
+                  />
+                </TabsContent>
+                
+                <TabsContent value="upload" className="flex-1 flex flex-col">
+                  <DataUploadZone
+                    onDataUpload={handleDataUpload}
+                    acceptedTypes={['.json', '.csv', '.xlsx']}
+                    title="Upload Source Data"
+                    description="Upload JSON, CSV, or Excel files"
+                  />
+                </TabsContent>
+              </Tabs>
+              
               <div className="mt-2 text-xs text-gray-500">
                 {sourceData && `${JSON.parse(sourceData || '[]').length || 0} records`}
               </div>
