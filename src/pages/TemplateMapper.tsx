@@ -3,10 +3,8 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Upload, Download, Wand2, ArrowRight, MessageCircle, Copy, Check, Play, AlertCircle } from 'lucide-react';
+import { Upload, Play, ArrowRight, AlertCircle, Copy, Check } from 'lucide-react';
 import NavigationBar from '../components/NavigationBar';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
@@ -19,68 +17,25 @@ const TemplateMapper = () => {
   const [hasExecuted, setHasExecuted] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionError, setExecutionError] = useState('');
-  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   const sampleSourceData = `[
   {
-    "orderCode": "ORD-001",
-    "adminCode": "ADM-123",
-    "lineNumber": 1,
-    "deliveryLineNumber": 1,
-    "confirmationDate": "2024-01-15",
-    "deliveryAfter": "2024-01-20",
-    "deliveryBefore": "2024-01-25"
-  },
-  {
-    "orderCode": "ORD-001",
-    "adminCode": "ADM-123",
-    "lineNumber": 1,
-    "deliveryLineNumber": 2,
-    "confirmationDate": "2024-01-16",
-    "deliveryAfter": "2024-01-20",
-    "deliveryBefore": "2024-01-25"
-  },
-  {
-    "orderCode": "ORD-001",
-    "adminCode": "ADM-123",
-    "lineNumber": 2,
-    "deliveryLineNumber": 1,
-    "confirmationDate": "2024-01-17",
-    "deliveryAfter": "2024-01-22",
-    "deliveryBefore": "2024-01-27"
+    "ID": "ACC047105-SHIPMENT-NLRTM-SIF-30244573",
+    "Reference": "PU211861",
+    "Container_number": "MSKU9025828",
+    "DeliveryDate_Type": "ATA",
+    "Delivery_date": "2025-05-03T22:00:00Z"
   }
 ]`;
 
   const sampleTemplate = `{
-  "id": "{{ orderCode }}",
-  "orderCode": "{{ orderCode }}",
-  "adminCode": "{{ adminCode }}",
-  "lines": [
-    {
-      "id": "{{ orderCode }},{{ lineNumber }}",
-      "lineNumber": {{ lineNumber }},
-      "orderCode": "{{ orderCode }}",
-      "adminCode": "{{ adminCode }}",
-      "deliveryAfter": "{{ deliveryAfter }}",
-      "deliveryBefore": "{{ deliveryBefore }}",
-      "deliveryLines": [
-        {
-          "id": "{{ orderCode }},{{ lineNumber }},{{ deliveryLineNumber }}",
-          "orderCode": "{{ orderCode }}",
-          "adminCode": "{{ adminCode }}",
-          "orderLineNumber": {{ lineNumber }},
-          "deliveryLineNumber": {{ deliveryLineNumber }},
-          "confirmationDate": "{{ confirmationDate }}",
-          "deliveryAfter": "{{ deliveryAfter }}",
-          "deliveryBefore": "{{ deliveryBefore }}"
-        }
-      ]
-    }
-  ]
+  "ID": "{{ ID }}",
+  "Reference": "{{ Reference }}",
+  "Container_number": "{{ Container_number }}",
+  "DeliveryDate_Type": "{{ DeliveryDate_Type }}",
+  "Delivery_date": "{{ Delivery_date }}"
 }`;
 
   const handleDataUpload = useCallback((data: any[]) => {
@@ -89,7 +44,6 @@ const TemplateMapper = () => {
     setTransformedResults('');
   }, []);
 
-  // Execute the template transformation (like Weavo's "Run" button)
   const executeTemplate = useCallback(() => {
     if (!sourceData || !outputTemplate) {
       toast({ title: "Please provide both source data and template", variant: "destructive" });
@@ -129,39 +83,6 @@ const TemplateMapper = () => {
       setIsExecuting(false);
     }
   }, [sourceData, outputTemplate, toast]);
-
-  const handleAIChat = useCallback(async (message: string) => {
-    if (!message.trim()) return;
-
-    setIsProcessing(true);
-    setChatMessages(prev => [...prev, { role: 'user', content: message }]);
-
-    // Simple AI simulation - in real implementation, this would call an AI service
-    setTimeout(() => {
-      let response = '';
-      
-      if (message.toLowerCase().includes('example') || message.toLowerCase().includes('sample')) {
-        response = "I've added sample data and template to help you get started. Click 'Run Template' to see the transformation results.";
-        setSourceData(sampleSourceData);
-        setOutputTemplate(sampleTemplate);
-        setHasExecuted(false);
-        setTransformedResults('');
-      } else if (message.toLowerCase().includes('group')) {
-        response = "To group data, use array structures in your template. For example, wrap related items in `[]` and use the same grouping field like `{{ orderCode }}`.";
-      } else if (message.toLowerCase().includes('concat')) {
-        response = "To concatenate fields, use comma-separated template variables like `{{ field1 }},{{ field2 }}`. This will combine the values with a comma.";
-      } else if (message.toLowerCase().includes('run') || message.toLowerCase().includes('execute')) {
-        response = "Click the 'Run Template' button to execute your template against the source data and see the actual transformation results.";
-      } else {
-        response = "I can help you build templates! Try asking me to 'show an example', help with 'grouping data', 'concatenation', or how to 'run the template'.";
-      }
-
-      setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
-      setIsProcessing(false);
-    }, 1000);
-
-    setChatInput('');
-  }, []);
 
   const handleCopyTemplate = useCallback(() => {
     navigator.clipboard.writeText(outputTemplate);
@@ -204,16 +125,18 @@ const TemplateMapper = () => {
           <p className="text-gray-600">Build data transformations with templates, then convert to visual nodes</p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-          {/* Source Data Panel */}
+        {/* Three Panel Layout - Weavo Style */}
+        <div className="grid grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+          
+          {/* Left Panel - Input Data */}
           <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Upload className="h-5 w-5" />
                 Source Data
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
+            <CardContent className="flex-1 flex flex-col p-4">
               <Tabs defaultValue="paste" className="flex-1 flex flex-col">
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="paste">Paste JSON</TabsTrigger>
@@ -221,7 +144,6 @@ const TemplateMapper = () => {
                 </TabsList>
                 
                 <TabsContent value="paste" className="flex-1 flex flex-col">
-                  <Label className="mb-2">Paste your JSON array:</Label>
                   <Textarea
                     value={sourceData}
                     onChange={(e) => {
@@ -229,8 +151,8 @@ const TemplateMapper = () => {
                       setHasExecuted(false);
                       setTransformedResults('');
                     }}
-                    placeholder="[{...your data...}]"
-                    className="flex-1 font-mono text-sm"
+                    placeholder={sampleSourceData}
+                    className="flex-1 font-mono text-xs resize-none"
                   />
                 </TabsContent>
                 
@@ -239,7 +161,7 @@ const TemplateMapper = () => {
                     onDataUpload={handleDataUpload}
                     acceptedTypes={['.json', '.csv', '.xlsx']}
                     title="Upload Source Data"
-                    description="Upload JSON, CSV, or Excel files"
+                    description="JSON, CSV, or Excel files"
                   />
                 </TabsContent>
               </Tabs>
@@ -250,14 +172,11 @@ const TemplateMapper = () => {
             </CardContent>
           </Card>
 
-          {/* Template Builder Panel */}
+          {/* Middle Panel - Template Builder */}
           <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 justify-between">
-                <div className="flex items-center gap-2">
-                  <Wand2 className="h-5 w-5" />
-                  Output Template
-                </div>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 justify-between text-lg">
+                <span>Output Template</span>
                 <Button
                   variant="outline"
                   size="sm"
@@ -268,8 +187,7 @@ const TemplateMapper = () => {
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <Label className="mb-2">Build your output structure:</Label>
+            <CardContent className="flex-1 flex flex-col p-4">
               <Textarea
                 value={outputTemplate}
                 onChange={(e) => {
@@ -277,11 +195,11 @@ const TemplateMapper = () => {
                   setHasExecuted(false);
                   setTransformedResults('');
                 }}
-                placeholder='{"id": "{{ fieldName }}", ...}'
-                className="flex-1 font-mono text-sm"
+                placeholder={sampleTemplate}
+                className="flex-1 font-mono text-xs resize-none"
               />
               
-              {/* Run Template Button (like Weavo) */}
+              {/* Action Buttons */}
               <div className="mt-4 space-y-2">
                 <Button
                   onClick={executeTemplate}
@@ -296,7 +214,7 @@ const TemplateMapper = () => {
                 {executionError && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{executionError}</AlertDescription>
+                    <AlertDescription className="text-xs">{executionError}</AlertDescription>
                   </Alert>
                 )}
                 
@@ -314,65 +232,26 @@ const TemplateMapper = () => {
             </CardContent>
           </Card>
 
-          {/* Results and AI Chat Panel */}
+          {/* Right Panel - Output Preview */}
           <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle>Transformation Results & AI Assistant</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Preview</CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <Tabs defaultValue="results" className="flex-1 flex flex-col">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="results">Results</TabsTrigger>
-                  <TabsTrigger value="chat">AI Chat</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="results" className="flex-1 flex flex-col">
-                  <Label className="mb-2">Transformation results:</Label>
-                  <div className="flex-1 bg-gray-50 border rounded p-3 overflow-auto">
-                    <pre className="text-xs whitespace-pre-wrap">
-                      {transformedResults || (hasExecuted ? 'No results generated' : 'Click "Run Template" to execute and see results...')}
-                    </pre>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="chat" className="flex-1 flex flex-col">
-                  <div className="flex-1 bg-gray-50 border rounded p-3 overflow-auto mb-3">
-                    {chatMessages.length === 0 ? (
-                      <div className="text-sm text-gray-500">
-                        Ask me for help! Try "show me an example" or "how do I group data?"
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {chatMessages.map((msg, idx) => (
-                          <div key={idx} className={`text-sm ${msg.role === 'user' ? 'text-blue-600' : 'text-gray-700'}`}>
-                            <div className="font-medium mb-1">
-                              {msg.role === 'user' ? 'You:' : 'AI:'}
-                            </div>
-                            <div>{msg.content}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Ask AI for help..."
-                      onKeyDown={(e) => e.key === 'Enter' && handleAIChat(chatInput)}
-                    />
-                    <Button 
-                      onClick={() => handleAIChat(chatInput)}
-                      disabled={!chatInput.trim() || isProcessing}
-                      size="sm"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
+            <CardContent className="flex-1 flex flex-col p-4">
+              <div className="flex-1 bg-gray-50 border rounded p-3 overflow-auto">
+                <pre className="text-xs whitespace-pre-wrap font-mono">
+                  {transformedResults || (hasExecuted ? 'No results generated' : 'Click "Run Template" to see output preview...')}
+                </pre>
+              </div>
+              
+              {transformedResults && (
+                <div className="mt-2 text-xs text-gray-500">
+                  {JSON.parse(transformedResults || '[]').length || 0} transformed records
+                </div>
+              )}
             </CardContent>
           </Card>
+
         </div>
       </div>
     </div>

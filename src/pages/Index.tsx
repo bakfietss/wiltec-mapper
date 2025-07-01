@@ -53,14 +53,18 @@ const Index = () => {
     setSidebarData(data);
   }, []);
 
-  // Add proper handlers for toolbar actions
+  // Fixed handlers for toolbar actions
   const handleAddTransform = useCallback((type: string) => {
     console.log('Add transform:', type);
+    // Force toolbar to close after action
+    setToolbarExpanded(false);
     // TODO: Implement actual transform node creation
   }, []);
 
   const handleAddMappingNode = useCallback(() => {
     console.log('Add mapping node');
+    // Force toolbar to close after action
+    setToolbarExpanded(false);
     // TODO: Implement actual mapping node creation
   }, []);
 
