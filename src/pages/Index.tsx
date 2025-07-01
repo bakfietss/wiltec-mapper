@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import Canvas from '../Canvas/Canvas';
 import MappingToolbar from '../compontents/MappingToolbar';
@@ -14,6 +13,7 @@ const Index = () => {
   const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const [managerExpanded, setManagerExpanded] = useState(false);
   const [templateConversion, setTemplateConversion] = useState<any>(null);
+  const [sidebarData, setSidebarData] = useState<any[]>([]);
 
   // Check for template conversion data on component mount
   useEffect(() => {
@@ -46,6 +46,10 @@ const Index = () => {
   const handleDismissConversion = useCallback(() => {
     setTemplateConversion(null);
     localStorage.removeItem('template-conversion');
+  }, []);
+
+  const handleSidebarDataChange = useCallback((data: any[]) => {
+    setSidebarData(data);
   }, []);
 
   return (
@@ -87,7 +91,12 @@ const Index = () => {
       <Canvas />
       
       {showDataSidebar && (
-        <DataSidebar />
+        <DataSidebar 
+          side="right"
+          title="Source Data"
+          data={sidebarData}
+          onDataChange={handleSidebarDataChange}
+        />
       )}
     </div>
   );
