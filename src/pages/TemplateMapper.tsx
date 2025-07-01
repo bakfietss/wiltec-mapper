@@ -11,8 +11,8 @@ import { TemplateGenerationService } from '../services/TemplateGenerationService
 
 const TemplateMapper = () => {
   const [sourceData, setSourceData] = useState('');
-  const [outputTemplate, setOutputTemplate] = useState('');
   const [outputExample, setOutputExample] = useState('');
+  const [outputTemplate, setOutputTemplate] = useState('');
   const [transformedResults, setTransformedResults] = useState('');
   const [fieldConnections, setFieldConnections] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -272,6 +272,15 @@ const TemplateMapper = () => {
     }
   }, [sourceData, outputTemplate, toast]);
 
+  const handleCopyTemplate = useCallback(() => {
+    if (!outputTemplate) return;
+    
+    navigator.clipboard.writeText(outputTemplate);
+    setCopied(true);
+    toast({ title: "Template copied to clipboard!" });
+    setTimeout(() => setCopied(false), 2000);
+  }, [outputTemplate, toast]);
+
   const handleCopyResults = useCallback(() => {
     if (!transformedResults) return;
     
@@ -355,7 +364,42 @@ const TemplateMapper = () => {
             </CardContent>
           </Card>
 
-          {/* Panel 2: Template Builder with AI Generation */}
+          {/* Panel 2: Output Example Input */}
+          <Card className="flex flex-col h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <div className="w-5 h-5 bg-orange-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">E</span>
+                </div>
+                Output Example
+              </CardTitle>
+              <p className="text-sm text-gray-500">Provide an example of your desired output</p>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col p-4">
+              <Textarea
+                value={outputExample}
+                onChange={(e) => setOutputExample(e.target.value)}
+                placeholder={sampleOutputExample}
+                className="flex-1 min-h-[400px] font-mono text-sm resize-none border-2 focus:border-orange-500 mb-4"
+              />
+              
+              <Button
+                onClick={handleGenerateTemplate}
+                disabled={!outputExample || !sourceData || isGenerating}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white mb-4"
+                size="lg"
+              >
+                <Wand2 className="h-4 w-4 mr-2" />
+                {isGenerating ? "Generating..." : "Generate Template"}
+              </Button>
+              
+              <div className="p-3 bg-orange-50 rounded text-sm text-orange-700">
+                <strong>How it works:</strong> Provide an example of your desired output structure, and we'll automatically generate the template with proper {`{{ fieldName }}`} placeholders
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Panel 3: Generated Template */}
           <Card className="flex flex-col h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 justify-between text-xl">
@@ -363,151 +407,95 @@ const TemplateMapper = () => {
                   <div className="w-5 h-5 bg-green-600 rounded flex items-center justify-center">
                     <span className="text-white text-xs font-bold">T</span>
                   </div>
-                  Template Builder
-                </span>
-              </CardTitle>
-              <p className="text-sm text-gray-500">AI-powered template generation</p>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col p-4">
-              <Tabs defaultValue="example" className="flex-1 flex flex-col">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="example">Output Example</TabsTrigger>
-                  <TabsTrigger value="template">Generated Template</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="example" className="flex-1 flex flex-col">
-                  <Textarea
-                    value={outputExample}
-                    onChange={(e) => setOutputExample(e.target.value)}
-                    placeholder={sampleOutputExample}
-                    className="flex-1 min-h-[400px] font-mono text-sm resize-none border-2 focus:border-orange-500 mb-4"
-                  />
-                  
-                  <Button
-                    onClick={handleGenerateTemplate}
-                    disabled={!outputExample || !sourceData || isGenerating}
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-white mb-4"
-                    size="lg"
-                  >
-                    <Wand2 className="h-4 w-4 mr-2" />
-                    {isGenerating ? "Generating..." : "Generate Template"}
-                  </Button>
-                  
-                  <div className="p-3 bg-orange-50 rounded text-sm text-orange-700">
-                    <strong>How it works:</strong> Provide an example of your desired output structure, and we'll automatically generate the template with proper {`{{ fieldName }}`} placeholders
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="template" className="flex-1 flex flex-col">
-                  <Textarea
-                    value={outputTemplate}
-                    onChange={(e) => {
-                      setOutputTemplate(e.target.value);
-                      setTransformedResults('');
-                      setFieldConnections([]);
-                    }}
-                    placeholder={sampleTemplate}
-                    className="flex-1 font-mono text-sm resize-none border-2 focus:border-green-500 mb-4"
-                  />
-                  
-                  <Button
-                    onClick={executeTemplate}
-                    disabled={!outputTemplate || !sourceData || isExecuting}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    size="lg"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    {isExecuting ? "Transforming..." : "Run Transformation"}
-                  </Button>
-                  
-                  <div className="p-3 bg-green-50 rounded text-sm text-green-700 mt-3">
-                    <strong>Template Syntax:</strong> Use {`{{ fieldName }}`} to reference source data fields
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          {/* Panel 3: Results & Field Connections */}
-          <Card className="flex flex-col h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 justify-between text-xl">
-                <span className="flex items-center gap-2">
-                  <div className="w-5 h-5 bg-purple-600 rounded flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">R</span>
-                  </div>
-                  Results & Connections
+                  Generated Template
                 </span>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleCopyResults}
-                    disabled={!transformedResults}
+                    onClick={handleCopyTemplate}
+                    disabled={!outputTemplate}
                   >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={downloadResults}
-                    disabled={!transformedResults}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
                 </div>
               </CardTitle>
-              <p className="text-sm text-gray-500">View field connections and transformed data</p>
+              <p className="text-sm text-gray-500">AI-generated template with field mappings</p>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-4">
-              {transformedResults && fieldConnections.length > 0 ? (
-                <Tabs defaultValue="connections" className="flex-1 flex flex-col">
+              {outputTemplate ? (
+                <Tabs defaultValue="template" className="flex-1 flex flex-col">
                   <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="connections">Field Connections</TabsTrigger>
-                    <TabsTrigger value="results">JSON Results</TabsTrigger>
+                    <TabsTrigger value="template">Template</TabsTrigger>
+                    <TabsTrigger value="results">Results</TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="connections" className="flex-1 overflow-auto">
-                    <div className="space-y-3">
-                      {fieldConnections.map((conn, index) => (
-                        <div 
-                          key={index} 
-                          className={`p-3 rounded-lg border-l-4 ${
-                            conn.found 
-                              ? 'bg-green-50 border-green-500' 
-                              : 'bg-red-50 border-red-500'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-mono text-sm bg-purple-100 px-2 py-1 rounded">
-                              {conn.templateField}
-                            </span>
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
-                            <span className="font-mono text-sm bg-blue-100 px-2 py-1 rounded">
-                              {conn.sourceField}
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                              conn.connectionType === 'direct' ? 'bg-green-100 text-green-800' :
-                              conn.connectionType === 'nested' ? 'bg-blue-100 text-blue-800' :
-                              conn.connectionType === 'mapped' ? 'bg-orange-100 text-orange-800' :
-                              conn.connectionType === 'static' ? 'bg-purple-100 text-purple-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {conn.connectionType}
-                            </span>
-                            <span className="ml-2">Value: <code className="bg-gray-100 px-1 rounded">{conn.value}</code></span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <TabsContent value="template" className="flex-1 flex flex-col">
+                    <Textarea
+                      value={outputTemplate}
+                      onChange={(e) => {
+                        setOutputTemplate(e.target.value);
+                        setTransformedResults('');
+                        setFieldConnections([]);
+                      }}
+                      className="flex-1 min-h-[300px] font-mono text-sm resize-none border-2 focus:border-green-500 mb-4"
+                    />
+                    
+                    <Button
+                      onClick={executeTemplate}
+                      disabled={!outputTemplate || !sourceData || isExecuting}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      size="lg"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      {isExecuting ? "Transforming..." : "Run Transformation"}
+                    </Button>
                   </TabsContent>
                   
                   <TabsContent value="results" className="flex-1 overflow-auto">
-                    <pre className="text-sm whitespace-pre-wrap font-mono text-gray-800 bg-gray-50 p-4 rounded">
-                      {transformedResults}
-                    </pre>
+                    {transformedResults ? (
+                      <div className="space-y-4">
+                        {/* Field Connections */}
+                        {fieldConnections.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-sm text-gray-700">Field Connections</h4>
+                            {fieldConnections.map((conn, index) => (
+                              <div key={index} className={`p-2 rounded text-xs border-l-4 ${
+                                conn.found ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'
+                              }`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono bg-purple-100 px-1 rounded">{conn.templateField}</span>
+                                  <ArrowRight className="h-3 w-3 text-gray-400" />
+                                  <span className="font-mono bg-blue-100 px-1 rounded">{conn.sourceField}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Results */}
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-medium text-sm text-gray-700">Transformed Data</h4>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={handleCopyResults}>
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={downloadResults}>
+                                <Download className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <pre className="text-xs whitespace-pre-wrap font-mono text-gray-800 bg-gray-50 p-3 rounded max-h-60 overflow-auto">
+                            {transformedResults}
+                          </pre>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 text-sm">
+                        Run the transformation to see results
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               ) : (
@@ -516,15 +504,17 @@ const TemplateMapper = () => {
                     <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
                       <Sparkles className="h-8 w-8 text-gray-400" />
                     </div>
-                    <p className="text-lg font-medium">Ready to Transform</p>
-                    <p className="text-sm">Create your template from an example, then run the transformation</p>
+                    <p className="text-lg font-medium">Ready to Generate</p>
+                    <p className="text-sm">Provide source data and output example to generate your template</p>
                   </div>
                 </div>
               )}
               
-              {transformedResults && (
-                <div className="mt-3 p-2 bg-purple-50 rounded text-sm text-purple-700">
-                  ✅ {JSON.parse(transformedResults || '[]').length || 0} records transformed successfully
+              {outputTemplate && (
+                <div className="mt-3 p-2 bg-green-50 rounded text-sm text-green-700">
+                  <div className="p-3 bg-green-50 rounded text-sm text-green-700">
+                    <strong>Template Syntax:</strong> Use {`{{ fieldName }}`} to reference source data fields
+                  </div>
                 </div>
               )}
             </CardContent>
