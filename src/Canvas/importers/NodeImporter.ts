@@ -117,11 +117,12 @@ export const importTransformNode = (config: TransformNodeConfig): Node => {
 export const importMappingNode = (config: MappingNodeConfig): Node => {
   return {
     id: config.id,
-    type: 'mapping',
+    type: 'conversionMapping',
     position: config.position,
     data: {
       label: config.label,
-      mappings: config.mappings
+      mappings: config.mappings,
+      isExpanded: false
     }
   };
 };
