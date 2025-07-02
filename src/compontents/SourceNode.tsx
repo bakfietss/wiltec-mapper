@@ -515,10 +515,10 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                             </div>
                         </div>
 
-                        {/* Manual Field Configuration */}
+                        {/* Schema Field Configuration */}
                         <div className="flex-1 flex flex-col min-h-0">
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-medium">Manual Schema Fields:</h4>
+                                <h4 className="font-medium">Schema Fields:</h4>
                                 <div className="flex gap-2">
                                     <JsonImportDialog
                                         jsonInput={jsonInput}
