@@ -361,6 +361,56 @@ export const exportExecutionMapping = (
             console.log('=== FINAL CONCAT MAPPING ===');
             console.log('Created concat execution mapping:', mapping);
             
+          } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'stringTransform') {
+            // String transform mapping (substring, etc.)
+            console.log('=== PROCESSING STRING TRANSFORM NODE ===');
+            console.log('String transform node ID:', sourceNode.id);
+            console.log('String transform node data:', sourceNode.data);
+            
+            const sourceData = sourceNode.data as any;
+            const config = sourceData?.config || {};
+            
+            // Find the input to the string transform node
+            const stringTransformInputEdge = edges.find(e => e.target === sourceNode.id);
+            const inputNode = stringTransformInputEdge ? nodes.find(n => n.id === stringTransformInputEdge.source) : null;
+            let originalSourceField: string = '';
+            
+            if (inputNode && inputNode.type === 'source') {
+              const inputData = inputNode.data as any;
+              const inputFields = inputData?.fields;
+              const inputField = findSourceFieldByHandle(inputFields, stringTransformInputEdge?.sourceHandle || '');
+              originalSourceField = inputField?.name || '';
+            }
+            
+            console.log('String transform input field:', originalSourceField);
+            console.log('String transform config:', config);
+            
+            // Create the transform mapping based on the string operation type
+            let transformConfig: any = {
+              type: config.stringOperation || 'substring'
+            };
+            
+            if (config.stringOperation === 'substring') {
+              transformConfig = {
+                type: 'substring',
+                parameters: {
+                  sourceField: originalSourceField,
+                  start: config.substringStart || 0,
+                  end: config.substringEnd
+                }
+              };
+            }
+            
+            mapping = {
+              from: originalSourceField,
+              to: targetField.name,
+              type: 'transform',
+              transform: transformConfig
+            };
+            
+            console.log('=== FINAL STRING TRANSFORM MAPPING ===');
+            console.log('Created string transform execution mapping:', mapping);
+            
           } else if (sourceNode.type === 'conversionMapping') {
             // Conversion mapping - handle transform chain
             const sourceData = sourceNode.data as any;
