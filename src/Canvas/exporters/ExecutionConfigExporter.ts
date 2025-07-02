@@ -467,14 +467,17 @@ export const exportExecutionMapping = (
                       parameters: config
                     };
                     
-                    // Handle substring operation specifically
-                    if (config.stringOperation === 'substring') {
-                      transformInfo = {
-                        type: 'substring',
+                  // Handle substring operation specifically
+                  if (config.stringOperation === 'substring') {
+                    transformInfo = {
+                      type: 'substring',
+                      parameters: {
+                        sourceField: originalSourceField,
                         start: config.substringStart || 0,
                         end: config.substringEnd
-                      };
-                    }
+                      }
+                    };
+                  }
                   } else if (inputNode.type === 'splitterTransform') {
                     transformInfo = {
                       type: 'split',
