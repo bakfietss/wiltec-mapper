@@ -27,10 +27,15 @@ export class TemplateToNodesConverter {
     
     try {
       // Clean the template by removing comments and extra whitespace
-      const cleanedTemplate = template
+      let cleanedTemplate = template
         .replace(/\/\/.*$/gm, '') // Remove single-line comments
         .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
         .trim();
+      
+      // Fix unquoted template variables in JSON (make them temporarily valid for parsing)
+      cleanedTemplate = cleanedTemplate.replace(/:\s*\{\{\s*([^}]+)\s*\}\}/g, ': "{{$1}}"');
+      
+      console.log('Cleaned template:', cleanedTemplate);
       
       const parsedTemplate = JSON.parse(cleanedTemplate);
       const sampleRecord = sourceData[0] || {};
