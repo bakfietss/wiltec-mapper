@@ -330,11 +330,71 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
         setSelectedFields(newSelected);
     };
 
+    // Helper function to generate schema fields from data
+    const generateSchemaFieldsFromData = (obj: any, prefix = ''): SchemaField[] => {
+        const fields: SchemaField[] = [];
+        
+        Object.entries(obj).forEach(([key, value]) => {
+            const fieldId = prefix ? `${prefix}.${key}` : key;
+            
+            if (Array.isArray(value)) {
+                const field: SchemaField = {
+                    id: fieldId,
+                    name: key,
+                    type: 'array',
+                    exampleValue: value
+                };
+                
+                // If array contains objects, add children
+                if (value.length > 0 && typeof value[0] === 'object') {
+                    field.children = generateSchemaFieldsFromData(value[0], `${fieldId}[0]`);
+                }
+                
+                fields.push(field);
+            } else if (value && typeof value === 'object') {
+                const field: SchemaField = {
+                    id: fieldId,
+                    name: key,
+                    type: 'object',
+                    exampleValue: value,
+                    children: generateSchemaFieldsFromData(value, fieldId)
+                };
+                fields.push(field);
+            } else {
+                const field: SchemaField = {
+                    id: fieldId,
+                    name: key,
+                    type: typeof value === 'number' ? 'number' : 
+                          typeof value === 'boolean' ? 'boolean' : 
+                          value instanceof Date ? 'date' : 'string',
+                    exampleValue: value
+                };
+                fields.push(field);
+            }
+        });
+        
+        return fields;
+    };
+
     const handleJsonImport = () => {
         try {
             const parsed = JSON.parse(jsonInput);
             const dataArray = Array.isArray(parsed) ? parsed : [parsed];
             setNodeData(dataArray);
+            
+            // Generate fields from imported data and merge with existing manual fields
+            const importedFields = generateSchemaFieldsFromData(dataArray[0] || {});
+            
+            // Merge imported fields with existing manual fields, avoiding duplicates
+            const mergedFields = [...fields];
+            importedFields.forEach(importedField => {
+                const existingField = fields.find(f => f.name === importedField.name);
+                if (!existingField) {
+                    mergedFields.push(importedField);
+                }
+            });
+            
+            setFields(mergedFields);
             setJsonInput('');
             setSelectedFields(new Set());
         } catch (error) {
@@ -523,10 +583,10 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </NodeEditSheet>
             </div>
 
-            {/* Manual Schema Fields */}
+            {/* Unified Schema Fields */}
             {fields.length > 0 && (
                 <div className="space-y-1 mb-2">
-                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Manual Fields:</div>
+                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Schema Fields:</div>
                     {fields.map((field) => (
                         <ManualField
                             key={field.id}
@@ -538,26 +598,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </div>
             )}
             
-            {/* Data Structure Display */}
-            {hasData && (
-                <div className="space-y-1">
-                    {fields.length > 0 && <div className="text-xs font-medium text-gray-500 px-2 py-1">Data Fields:</div>}
-                    {Object.entries(nodeData[0]).map(([key, value]) => (
-                        <DataField
-                            key={key}
-                            path={key}
-                            value={value}
-                            level={0}
-                            onFieldToggle={handleDataFieldToggle}
-                            onFieldExpansionToggle={handleFieldExpansionToggle}
-                            selectedFields={selectedFields}
-                            expandedFields={expandedFields}
-                        />
-                    ))}
-                </div>
-            )}
-            
-            {!hasData && fields.length === 0 && (
+            {fields.length === 0 && (
                 <div className="text-center py-3 text-gray-500 text-xs">
                     No data available. Click edit to import JSON data or add manual fields.
                 </div>
