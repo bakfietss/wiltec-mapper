@@ -166,17 +166,43 @@ export class TemplateToNodesConverter {
             matches.forEach((match) => {
               const cleanVar = match.replace(/\{\{\s*|\s*\}\}/g, '');
               
-              // Create direct connection from source field to target field
-              const sourceHandle = cleanVar;
-              const targetHandle = targetField;
+              // Try to find a matching source field using smart matching
+              const matchingSourceField = this.findBestSourceFieldMatch(cleanVar, sourceFields);
               
-              edges.push({
-                id: `edge-${cleanVar}-${targetField}`,
-                source: sourceNodeId,
-                target: targetNodeId,
-                sourceHandle: sourceHandle,
-                targetHandle: targetHandle
-              });
+              if (matchingSourceField) {
+                // Create direct connection from matched source field to target field
+                edges.push({
+                  id: `edge-${matchingSourceField}-${targetField}`,
+                  source: sourceNodeId,
+                  target: targetNodeId,
+                  sourceHandle: matchingSourceField,
+                  targetHandle: targetField
+                });
+              } else {
+                // Create static value node for unmapped fields
+                const staticNodeId = `static-${nodeCounter++}`;
+                
+                nodes.push({
+                  id: staticNodeId,
+                  type: 'staticValue',
+                  position: { x: 400, y: yPosition },
+                  data: {
+                    label: 'Static Value',
+                    value: '',
+                    valueType: 'string'
+                  }
+                });
+
+                // Connect static to target field
+                edges.push({
+                  id: `edge-${staticNodeId}-${targetField}`,
+                  source: staticNodeId,
+                  target: targetNodeId,
+                  targetHandle: targetField
+                });
+
+                yPosition += spacing;
+              }
             });
           }
         } else {
@@ -217,6 +243,52 @@ export class TemplateToNodesConverter {
       console.error('Error converting template to nodes:', error);
       throw new Error('Failed to parse template for node conversion');
     }
+  }
+
+  // Helper method to find the best matching source field for a template variable
+  static findBestSourceFieldMatch(templateVar: string, sourceFields: any[]): string | null {
+    // Flatten the source fields to get all possible field paths
+    const flattenFields = (fields: any[], prefix = ''): string[] => {
+      const result: string[] = [];
+      
+      fields.forEach(field => {
+        const fieldPath = prefix ? `${prefix}.${field.name}` : field.name;
+        result.push(fieldPath);
+        result.push(field.id); // Also include the field ID
+        
+        if (field.children) {
+          result.push(...flattenFields(field.children, fieldPath));
+        }
+      });
+      
+      return result;
+    };
+    
+    const allFieldPaths = flattenFields(sourceFields);
+    
+    // Try exact match first
+    const exactMatch = allFieldPaths.find(path => 
+      path.toLowerCase() === templateVar.toLowerCase()
+    );
+    if (exactMatch) return exactMatch;
+    
+    // Try partial matches
+    const partialMatch = allFieldPaths.find(path => 
+      path.toLowerCase().includes(templateVar.toLowerCase()) ||
+      templateVar.toLowerCase().includes(path.toLowerCase())
+    );
+    if (partialMatch) return partialMatch;
+    
+    // Try matching by removing common separators
+    const normalizedTemplateVar = templateVar.toLowerCase().replace(/[_-]/g, '');
+    const normalizedMatch = allFieldPaths.find(path => {
+      const normalizedPath = path.toLowerCase().replace(/[_-]/g, '');
+      return normalizedPath === normalizedTemplateVar ||
+             normalizedPath.includes(normalizedTemplateVar) ||
+             normalizedTemplateVar.includes(normalizedPath);
+    });
+    
+    return normalizedMatch || null;
   }
 
   static storeConversionData(conversionResult: ConversionResult): void {
