@@ -131,10 +131,12 @@ export class TemplateToNodesConverter {
                 
                 nodes.push({
                   id: mappingNodeId,
-                  type: 'conversion_mapping',
+                  type: 'conversionMapping',
                   position: { x: 400, y: yPosition },
                   data: {
                     label: `Map Field`,
+                    mappings: [],
+                    isExpanded: false,
                     sourceField: cleanVar,
                     targetField: targetField
                   }
@@ -164,11 +166,12 @@ export class TemplateToNodesConverter {
           
           nodes.push({
             id: staticNodeId,
-            type: 'static_value',
+            type: 'staticValue',
             position: { x: 400, y: yPosition },
             data: {
               label: `Static Value`,
               value: templateValue,
+              valueType: 'string',
               targetField: targetField
             }
           });
