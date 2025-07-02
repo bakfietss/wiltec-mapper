@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, Bot, User } from 'lucide-react';
+import { MessageCircle, Send, X, Bot, User, Key, Settings } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { useReactFlow } from '@xyflow/react';
+import { toast } from 'sonner';
 
 interface ChatMessage {
   id: string;
@@ -19,11 +20,15 @@ interface AiChatAssistantProps {
 
 const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [apiKey, setApiKey] = useState(localStorage.getItem('openai-api-key') || '');
+  const [showKeyInput, setShowKeyInput] = useState(!localStorage.getItem('openai-api-key'));
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       role: 'ai',
-      content: "Hi! I'm your mapping assistant. I can help you create transforms and connections. Try saying something like:\n\n• 'Split the orderCode field by 2 digits and map to itemId'\n• 'Convert customerName to uppercase and map to name'\n• 'Concat firstName and lastName with space and map to fullName'",
+      content: !localStorage.getItem('openai-api-key') 
+        ? "Hi! I'm your AI mapping assistant. First, please enter your OpenAI API key to get started. I can then help you with any mapping task - from creating transforms to modifying source nodes and much more!"
+        : "Hi! I'm your AI mapping assistant. I can help you with any mapping task:\n\n• Add or modify fields in source/target nodes\n• Create any type of transform\n• Build complex mapping workflows\n• Analyze and optimize your mappings\n\nJust describe what you need in natural language!",
       timestamp: new Date()
     }
   ]);
@@ -210,8 +215,141 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
     return { node: newNode, edges: newEdges };
   };
 
+  const callOpenAI = async (userMessage: string) => {
+    if (!apiKey) {
+      throw new Error('OpenAI API key not provided');
+    }
+
+    const nodes = getNodes();
+    const edges = getEdges();
+    
+    const systemPrompt = `You are an AI assistant for a data mapping application. You can help users:
+
+1. Create transform nodes (string operations, concat, split, etc.)
+2. Modify source/target nodes (add/remove fields)
+3. Create connections between nodes
+4. Analyze and optimize mappings
+
+Current canvas state:
+- Nodes: ${JSON.stringify(nodes.map(n => ({ id: n.id, type: n.type, data: n.data })))}
+- Edges: ${JSON.stringify(edges.map(e => ({ source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })))}
+
+When the user asks you to perform actions, respond with:
+1. A natural language explanation of what you're doing
+2. JSON instructions for the actions to perform (if applicable)
+
+For actions, use this format:
+{
+  "action": "create_transform" | "modify_source" | "modify_target" | "create_connection" | "analysis",
+  "details": {
+    // specific action details
+  }
+}
+
+Be conversational and helpful. Explain what you understand and what you'll do.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'OpenAI API call failed');
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  };
+
+  const executeAIAction = (response: string) => {
+    try {
+      // Try to extract JSON instructions from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const actionData = JSON.parse(jsonMatch[0]);
+        
+        if (actionData.action === 'create_transform') {
+          // Create transform node based on AI instructions
+          const { transformType, config, position } = actionData.details;
+          const nodeId = `ai-transform-${Date.now()}`;
+          
+          const newNode = {
+            id: nodeId,
+            type: transformType === 'concat' ? 'concat' : 'transform',
+            position: position || { x: 400, y: Math.max(...getNodes().map(n => n.position.y), 100) + 150 },
+            data: {
+              label: 'AI Generated Transform',
+              transformType: transformType,
+              ...config
+            }
+          };
+          
+          setNodes(prev => [...prev, newNode]);
+          toast.success('Transform node created successfully!');
+        } else if (actionData.action === 'modify_source') {
+          // Modify source node fields
+          const { fields } = actionData.details;
+          const sourceNode = getNodes().find(n => n.type === 'source');
+          
+          if (sourceNode && Array.isArray(fields)) {
+            const currentFields = Array.isArray(sourceNode.data.fields) ? sourceNode.data.fields : [];
+            setNodes(prev => prev.map(node => 
+              node.id === sourceNode.id 
+                ? { ...node, data: { ...node.data, fields: [...currentFields, ...fields] }}
+                : node
+            ));
+            toast.success('Source node updated successfully!');
+          }
+        }
+        // Add more action types as needed
+      }
+    } catch (error) {
+      console.log('No executable actions found in AI response');
+    }
+  };
+
+  const saveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('openai-api-key', apiKey.trim());
+      setShowKeyInput(false);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'ai',
+        content: "Great! API key saved. I'm now ready to help you with any mapping task:\n\n• Add or modify fields in source/target nodes\n• Create any type of transform\n• Build complex mapping workflows\n• Analyze and optimize your mappings\n\nJust describe what you need in natural language!",
+        timestamp: new Date()
+      }]);
+      toast.success('OpenAI API key saved successfully!');
+    }
+  };
+
+  const clearApiKey = () => {
+    localStorage.removeItem('openai-api-key');
+    setApiKey('');
+    setShowKeyInput(true);
+    toast.info('API key cleared');
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || isProcessing) return;
+
+    // If no API key, just handle key input
+    if (showKeyInput && !apiKey) {
+      toast.error('Please enter your OpenAI API key first');
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -225,27 +363,11 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
     setIsProcessing(true);
 
     try {
-      // Parse the user request
-      const parsedRequest = parseUserRequest(input.trim());
+      // Call OpenAI API
+      const aiResponse = await callOpenAI(userMessage.content);
       
-      let aiResponse = '';
-      
-      if (parsedRequest.sourceField && (parsedRequest.operation || parsedRequest.transformType === 'concat')) {
-        // Create the transform node
-        const result = createTransformNode(parsedRequest);
-        
-        if (parsedRequest.transformType === 'concat') {
-          aiResponse = `✅ Created a concat transform that combines ${parsedRequest.fields.slice(0, -1).join(', ')} with "${parsedRequest.config.delimiter}" and maps to ${parsedRequest.targetField}.`;
-        } else {
-          aiResponse = `✅ Created a ${parsedRequest.operation} transform for ${parsedRequest.sourceField} and mapped it to ${parsedRequest.targetField}.`;
-        }
-        
-        if (onCreateNodes) {
-          onCreateNodes(result);
-        }
-      } else {
-        aiResponse = `I understand you want to work with field transformations, but I need more specific information. Please try:\n\n• "Split orderCode by 2 digits and map to itemId"\n• "Convert customerName to uppercase and map to name"\n• "Concat firstName and lastName with space and map to fullName"\n\nMake sure to specify the source field, operation, and target field.`;
-      }
+      // Execute any actions the AI suggests
+      executeAIAction(aiResponse);
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -255,14 +377,23 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
       };
 
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      const errorMessage: ChatMessage = {
+    } catch (error: any) {
+      console.error('OpenAI API error:', error);
+      
+      let errorMessage = 'Sorry, I encountered an error while processing your request.';
+      if (error.message.includes('API key')) {
+        errorMessage = 'Invalid API key. Please check your OpenAI API key and try again.';
+        setShowKeyInput(true);
+      }
+      
+      const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
-        content: 'Sorry, I encountered an error while processing your request. Please try again with a different phrasing.',
+        content: errorMessage,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorMsg]);
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -344,26 +475,67 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
             
             {/* Input Area */}
             <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Describe your mapping need..."
-                  disabled={isProcessing}
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={handleSendMessage} 
-                  disabled={!input.trim() || isProcessing}
-                  size="icon"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Try: "Split orderCode by 2 digits and map to itemId"
-              </div>
+              {showKeyInput ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Key className="h-4 w-4" />
+                    OpenAI API Key Required
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="sk-..."
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={saveApiKey}
+                      disabled={!apiKey.trim()}
+                      size="icon"
+                    >
+                      <Key className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Your API key will be stored locally in your browser. Get one at{' '}
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      OpenAI Platform
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Describe your mapping need..."
+                      disabled={isProcessing}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleSendMessage} 
+                      disabled={!input.trim() || isProcessing}
+                      size="icon"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      onClick={() => setShowKeyInput(true)}
+                      variant="outline"
+                      size="icon"
+                      title="Manage API Key"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Ask me anything: "Add customerEmail field to source", "Create uppercase transform", etc.
+                  </div>
+                </div>
+              )}
             </div>
           </SheetContent>
         </Sheet>
