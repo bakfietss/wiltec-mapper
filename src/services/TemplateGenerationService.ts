@@ -113,7 +113,9 @@ export class TemplateGenerationService {
       return `{{ ${nestedMatch} }}`;
     }
 
-    return null;
+    // 5. Create template variable for unmapped fields (user can connect manually)
+    // This ensures we always create template variables instead of static values
+    return `{{ ${outputKey} }}`;
   }
 
   private static generateIdTemplate(outputValue: any, sourceObj: any, fullPath: string): string {
