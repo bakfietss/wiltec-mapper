@@ -274,12 +274,28 @@ export class TemplateGenerationService {
   }
 
   private static getSmartMapping(outputKey: string, sourceObj: any): string | null {
+    // Enhanced mappings for common field translations
     const mappings: Record<string, string[]> = {
       'ID': ['id', '_id', 'ID', 'identifier', 'orderCode'],
       'Reference': ['client_reference', 'reference', 'ref', 'Reference'],
       'Container_number': ['containers[0].container_number', 'container_number', 'containerNumber'],
       'Delivery_date': ['itinerary.actual_time_of_arrival', 'actual_time_of_arrival', 'delivery_date', 'deliveryDate'],
-      'DeliveryDate_Type': ['delivery_type', 'date_type']
+      'DeliveryDate_Type': ['delivery_type', 'date_type'],
+      
+      // Employee/HR field mappings
+      'personid_extern': ['Medewerker', 'medewerker', 'employee_id', 'person_id'],
+      'functionid_extern': ['Functield', 'functield', 'function_id', 'role_id'],
+      'employmenttypeid_extern': ['PTperc', 'employment_type', 'contract_type'],
+      'companyid_extern': ['OE', 'company', 'organization'],
+      'datestart': ['Indienst', 'indienst', 'start_date', 'date_start'],
+      'genderid': ['Geslacht', 'geslacht', 'gender'],
+      'firstname': ['Roepnaam', 'roepnaam', 'first_name', 'voornaam'],
+      'lastname': ['Achternaam', 'achternaam', 'last_name', 'surname'],
+      'middlename': ['Voorvoegsel', 'voorvoegsel', 'middle_name', 'tussenvoegsel'],
+      'username': ['Medewerker', 'medewerker', 'user_name', 'login'],
+      'email': ['Mailadres', 'mailadres', 'email_address', 'e_mail'],
+      'reference_1': ['Functiebenaming', 'functiebenaming', 'function_name', 'job_title'],
+      'reorder_startset_date': ['Indienst', 'indienst', 'start_date']
     };
 
     const possibleFields = mappings[outputKey];
