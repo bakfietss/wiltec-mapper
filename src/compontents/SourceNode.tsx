@@ -272,6 +272,7 @@ const ManualField: React.FC<{
 };
 
 const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }) => {
+    console.log('SourceNode rendering with data:', data);
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     const [nodeData, setNodeData] = useState<any[]>(data.data || []);
     const [jsonInput, setJsonInput] = useState('');
