@@ -86,9 +86,66 @@ export class TemplateToNodesConverter {
         return fields;
       };
 
+      // Helper function to extract template variables from a value
+      const extractTemplateVars = (value: any): string[] => {
+        if (typeof value !== 'string') return [];
+        const matches = value.match(/\{\{\s*([^}]+)\s*\}\}/g);
+        return matches ? matches.map(match => match.replace(/\{\{\s*|\s*\}\}/g, '')) : [];
+      };
+
+      // Helper function to find available fields at a given template level
+      const getAvailableFields = (templateObj: any, parentFields: string[] = []): string[] => {
+        const fields = [...parentFields];
+        Object.entries(templateObj).forEach(([key, value]) => {
+          if (!Array.isArray(value) && typeof value !== 'object') {
+            fields.push(...extractTemplateVars(value));
+          }
+        });
+        return [...new Set(fields)]; // Remove duplicates
+      };
+
+      // Helper function to determine groupBy field for arrays
+      const determineGroupBy = (arrayTemplate: any, availableParentFields: string[]): string | undefined => {
+        if (!arrayTemplate || typeof arrayTemplate !== 'object') return undefined;
+        
+        // Get all template variables used in the array items
+        const arrayFields = new Set<string>();
+        const collectArrayFields = (obj: any) => {
+          Object.entries(obj).forEach(([key, value]) => {
+            if (typeof value === 'string') {
+              extractTemplateVars(value).forEach(field => arrayFields.add(field));
+            } else if (typeof value === 'object' && !Array.isArray(value)) {
+              collectArrayFields(value);
+            }
+          });
+        };
+        collectArrayFields(arrayTemplate);
+        
+        // Find fields that exist both in parent context and array items
+        const commonFields = availableParentFields.filter(field => arrayFields.has(field));
+        
+        if (commonFields.length === 0) return undefined;
+        
+        // Prefer more specific fields (longer names usually indicate more specificity)
+        // Also prefer fields that don't contain 'Code' as they're usually IDs rather than grouping fields
+        const preferredField = commonFields.sort((a, b) => {
+          // Deprioritize fields containing 'Code' 
+          const aHasCode = a.toLowerCase().includes('code');
+          const bHasCode = b.toLowerCase().includes('code');
+          if (aHasCode && !bHasCode) return 1;
+          if (!aHasCode && bHasCode) return -1;
+          
+          // Otherwise prefer longer field names (more specific)
+          return b.length - a.length;
+        })[0];
+        
+        return preferredField;
+      };
+
       // Helper function to generate target fields from template
-      const generateTargetFields = (template: any, prefix = '', parentArrayName = ''): any[] => {
+      const generateTargetFields = (template: any, prefix = '', parentFields: string[] = []): any[] => {
         const fields: any[] = [];
+        const currentLevelFields = getAvailableFields(template, parentFields);
         
         Object.entries(template).forEach(([key, value]) => {
           const fieldId = prefix ? `${prefix}.${key}` : key;
@@ -100,15 +157,14 @@ export class TemplateToNodesConverter {
               type: 'array'
             };
             
-            // Determine groupBy field for arrays
-            if (key === 'lines') {
-              field.groupBy = 'orderCode'; // lines are grouped by orderCode
-            } else if (key === 'deliveryLines') {
-              field.groupBy = 'lineNumber'; // deliveryLines are grouped by lineNumber within each line
-            }
-            
             if (value.length > 0 && typeof value[0] === 'object') {
-              field.children = generateTargetFields(value[0], `${fieldId}[0]`, key);
+              // Determine groupBy field intelligently
+              const groupByField = determineGroupBy(value[0], currentLevelFields);
+              if (groupByField) {
+                field.groupBy = groupByField;
+              }
+              
+              field.children = generateTargetFields(value[0], `${fieldId}[0]`, currentLevelFields);
             }
             
             fields.push(field);
@@ -117,7 +173,7 @@ export class TemplateToNodesConverter {
               id: fieldId,
               name: key,
               type: 'object',
-              children: generateTargetFields(value, fieldId, parentArrayName)
+              children: generateTargetFields(value, fieldId, currentLevelFields)
             };
             fields.push(field);
           } else {
