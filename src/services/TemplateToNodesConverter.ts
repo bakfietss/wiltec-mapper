@@ -269,39 +269,96 @@ export class TemplateToNodesConverter {
       // Find all template variables in the parsed template
       const allTemplateVariables = findAllTemplateVariables(parsedTemplate);
       
-      // Process each template variable and create connections
-      allTemplateVariables.forEach(({variable, targetPath}) => {
-        // Try to find a matching source field using smart matching
-        const matchingSourceField = this.findBestSourceFieldMatch(variable, sourceFields);
-        
-        if (matchingSourceField) {
-          // Create direct connection from matched source field to target field
-          edges.push({
-            id: `edge-${matchingSourceField}-${targetPath}`,
-            source: sourceNodeId,
-            target: targetNodeId,
-            sourceHandle: matchingSourceField,
-            targetHandle: targetPath
-          });
+      // Group template variables by target path to detect multiple variables per field
+      const variablesByTarget = new Map<string, Array<{variable: string, targetPath: string}>>();
+      allTemplateVariables.forEach(item => {
+        if (!variablesByTarget.has(item.targetPath)) {
+          variablesByTarget.set(item.targetPath, []);
+        }
+        variablesByTarget.get(item.targetPath)!.push(item);
+      });
+      
+      // Process each target field
+      variablesByTarget.forEach((variables, targetPath) => {
+        if (variables.length === 1) {
+          // Single variable - direct connection
+          const {variable} = variables[0];
+          const matchingSourceField = this.findBestSourceFieldMatch(variable, sourceFields);
+          
+          if (matchingSourceField) {
+            edges.push({
+              id: `edge-${matchingSourceField}-${targetPath}`,
+              source: sourceNodeId,
+              target: targetNodeId,
+              sourceHandle: matchingSourceField,
+              targetHandle: targetPath
+            });
+          } else {
+            // Create static value node for unmapped fields
+            const staticNodeId = `static-${nodeCounter++}`;
+            
+            nodes.push({
+              id: staticNodeId,
+              type: 'staticValue',
+              position: { x: 400, y: yPosition },
+              data: {
+                label: 'Static Value',
+                value: '',
+                valueType: 'string'
+              }
+            });
+
+            edges.push({
+              id: `edge-${staticNodeId}-${targetPath}`,
+              source: staticNodeId,
+              target: targetNodeId,
+              targetHandle: targetPath
+            });
+
+            yPosition += spacing;
+          }
         } else {
-          // Create static value node for unmapped fields
-          const staticNodeId = `static-${nodeCounter++}`;
+          // Multiple variables - create concat node
+          const concatNodeId = `concat-${nodeCounter++}`;
+          const rules = variables.map((item, index) => ({
+            id: `rule-${item.variable}-${index}`,
+            priority: index + 1,
+            sourceField: item.variable,
+            sourceHandle: `rule-${item.variable}-${index}`
+          }));
           
           nodes.push({
-            id: staticNodeId,
-            type: 'staticValue',
+            id: concatNodeId,
+            type: 'concat',
             position: { x: 400, y: yPosition },
             data: {
-              label: 'Static Value',
-              value: '',
-              valueType: 'string'
+              label: 'Concat Transform',
+              transformType: 'concat',
+              rules: rules,
+              delimiter: '',
+              outputType: 'value',
+              inputValues: {}
             }
           });
 
-          // Connect static to target field
+          // Connect source fields to concat node
+          variables.forEach((item, index) => {
+            const matchingSourceField = this.findBestSourceFieldMatch(item.variable, sourceFields);
+            if (matchingSourceField) {
+              edges.push({
+                id: `edge-${matchingSourceField}-${rules[index].id}`,
+                source: sourceNodeId,
+                target: concatNodeId,
+                sourceHandle: matchingSourceField,
+                targetHandle: rules[index].id
+              });
+            }
+          });
+
+          // Connect concat node to target
           edges.push({
-            id: `edge-${staticNodeId}-${targetPath}`,
-            source: staticNodeId,
+            id: `edge-${concatNodeId}-${targetPath}`,
+            source: concatNodeId,
             target: targetNodeId,
             targetHandle: targetPath
           });
