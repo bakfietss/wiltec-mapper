@@ -55,13 +55,8 @@ export class TemplateGenerationService {
     // Remove quotes from numeric template variables
     jsonString = this.formatNumericFields(jsonString);
     
-    // Clean up unmapped field comments and add header for unmapped values
-    const hasUnmapped = jsonString.includes('_UNMAPPED');
+    // Clean up unmapped field comments
     jsonString = jsonString.replace(/,?\s*"[^"]+_UNMAPPED":\s*"[^"]*"/g, '');
-    
-    if (hasUnmapped) {
-      jsonString = '// Note: Some values could not be mapped and remain static\n' + jsonString;
-    }
     
     return jsonString;
   }
