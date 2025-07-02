@@ -87,7 +87,7 @@ export class TemplateToNodesConverter {
       };
 
       // Helper function to generate target fields from template
-      const generateTargetFields = (template: any, prefix = ''): any[] => {
+      const generateTargetFields = (template: any, prefix = '', parentArrayName = ''): any[] => {
         const fields: any[] = [];
         
         Object.entries(template).forEach(([key, value]) => {
@@ -100,8 +100,15 @@ export class TemplateToNodesConverter {
               type: 'array'
             };
             
+            // Determine groupBy field for arrays
+            if (key === 'lines') {
+              field.groupBy = 'orderCode'; // lines are grouped by orderCode
+            } else if (key === 'deliveryLines') {
+              field.groupBy = 'lineNumber'; // deliveryLines are grouped by lineNumber within each line
+            }
+            
             if (value.length > 0 && typeof value[0] === 'object') {
-              field.children = generateTargetFields(value[0], `${fieldId}[0]`);
+              field.children = generateTargetFields(value[0], `${fieldId}[0]`, key);
             }
             
             fields.push(field);
@@ -110,7 +117,7 @@ export class TemplateToNodesConverter {
               id: fieldId,
               name: key,
               type: 'object',
-              children: generateTargetFields(value, fieldId)
+              children: generateTargetFields(value, fieldId, parentArrayName)
             };
             fields.push(field);
           } else {
@@ -119,6 +126,21 @@ export class TemplateToNodesConverter {
               name: key,
               type: 'string' // Templates are typically string outputs
             };
+            
+            // For ID fields in arrays, preserve the template structure for display
+            if (key === 'id' && typeof value === 'string' && value.includes('{{')) {
+              // Extract sample value based on template structure
+              if (value.includes(',')) {
+                const parts = value.split(',');
+                if (parts.length === 2) {
+                  field.exampleValue = 'ORDER123,1'; // orderCode,lineNumber
+                } else if (parts.length === 3) {
+                  field.exampleValue = 'ORDER123,1,1'; // orderCode,lineNumber,deliveryLineNumber
+                }
+              }
+              field.templateValue = value; // Store original template
+            }
+            
             fields.push(field);
           }
         });
