@@ -26,7 +26,13 @@ export class TemplateToNodesConverter {
     const edges: EdgeData[] = [];
     
     try {
-      const parsedTemplate = JSON.parse(template);
+      // Clean the template by removing comments and extra whitespace
+      const cleanedTemplate = template
+        .replace(/\/\/.*$/gm, '') // Remove single-line comments
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+        .trim();
+      
+      const parsedTemplate = JSON.parse(cleanedTemplate);
       const sampleRecord = sourceData[0] || {};
       
       // Helper function to convert object to schema fields
