@@ -16,7 +16,7 @@ const NavigationBar = () => {
   };
 
   return (
-    <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-2">
+    <div className="fixed top-4 left-4 z-10 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-2">
       <div className="flex items-center gap-2">
         <Button
           variant={isActive('/') ? "default" : "ghost"}

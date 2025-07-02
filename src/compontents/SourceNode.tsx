@@ -70,7 +70,7 @@ const DataField: React.FC<{
                         )}
                     </div>
                     <span 
-                        className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer"
+                        className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer text-left"
                         onClick={(e) => {
                             e.stopPropagation();
                             onFieldToggle(path);
@@ -137,7 +137,7 @@ const DataField: React.FC<{
                         )}
                     </div>
                     <span 
-                        className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer"
+                        className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer text-left"
                         onClick={(e) => {
                             e.stopPropagation();
                             onFieldToggle(path);

@@ -76,7 +76,7 @@ const TargetField: React.FC<{
                             <ChevronRight className="w-3 h-3 text-gray-400" />
                         )}
                     </div>
-                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">
                         {field.name}[]
                     </span>
                     {field.groupBy && (
@@ -163,7 +163,7 @@ const TargetField: React.FC<{
                             <ChevronRight className="w-3 h-3 text-gray-400" />
                         )}
                     </div>
-                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">
                         {field.name}
                     </span>
                     {hasChildren && (
