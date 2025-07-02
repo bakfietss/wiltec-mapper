@@ -26,6 +26,7 @@ import { exportMappingDocumentation } from './DocumentationExporter';
 import { useNodeValueUpdates } from '../hooks/useNodeValueUpdates';
 import { useManualUpdateTrigger } from '../hooks/useManualUpdateTrigger';
 import { toast } from 'sonner';
+import AiChatAssistant from '../components/AiChatAssistant';
 
 const initialNodes: Node[] = [
   {
@@ -355,6 +356,8 @@ const Pipeline = () => {
             isExpanded={isManagerExpanded}
             onToggleExpanded={setIsManagerExpanded}
           />
+          
+          <AiChatAssistant />
         </div>
       </div>
     </ReactFlowProvider>
