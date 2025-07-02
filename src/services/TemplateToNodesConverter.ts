@@ -156,56 +156,87 @@ export class TemplateToNodesConverter {
       let yPosition = 100;
       const spacing = 120;
 
-      // Process each field in the template and create direct connections
-      Object.entries(parsedTemplate).forEach(([targetField, templateValue]) => {
-        if (typeof templateValue === 'string' && templateValue.includes('{{') && templateValue.includes('}}')) {
-          // Extract template variable
-          const matches = templateValue.match(/\{\{\s*([^}]+)\s*\}\}/g);
+      // Helper function to recursively find all template variables
+      const findAllTemplateVariables = (obj: any, path: string = ''): Array<{variable: string, targetPath: string}> => {
+        const variables: Array<{variable: string, targetPath: string}> = [];
+        
+        Object.entries(obj).forEach(([key, value]) => {
+          const currentPath = path ? `${path}.${key}` : key;
           
-          if (matches) {
-            matches.forEach((match) => {
-              const cleanVar = match.replace(/\{\{\s*|\s*\}\}/g, '');
-              
-              // Try to find a matching source field using smart matching
-              const matchingSourceField = this.findBestSourceFieldMatch(cleanVar, sourceFields);
-              
-              if (matchingSourceField) {
-                // Create direct connection from matched source field to target field
-                edges.push({
-                  id: `edge-${matchingSourceField}-${targetField}`,
-                  source: sourceNodeId,
-                  target: targetNodeId,
-                  sourceHandle: matchingSourceField,
-                  targetHandle: targetField
+          if (Array.isArray(value)) {
+            // Process array elements
+            if (value.length > 0) {
+              const arrayPath = `${currentPath}[0]`;
+              variables.push(...findAllTemplateVariables(value[0], arrayPath));
+            }
+          } else if (value && typeof value === 'object') {
+            // Process nested objects
+            variables.push(...findAllTemplateVariables(value, currentPath));
+          } else if (typeof value === 'string' && value.includes('{{') && value.includes('}}')) {
+            // Extract template variables from this field
+            const matches = value.match(/\{\{\s*([^}]+)\s*\}\}/g);
+            if (matches) {
+              matches.forEach((match) => {
+                const cleanVar = match.replace(/\{\{\s*|\s*\}\}/g, '');
+                variables.push({
+                  variable: cleanVar,
+                  targetPath: currentPath
                 });
-              } else {
-                // Create static value node for unmapped fields
-                const staticNodeId = `static-${nodeCounter++}`;
-                
-                nodes.push({
-                  id: staticNodeId,
-                  type: 'staticValue',
-                  position: { x: 400, y: yPosition },
-                  data: {
-                    label: 'Static Value',
-                    value: '',
-                    valueType: 'string'
-                  }
-                });
-
-                // Connect static to target field
-                edges.push({
-                  id: `edge-${staticNodeId}-${targetField}`,
-                  source: staticNodeId,
-                  target: targetNodeId,
-                  targetHandle: targetField
-                });
-
-                yPosition += spacing;
-              }
-            });
+              });
+            }
           }
+        });
+        
+        return variables;
+      };
+
+      // Find all template variables in the parsed template
+      const allTemplateVariables = findAllTemplateVariables(parsedTemplate);
+      
+      // Process each template variable and create connections
+      allTemplateVariables.forEach(({variable, targetPath}) => {
+        // Try to find a matching source field using smart matching
+        const matchingSourceField = this.findBestSourceFieldMatch(variable, sourceFields);
+        
+        if (matchingSourceField) {
+          // Create direct connection from matched source field to target field
+          edges.push({
+            id: `edge-${matchingSourceField}-${targetPath}`,
+            source: sourceNodeId,
+            target: targetNodeId,
+            sourceHandle: matchingSourceField,
+            targetHandle: targetPath
+          });
         } else {
+          // Create static value node for unmapped fields
+          const staticNodeId = `static-${nodeCounter++}`;
+          
+          nodes.push({
+            id: staticNodeId,
+            type: 'staticValue',
+            position: { x: 400, y: yPosition },
+            data: {
+              label: 'Static Value',
+              value: '',
+              valueType: 'string'
+            }
+          });
+
+          // Connect static to target field
+          edges.push({
+            id: `edge-${staticNodeId}-${targetPath}`,
+            source: staticNodeId,
+            target: targetNodeId,
+            targetHandle: targetPath
+          });
+
+          yPosition += spacing;
+        }
+      });
+
+      // Process static values at top level
+      Object.entries(parsedTemplate).forEach(([targetField, templateValue]) => {
+        if (typeof templateValue === 'string' && !(templateValue.includes('{{') && templateValue.includes('}}'))) {
           // Static value - create static value node
           const staticNodeId = `static-${nodeCounter++}`;
           
