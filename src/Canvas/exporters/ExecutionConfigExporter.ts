@@ -361,7 +361,7 @@ export const exportExecutionMapping = (
             console.log('=== FINAL CONCAT MAPPING ===');
             console.log('Created concat execution mapping:', mapping);
             
-          } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'stringTransform') {
+          } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'String Transform') {
             // String transform mapping (substring, etc.)
             console.log('=== PROCESSING STRING TRANSFORM NODE ===');
             console.log('String transform node ID:', sourceNode.id);
