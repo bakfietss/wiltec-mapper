@@ -183,18 +183,11 @@ export class TemplateToNodesConverter {
               type: 'string' // Templates are typically string outputs
             };
             
-            // For ID fields in arrays, preserve the template structure for display
+            // For ID fields, preserve the template structure for display
             if (key === 'id' && typeof value === 'string' && value.includes('{{')) {
-              // Extract sample value based on template structure
-              if (value.includes(',')) {
-                const parts = value.split(',');
-                if (parts.length === 2) {
-                  field.exampleValue = 'ORDER123,1'; // orderCode,lineNumber
-                } else if (parts.length === 3) {
-                  field.exampleValue = 'ORDER123,1,1'; // orderCode,lineNumber,deliveryLineNumber
-                }
-              }
-              field.templateValue = value; // Store original template
+              field.templateValue = value; // Store original template for reference
+              // Set a readable example based on the template structure
+              field.exampleValue = value; // Show the actual template variables
             }
             
             fields.push(field);
