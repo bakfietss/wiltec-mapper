@@ -46,6 +46,9 @@ export interface ExecutionMapping {
       sources?: string[];
       fields?: string[]; // Add support for new concat parameter format
       separator?: string; // Add support for new concat parameter format
+      sourceField?: string; // Add support for substring sourceField
+      start?: number; // Move start/end into parameters
+      end?: number; // Move start/end into parameters
       rules?: Array<{
         id: string;
         priority: number;
@@ -55,8 +58,8 @@ export interface ExecutionMapping {
       }>;
       defaultValue?: string;
     };
-    end?: number;
-    start?: number;
+    end?: number; // Keep for backward compatibility
+    start?: number; // Keep for backward compatibility
   };
 }
 
