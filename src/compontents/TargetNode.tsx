@@ -211,7 +211,7 @@ const TargetField: React.FC<{
             style={{ paddingLeft: `${8 + level * 12}px` }}
         >
             <div className="w-3 h-3" />
-            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
+            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">{field.name}</span>
             <div className="text-xs min-w-[80px] text-center">
                 {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">

@@ -29,28 +29,120 @@ export class TemplateToNodesConverter {
       const parsedTemplate = JSON.parse(template);
       const sampleRecord = sourceData[0] || {};
       
-      // Create source node
+      // Helper function to convert object to schema fields
+      const generateSchemaFields = (obj: any, prefix = ''): any[] => {
+        const fields: any[] = [];
+        
+        Object.entries(obj).forEach(([key, value]) => {
+          const fieldId = prefix ? `${prefix}.${key}` : key;
+          
+          if (Array.isArray(value)) {
+            const field: any = {
+              id: fieldId,
+              name: key,
+              type: 'array',
+              exampleValue: value
+            };
+            
+            // If array contains objects, add children
+            if (value.length > 0 && typeof value[0] === 'object') {
+              field.children = generateSchemaFields(value[0], `${fieldId}[0]`);
+            }
+            
+            fields.push(field);
+          } else if (value && typeof value === 'object') {
+            const field: any = {
+              id: fieldId,
+              name: key,
+              type: 'object',
+              exampleValue: value,
+              children: generateSchemaFields(value, fieldId)
+            };
+            fields.push(field);
+          } else {
+            const field: any = {
+              id: fieldId,
+              name: key,
+              type: typeof value === 'number' ? 'number' : 
+                    typeof value === 'boolean' ? 'boolean' : 
+                    value instanceof Date ? 'date' : 'string',
+              exampleValue: value
+            };
+            fields.push(field);
+          }
+        });
+        
+        return fields;
+      };
+
+      // Helper function to generate target fields from template
+      const generateTargetFields = (template: any, prefix = ''): any[] => {
+        const fields: any[] = [];
+        
+        Object.entries(template).forEach(([key, value]) => {
+          const fieldId = prefix ? `${prefix}.${key}` : key;
+          
+          if (Array.isArray(value)) {
+            const field: any = {
+              id: fieldId,
+              name: key,
+              type: 'array'
+            };
+            
+            if (value.length > 0 && typeof value[0] === 'object') {
+              field.children = generateTargetFields(value[0], `${fieldId}[0]`);
+            }
+            
+            fields.push(field);
+          } else if (value && typeof value === 'object') {
+            const field: any = {
+              id: fieldId,
+              name: key,
+              type: 'object',
+              children: generateTargetFields(value, fieldId)
+            };
+            fields.push(field);
+          } else {
+            const field: any = {
+              id: fieldId,
+              name: key,
+              type: 'string' // Templates are typically string outputs
+            };
+            fields.push(field);
+          }
+        });
+        
+        return fields;
+      };
+      
+      // Create source node with proper schema structure
       const sourceNodeId = 'source-1';
+      const sourceFields = generateSchemaFields(sampleRecord);
+      
       nodes.push({
         id: sourceNodeId,
         type: 'source',
         position: { x: 50, y: 200 },
         data: {
           label: 'Source Data',
-          fields: Object.keys(sampleRecord),
-          sampleData: sampleRecord
+          fields: sourceFields,
+          data: sourceData
         }
       });
 
-      // Create target node
+      // Create target node with proper schema structure
       const targetNodeId = 'target-1';
+      const targetFields = generateTargetFields(parsedTemplate);
+      
       nodes.push({
         id: targetNodeId,
         type: 'target',
         position: { x: 800, y: 200 },
         data: {
           label: 'Target Output',
-          structure: parsedTemplate
+          fields: targetFields,
+          data: [],
+          fieldValues: {}
         }
       });
 
@@ -58,7 +150,7 @@ export class TemplateToNodesConverter {
       let yPosition = 100;
       const spacing = 120;
 
-      // Process each field in the template
+      // Process each field in the template and create direct connections
       Object.entries(parsedTemplate).forEach(([targetField, templateValue]) => {
         if (typeof templateValue === 'string' && templateValue.includes('{{') && templateValue.includes('}}')) {
           // Extract template variable
@@ -68,100 +160,21 @@ export class TemplateToNodesConverter {
             matches.forEach((match) => {
               const cleanVar = match.replace(/\{\{\s*|\s*\}\}/g, '');
               
-              // Check if this requires array access or nested field access
-              if (cleanVar.includes('[') || cleanVar.includes('.')) {
-                // Complex field access - needs transform node
-                const transformNodeId = `transform-${nodeCounter++}`;
-                
-                let transformType = 'field_access';
-                let transformData: any = {
-                  label: `Extract ${targetField}`,
-                  sourceField: cleanVar,
-                  targetField: targetField
-                };
-
-                // Determine transform type
-                if (cleanVar.includes('[') && cleanVar.includes(']')) {
-                  transformType = 'array_access';
-                  const arrayMatch = cleanVar.match(/([^[]+)\[(\d+)\]\.?(.*)$/);
-                  if (arrayMatch) {
-                    transformData = {
-                      label: `Array Access`,
-                      arrayField: arrayMatch[1],
-                      index: parseInt(arrayMatch[2]),
-                      subField: arrayMatch[3] || null,
-                      targetField: targetField
-                    };
-                  }
-                } else if (cleanVar.includes('.')) {
-                  transformType = 'nested_access';
-                  transformData = {
-                    label: `Nested Access`,
-                    fieldPath: cleanVar,
-                    targetField: targetField
-                  };
-                }
-
-                nodes.push({
-                  id: transformNodeId,
-                  type: transformType,
-                  position: { x: 400, y: yPosition },
-                  data: transformData
-                });
-
-                // Connect source to transform
-                edges.push({
-                  id: `edge-source-${transformNodeId}`,
-                  source: sourceNodeId,
-                  target: transformNodeId
-                });
-
-                // Connect transform to target
-                edges.push({
-                  id: `edge-${transformNodeId}-target`,
-                  source: transformNodeId,
-                  target: targetNodeId
-                });
-
-                yPosition += spacing;
-              } else {
-                // Simple field mapping - direct connection
-                // Create a mapping node for clarity
-                const mappingNodeId = `mapping-${nodeCounter++}`;
-                
-                nodes.push({
-                  id: mappingNodeId,
-                  type: 'conversionMapping',
-                  position: { x: 400, y: yPosition },
-                  data: {
-                    label: `Map Field`,
-                    mappings: [],
-                    isExpanded: false,
-                    sourceField: cleanVar,
-                    targetField: targetField
-                  }
-                });
-
-                // Connect source to mapping
-                edges.push({
-                  id: `edge-source-${mappingNodeId}`,
-                  source: sourceNodeId,
-                  target: mappingNodeId
-                });
-
-                // Connect mapping to target
-                edges.push({
-                  id: `edge-${mappingNodeId}-target`,
-                  source: mappingNodeId,
-                  target: targetNodeId
-                });
-
-                yPosition += spacing;
-              }
+              // Create direct connection from source field to target field
+              const sourceHandle = cleanVar;
+              const targetHandle = targetField;
+              
+              edges.push({
+                id: `edge-${cleanVar}-${targetField}`,
+                source: sourceNodeId,
+                target: targetNodeId,
+                sourceHandle: sourceHandle,
+                targetHandle: targetHandle
+              });
             });
           }
         } else {
-          // Static value
+          // Static value - create static value node
           const staticNodeId = `static-${nodeCounter++}`;
           
           nodes.push({
@@ -169,18 +182,18 @@ export class TemplateToNodesConverter {
             type: 'staticValue',
             position: { x: 400, y: yPosition },
             data: {
-              label: `Static Value`,
+              label: 'Static Value',
               value: templateValue,
-              valueType: 'string',
-              targetField: targetField
+              valueType: 'string'
             }
           });
 
-          // Connect static to target
+          // Connect static to target field
           edges.push({
-            id: `edge-${staticNodeId}-target`,
+            id: `edge-${staticNodeId}-${targetField}`,
             source: staticNodeId,
-            target: targetNodeId
+            target: targetNodeId,
+            targetHandle: targetField
           });
 
           yPosition += spacing;

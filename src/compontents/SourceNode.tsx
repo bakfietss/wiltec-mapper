@@ -196,7 +196,7 @@ const DataField: React.FC<{
             onClick={() => onFieldToggle(path)}
         >
             <div className="w-3 h-3" />
-            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{fieldName}</span>
+            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">{fieldName}</span>
             <div className="text-xs min-w-[80px] text-center">
                 {value !== undefined && value !== null && value !== '' ? (
                     <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">
@@ -241,7 +241,7 @@ const ManualField: React.FC<{
             onClick={() => onFieldToggle(field.id)}
         >
             <div className="w-3 h-3" />
-            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">{field.name}</span>
+            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">{field.name}</span>
             <div className="text-xs min-w-[80px] text-center">
                 {field.exampleValue !== undefined && field.exampleValue !== null && field.exampleValue !== '' ? (
                     <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">
