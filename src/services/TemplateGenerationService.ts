@@ -96,19 +96,25 @@ export class TemplateGenerationService {
       return outputValue; // Keep static values as-is
     }
 
-    // 3. Smart field mapping based on common patterns
+    // 3. Value-based matching - find source fields with matching values
+    const valueMatch = this.findValueBasedMatch(outputValue, sourceObj);
+    if (valueMatch) {
+      return `{{ ${valueMatch} }}`;
+    }
+
+    // 4. Smart field mapping based on common patterns
     const smartMatch = this.getSmartMapping(outputKey, sourceObj);
     if (smartMatch) {
       return `{{ ${smartMatch} }}`;
     }
 
-    // 4. Nested field search
+    // 5. Nested field search
     const nestedMatch = this.findNestedField(outputKey, sourceObj);
     if (nestedMatch) {
       return `{{ ${nestedMatch} }}`;
     }
 
-    // 5. Create template variable for unmapped fields (user can connect manually)
+    // 6. Create template variable for unmapped fields (user can connect manually)
     // This ensures we always create template variables instead of static values
     return `{{ ${outputKey} }}`;
   }
@@ -331,6 +337,80 @@ export class TemplateGenerationService {
     }
     
     return null;
+  }
+
+  private static findValueBasedMatch(outputValue: any, sourceObj: any, currentPath: string = ''): string | null {
+    // Skip null/undefined values
+    if (outputValue == null) return null;
+    
+    for (const [key, value] of Object.entries(sourceObj)) {
+      const fullPath = currentPath ? `${currentPath}.${key}` : key;
+      
+      // Direct value match
+      if (value === outputValue) {
+        return fullPath;
+      }
+      
+      // Similar value matching for strings and numbers
+      if (typeof value === 'string' && typeof outputValue === 'string') {
+        // Exact match (case insensitive)
+        if (value.toLowerCase() === outputValue.toLowerCase()) {
+          return fullPath;
+        }
+        
+        // Check if one is a subset of the other (like "1143" vs "11143")
+        if (value.includes(outputValue) || outputValue.includes(value)) {
+          return fullPath;
+        }
+        
+        // Date matching - check if they're the same date in different formats
+        if (this.areSimilarDates(value, outputValue)) {
+          return fullPath;
+        }
+      }
+      
+      // Number matching with string conversion
+      if (typeof value === 'number' && typeof outputValue === 'string') {
+        if (value.toString() === outputValue || outputValue.includes(value.toString())) {
+          return fullPath;
+        }
+      }
+      
+      if (typeof value === 'string' && typeof outputValue === 'number') {
+        if (value === outputValue.toString() || value.includes(outputValue.toString())) {
+          return fullPath;
+        }
+      }
+      
+      // Recursive search in nested objects
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const nested = this.findValueBasedMatch(outputValue, value, fullPath);
+        if (nested) return nested;
+      }
+    }
+    
+    return null;
+  }
+
+  private static areSimilarDates(value1: string, value2: string): boolean {
+    try {
+      // Try to parse both as dates
+      const date1 = new Date(value1);
+      const date2 = new Date(value2);
+      
+      // Check if both are valid dates
+      if (isNaN(date1.getTime()) || isNaN(date2.getTime())) {
+        return false;
+      }
+      
+      // Compare just the date part (ignore time)
+      const dateOnly1 = date1.toISOString().split('T')[0];
+      const dateOnly2 = date2.toISOString().split('T')[0];
+      
+      return dateOnly1 === dateOnly2;
+    } catch {
+      return false;
+    }
   }
 
   private static hasNestedField(obj: any, path: string): boolean {
