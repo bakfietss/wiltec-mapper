@@ -313,6 +313,9 @@ Always respond with:
     {
       "type": "delete_edge", 
       "edgeId": "edge-id"
+      // OR use field names to find and delete edges:
+      // "source": "source-node-id", "target": "target-node-id", 
+      // "sourceHandle": "field-name", "targetHandle": "field-name"
     }
   ]
 }
@@ -478,7 +481,21 @@ Be conversational and helpful. Always explain what you understand and what you'l
         break;
 
       case 'delete_edge':
-        setEdges(prev => prev.filter(edge => edge.id !== action.edgeId));
+        if (action.edgeId) {
+          // Direct edge ID deletion
+          setEdges(prev => prev.filter(edge => edge.id !== action.edgeId));
+        } else if (action.source && action.target) {
+          // Find edge by source/target/handles and delete it
+          setEdges(prev => prev.filter(edge => {
+            const matchesSource = edge.source === action.source;
+            const matchesTarget = edge.target === action.target;
+            const matchesSourceHandle = !action.sourceHandle || edge.sourceHandle === action.sourceHandle;
+            const matchesTargetHandle = !action.targetHandle || edge.targetHandle === action.targetHandle;
+            
+            // Return false to remove the edge if all conditions match
+            return !(matchesSource && matchesTarget && matchesSourceHandle && matchesTargetHandle);
+          }));
+        }
         toast.success('Connection deleted successfully!');
         break;
 
