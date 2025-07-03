@@ -49,6 +49,17 @@ const Pipeline = () => {
   const [sampleData, setSampleData] = useState<any[]>([]);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [isManagerExpanded, setIsManagerExpanded] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const fieldStore = useFieldStore();
   const { addSchemaNode, addTransformNode, addMappingNode } = useNodeFactories(nodes, setNodes);
@@ -305,14 +316,17 @@ const Pipeline = () => {
 
   return (
     <ReactFlowProvider>
-      <div className="flex h-screen bg-gray-50">
-        <DataSidebar 
-          side="left"
-          title="Sample Data"
-          data={sampleData}
-          onDataChange={setSampleData}
-        />
-        <div className="flex-1 relative" ref={reactFlowWrapper}>
+      <div className={`flex h-screen bg-gray-50 w-full ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+        {/* Hide sidebar in fullscreen mode */}
+        {!isFullscreen && (
+          <DataSidebar 
+            side="left"
+            title="Sample Data"
+            data={sampleData}
+            onDataChange={setSampleData}
+          />
+        )}
+        <div className="flex-1 relative overflow-hidden" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={enhancedNodes}
             edges={edges}
@@ -338,31 +352,38 @@ const Pipeline = () => {
             <Background />
             
             {/* Custom positioned controls and minimap at bottom left */}
-            <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-3">
+            <div className="absolute bottom-4 left-4 z-50 flex flex-col gap-3 pointer-events-none">
               {/* Controls positioned horizontally above minimap */}
-              <div className="flex justify-start">
+              <div className="flex justify-start pointer-events-auto">
                 <Controls 
                   showZoom={true}
                   showFitView={true}
-                  showInteractive={true}
-                  className="!bg-white/90 !border !border-gray-200 !rounded-lg !shadow-lg !flex !flex-row !p-1"
+                  showInteractive={false}
+                  position="bottom-left"
                   style={{ 
-                    background: 'rgba(255, 255, 255, 0.9)',
+                    position: 'static',
+                    transform: 'none',
+                    background: 'rgba(255, 255, 255, 0.95)',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                    display: 'flex',
+                    flexDirection: 'row'
                   }}
                 />
               </div>
               
               {/* Small square minimap below controls */}
-              <div className="bg-white/90 border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+              <div className="bg-white/95 border border-gray-200 rounded-lg shadow-lg overflow-hidden pointer-events-auto" style={{ width: '120px', height: '120px' }}>
                 <MiniMap 
                   zoomable
                   pannable
-                  className="!w-32 !h-32"
-                  style={{ width: '128px', height: '128px' }}
                   nodeStrokeWidth={2}
+                  style={{ 
+                    width: '120px', 
+                    height: '120px',
+                    background: 'transparent'
+                  }}
                   nodeColor={(node) => {
                     switch (node.type) {
                       case 'source': return '#22c55e';
@@ -373,31 +394,38 @@ const Pipeline = () => {
                       default: return '#6b7280';
                     }
                   }}
+                  nodeClassName={(node) => 'minimap-node'}
+                  maskColor="rgba(255, 255, 255, 0.1)"
                 />
               </div>
             </div>
           </ReactFlow>
           
-          <MappingToolbar 
-            onAddTransform={addTransformNode}
-            onAddMappingNode={addMappingNode}
-            onAddSchemaNode={addSchemaNode}
-            isExpanded={isToolbarExpanded}
-            onToggleExpanded={setIsToolbarExpanded}
-          />
-          
-          <MappingManager 
-            onExportMapping={handleExportMapping}
-            onImportMapping={handleImportMapping}
-            onNewMapping={handleNewMapping}
-            onSaveMapping={handleSaveMapping}
-            onExportDocumentation={handleExportDocumentation}
-            currentMappingName={currentMappingName}
-            isExpanded={isManagerExpanded}
-            onToggleExpanded={setIsManagerExpanded}
-          />
-          
-          <AiChatAssistant />
+          {/* Hide toolbars in fullscreen mode */}
+          {!isFullscreen && (
+            <>
+              <MappingToolbar 
+                onAddTransform={addTransformNode}
+                onAddMappingNode={addMappingNode}
+                onAddSchemaNode={addSchemaNode}
+                isExpanded={isToolbarExpanded}
+                onToggleExpanded={setIsToolbarExpanded}
+              />
+              
+              <MappingManager 
+                onExportMapping={handleExportMapping}
+                onImportMapping={handleImportMapping}
+                onNewMapping={handleNewMapping}
+                onSaveMapping={handleSaveMapping}
+                onExportDocumentation={handleExportDocumentation}
+                currentMappingName={currentMappingName}
+                isExpanded={isManagerExpanded}
+                onToggleExpanded={setIsManagerExpanded}
+              />
+              
+              <AiChatAssistant />
+            </>
+          )}
         </div>
       </div>
     </ReactFlowProvider>
