@@ -15,6 +15,23 @@ export interface AIMappingSuggestion {
     thenValue: string;
     elseValue: string;
   };
+  // Enhanced field matching
+  targetFieldPath?: string;
+  similarity?: number;
+  isArrayField?: boolean;
+  alternatives?: string[];
+}
+
+export interface FieldMatch {
+  fieldId: string;
+  fieldName: string;
+  fieldPath: string;
+  similarity: number;
+  confidence: number;
+  reasoning: string;
+  isArray: boolean;
+  isNested: boolean;
+  level: number;
 }
 
 export interface NodeGenerationResult {
@@ -863,12 +880,156 @@ export class AIMappingService {
     ];
   }
 
+  // Enhanced field matching with smart connection suggestions
+  findBestFieldMatches(searchTerm: string, targetSchema: any[]): FieldMatch[] {
+    const matches: FieldMatch[] = [];
+    
+    // Recursively search through all fields in target schema
+    const searchFields = (fields: any[], path: string = '', level: number = 0) => {
+      fields.forEach(field => {
+        // Skip array containers, only consider actual fields
+        if (field.type !== 'array') {
+          const fullPath = path ? `${path}.${field.name}` : field.name;
+          const similarity = this.calculateSimilarity(searchTerm, field.name);
+          
+          if (similarity > 0.3) { // Only include reasonable matches
+            matches.push({
+              fieldId: field.id,
+              fieldName: field.name,
+              fieldPath: fullPath,
+              similarity: similarity,
+              confidence: similarity * 100,
+              reasoning: this.getMatchReasoning(searchTerm, field.name, similarity),
+              isArray: false,
+              isNested: level > 0,
+              level: level
+            });
+          }
+        }
+        
+        // Recursively search children
+        if (field.children && Array.isArray(field.children)) {
+          const childPath = path ? `${path}.${field.name}` : field.name;
+          searchFields(field.children, childPath, level + 1);
+        }
+      });
+    };
+    
+    searchFields(targetSchema);
+    
+    // Sort by similarity score (highest first)
+    return matches.sort((a, b) => b.similarity - a.similarity);
+  }
+
+  suggestConnection(sourceField: string, targetSchema: any[]): {
+    bestMatch?: FieldMatch;
+    alternatives: FieldMatch[];
+    question?: string;
+  } {
+    const matches = this.findBestFieldMatches(sourceField, targetSchema);
+    
+    if (matches.length === 0) {
+      return {
+        alternatives: [],
+        question: `No similar fields found for "${sourceField}". Which field should it connect to?`
+      };
+    }
+    
+    const bestMatch = matches[0];
+    const alternatives = matches.slice(1, 4); // Top 3 alternatives
+    
+    // If confidence is below threshold, ask for clarification
+    if (bestMatch.confidence < 70) {
+      const altText = alternatives.length > 0 
+        ? ` Other options: ${alternatives.map(alt => `"${alt.fieldName}" (${Math.round(alt.confidence)}% match)`).join(', ')}`
+        : '';
+      
+      return {
+        bestMatch,
+        alternatives,
+        question: `I found "${bestMatch.fieldName}" with ${Math.round(bestMatch.confidence)}% confidence. Is this correct?${altText}`
+      };
+    }
+    
+    return {
+      bestMatch,
+      alternatives
+    };
+  }
+
+  private calculateSimilarity(source: string, target: string): number {
+    const s1 = source.toLowerCase().replace(/[_-]/g, '');
+    const s2 = target.toLowerCase().replace(/[_-]/g, '');
+    
+    // Exact match
+    if (s1 === s2) return 1.0;
+    
+    // Contains match
+    if (s1.includes(s2) || s2.includes(s1)) return 0.8;
+    
+    // Levenshtein distance for fuzzy matching
+    const distance = this.levenshteinDistance(s1, s2);
+    const maxLength = Math.max(s1.length, s2.length);
+    const similarity = (maxLength - distance) / maxLength;
+    
+    // Boost for partial word matches
+    const words1 = s1.split(/[_-\s]/);
+    const words2 = s2.split(/[_-\s]/);
+    const wordMatches = words1.some(w1 => words2.some(w2 => w1.includes(w2) || w2.includes(w1)));
+    
+    return wordMatches ? Math.max(similarity, 0.6) : similarity;
+  }
+
+  private levenshteinDistance(s1: string, s2: string): number {
+    const matrix = Array(s2.length + 1).fill(null).map(() => Array(s1.length + 1).fill(null));
+    
+    for (let i = 0; i <= s1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= s2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= s2.length; j++) {
+      for (let i = 1; i <= s1.length; i++) {
+        const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + indicator
+        );
+      }
+    }
+    
+    return matrix[s2.length][s1.length];
+  }
+
+  private getMatchReasoning(source: string, target: string, similarity: number): string {
+    if (similarity >= 0.9) return `Excellent match for "${source}"`;
+    if (similarity >= 0.7) return `Good match - "${target}" is very similar to "${source}"`;
+    if (similarity >= 0.5) return `Possible match - "${target}" shares characteristics with "${source}"`;
+    return `Weak match - "${target}" has some similarity to "${source}"`;
+  }
+
   private matchField(
     sourceField: string, 
     allSourceFields: string[], 
     targetSchema?: any[]
   ): AIMappingSuggestion | null {
-    // Simple matching logic - can be enhanced with AI
+    // Enhanced matching with target schema analysis
+    if (targetSchema) {
+      const suggestion = this.suggestConnection(sourceField, targetSchema);
+      if (suggestion.bestMatch && suggestion.bestMatch.confidence > 60) {
+        return {
+          sourceField,
+          targetField: suggestion.bestMatch.fieldPath,
+          confidence: suggestion.bestMatch.confidence,
+          reasoning: suggestion.bestMatch.reasoning,
+          nodeType: 'direct',
+          targetFieldPath: suggestion.bestMatch.fieldPath,
+          similarity: suggestion.bestMatch.similarity,
+          alternatives: suggestion.alternatives.map(alt => alt.fieldPath)
+        };
+      }
+    }
+    
+    // Fallback to simple matching logic
     const normalizedSource = sourceField.toLowerCase().replace(/[_-]/g, '');
     
     const commonMappings: Record<string, { target: string; confidence: number; reasoning: string }> = {

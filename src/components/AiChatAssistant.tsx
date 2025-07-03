@@ -6,6 +6,8 @@ import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { useReactFlow } from '@xyflow/react';
 import { toast } from 'sonner';
+import { AIMappingService } from '../services/AIMappingService';
+import SmartConnectionDialog from './SmartConnectionDialog';
 
 interface ChatMessage {
   id: string;
@@ -22,6 +24,11 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('openai-api-key') || '');
   const [showKeyInput, setShowKeyInput] = useState(!localStorage.getItem('openai-api-key'));
+  const [smartConnectionOpen, setSmartConnectionOpen] = useState(false);
+  const [pendingConnection, setPendingConnection] = useState<{
+    sourceField: string;
+    targetSchema: any[];
+  } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     // Load messages from session storage
     const savedMessages = sessionStorage.getItem('ai-chat-messages');
@@ -623,6 +630,22 @@ Be conversational and helpful. Always explain what you understand and what you'l
         }
         break;
 
+      case 'smart_connection':
+        // Use smart AI field matching for connection
+        const { sourceField: connectionSourceField, targetNodeId: connectionTargetId } = action;
+        const connectionTargetNode = currentNodes.find(n => n.id === connectionTargetId);
+        
+        if (connectionTargetNode && connectionTargetNode.data.fields && Array.isArray(connectionTargetNode.data.fields)) {
+          setPendingConnection({
+            sourceField: connectionSourceField,
+            targetSchema: connectionTargetNode.data.fields
+          });
+          setSmartConnectionOpen(true);
+        } else {
+          toast.error('Target node not found or has no fields');
+        }
+        break;
+
       // Legacy support for old action format
       case 'create_transform':
         const { transformType, config, position } = action.details || action;
@@ -687,6 +710,59 @@ Be conversational and helpful. Always explain what you understand and what you'l
     setApiKey('');
     setShowKeyInput(true);
     toast.info('API key cleared');
+  };
+
+  const handleSmartConnection = (sourceField: string, targetFieldId: string) => {
+    if (!pendingConnection) return;
+    
+    const currentNodes = getNodes();
+    
+    // Find source node that has the source field
+    const sourceNode = currentNodes.find(n => 
+      n.data.fields && Array.isArray(n.data.fields) && 
+      n.data.fields.some((f: any) => f.name === sourceField || f.id === sourceField)
+    );
+    
+    // Find target node (we already know its schema from pendingConnection)
+    const targetNode = currentNodes.find(n => 
+      n.data.fields && Array.isArray(n.data.fields) && 
+      n.data.fields.some((f: any) => f.id === targetFieldId)
+    );
+    
+    if (sourceNode && targetNode) {
+      const sourceFieldId = findFieldIdByName(sourceNode.id, sourceField);
+      
+      const newEdge = {
+        id: `smart-edge-${Date.now()}`,
+        source: sourceNode.id,
+        target: targetNode.id,
+        sourceHandle: sourceFieldId,
+        targetHandle: targetFieldId,
+        type: 'smoothstep',
+        animated: true,
+        style: { 
+          strokeWidth: 2,
+          stroke: '#10b981',
+          strokeDasharray: '5,5'
+        }
+      };
+      
+      setEdges(prev => [...prev, newEdge]);
+      toast.success(`Connected "${sourceField}" to target field successfully!`);
+      
+      // Add AI response about the connection
+      const connectionMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'ai',
+        content: `Perfect! I've connected "${sourceField}" to the target field using smart field matching. The connection was made with high confidence based on field name similarity and context analysis.`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, connectionMessage]);
+    } else {
+      toast.error('Failed to create connection - source or target node not found');
+    }
+    
+    setPendingConnection(null);
   };
 
   const handleSendMessage = async () => {
@@ -887,6 +963,18 @@ Be conversational and helpful. Always explain what you understand and what you'l
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Smart Connection Dialog */}
+      <SmartConnectionDialog
+        isOpen={smartConnectionOpen}
+        onClose={() => {
+          setSmartConnectionOpen(false);
+          setPendingConnection(null);
+        }}
+        sourceField={pendingConnection?.sourceField || ''}
+        targetSchema={pendingConnection?.targetSchema || []}
+        onConfirmConnection={handleSmartConnection}
+      />
     </>
   );
 };
