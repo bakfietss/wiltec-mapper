@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Hash, Plus, Trash2 } from 'lucide-react';
-import { ScrollArea } from '../components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 import NodeEditSheet from './NodeEditSheet';
-import { useNodeDataSync } from '../hooks/useNodeDataSync';
+import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 
 interface StaticValue {
   id: string;

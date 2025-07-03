@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useStore, NodeResizer } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Database, Plus, Trash2 } from 'lucide-react';
-import { ScrollArea } from '../components/ui/scroll-area';
-import { useNodeDataSync } from '../hooks/useNodeDataSync';
+import { ScrollArea } from '../ui/scroll-area';
+import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 import NodeEditSheet from './NodeEditSheet';
 import JsonImportDialog from './JsonImportDialog';
 

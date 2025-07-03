@@ -281,12 +281,25 @@ For source and target nodes, fields MUST use this exact SchemaField format:
   "exampleValue": "actual_value_or_empty_string"
 }
 
-## CRITICAL: Handle Connection Rules
+## CRITICAL: Handle Connection Rules & Smart Mapping
 - You can use EITHER field.id OR field.name for handles - the system will auto-resolve field names to IDs
 - For create_edge actions, you can use field names like "Voorvoegsel" or "reference_5" and the system will find the correct field IDs
 - Example: "sourceHandle": "Voorvoegsel", "targetHandle": "reference_5" will work perfectly
 - For conversionMapping nodes: use "input" as targetHandle and "output" as sourceHandle
 - IMPORTANT: For multi-step workflows, use "storeAsId" to store the created node ID, then reference it with "$storedId" syntax
+
+## CRITICAL: Array Field Mapping
+- NEVER map directly to array containers (like "deliveryLines", "items", etc.)
+- ALWAYS map to specific fields within arrays (like "deliveryLineNumber", "itemCode", etc.)
+- When user asks to connect to "deliverylines", they mean fields INSIDE the deliveryLines array
+- Use "smart_connection" action for array field mapping to get user confirmation on the exact field
+
+## Smart Connection Action (REQUIRED for array fields):
+{
+  "type": "smart_connection",
+  "sourceField": "concat_output_field_name",
+  "targetNodeId": "target-node-id"
+}
 
 ## Multi-Step Workflow Example:
 {

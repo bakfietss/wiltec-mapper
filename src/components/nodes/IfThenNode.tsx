@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitBranch } from 'lucide-react';
 import NodeEditSheet from './NodeEditSheet';
-import { useNodeDataSync } from '../hooks/useNodeDataSync';
+import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 
 interface IfThenNodeData {
   label: string;

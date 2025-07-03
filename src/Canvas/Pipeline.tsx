@@ -17,9 +17,9 @@ import '@xyflow/react/dist/style.css';
 
 import { nodeTypes, useNodeFactories } from './NodeFactories';
 import { useFieldStore } from '../store/fieldStore';
-import DataSidebar from '../compontents/DataSidebar';
-import MappingToolbar from '../compontents/MappingToolbar';
-import MappingManager from '../compontents/MappingManager';
+import DataSidebar from '../components/nodes/DataSidebar';
+import MappingToolbar from '../components/nodes/MappingToolbar';
+import MappingManager from '../components/nodes/MappingManager';
 import { downloadBothMappingFiles } from './utils/FileDownloader';
 import { importConfiguration } from './importers/ConfigImporter';
 import { MappingConfiguration } from './types/MappingTypes';

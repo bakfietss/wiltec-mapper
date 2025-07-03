@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import Canvas from '../Canvas/Canvas';
-import DataSidebar from '../compontents/DataSidebar';
+import DataSidebar from '../components/nodes/DataSidebar';
 import NavigationBar from '../components/NavigationBar';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '../components/ui/button';

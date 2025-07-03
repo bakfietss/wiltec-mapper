@@ -2,9 +2,9 @@
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Zap, Edit3 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
 import CoalesceTransformNode from './CoalesceTransformNode';
-import { useNodeDataSync } from '../hooks/useNodeDataSync';
+import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 
 interface TransformConfig {
   operation?: string;
