@@ -250,9 +250,9 @@ For source and target nodes, fields MUST use this exact SchemaField format:
 }
 
 ## CRITICAL: Handle Connection Rules
-- ALL React Flow handles use the field.id as the handle identifier, NOT the field.name
-- When creating edges, ALWAYS use field.id for both sourceHandle and targetHandle
-- Example: If field has id="firstname" and name="voornaam", use "firstname" for the handle
+- You can use EITHER field.id OR field.name for handles - the system will auto-resolve field names to IDs
+- For create_edge actions, you can use field names like "Voorvoegsel" or "reference_5" and the system will find the correct field IDs
+- Example: "sourceHandle": "Voorvoegsel", "targetHandle": "reference_5" will work perfectly
 
 ## Your Capabilities:
 1. **Create any type of node** with proper configuration
@@ -357,6 +357,18 @@ Be conversational and helpful. Always explain what you understand and what you'l
     }
   };
 
+  const findFieldIdByName = (nodeId: string, fieldName: string) => {
+    const nodes = getNodes();
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || !node.data.fields || !Array.isArray(node.data.fields)) return null;
+    
+    const field = (node.data.fields as any[]).find((f: any) => 
+      f.name?.toLowerCase() === fieldName.toLowerCase() ||
+      f.id?.toLowerCase().includes(fieldName.toLowerCase())
+    );
+    return field?.id || null;
+  };
+
   const executeSingleAction = (action: any) => {
     const nodes = getNodes();
     const edges = getEdges();
@@ -402,13 +414,39 @@ Be conversational and helpful. Always explain what you understand and what you'l
           break;
         }
 
-        // For target nodes, make sure we use field.id as the handle, not field.name
+        // Auto-find field IDs if field names were provided instead
+        let sourceHandle = action.sourceHandle;
+        let targetHandle = action.targetHandle;
+        
+        // If the handle looks like a field name rather than ID, try to find the actual field ID
+        if (sourceHandle && !sourceHandle.startsWith('field-') && !sourceHandle.includes('value-')) {
+          const foundSourceId = findFieldIdByName(action.source, sourceHandle);
+          if (foundSourceId) {
+            sourceHandle = foundSourceId;
+            console.log(`Auto-resolved source handle: ${action.sourceHandle} -> ${foundSourceId}`);
+          }
+        }
+        
+        if (targetHandle && !targetHandle.startsWith('field-') && !targetHandle.includes('value-')) {
+          const foundTargetId = findFieldIdByName(action.target, targetHandle);
+          if (foundTargetId) {
+            targetHandle = foundTargetId;
+            console.log(`Auto-resolved target handle: ${action.targetHandle} -> ${foundTargetId}`);
+          }
+        }
+
+        console.log('=== AI EDGE CREATION DEBUG ===');
+        console.log('Source node:', action.source, 'Handle:', sourceHandle);
+        console.log('Target node:', action.target, 'Handle:', targetHandle);
+        console.log('Source node fields:', edgeSourceNode.data.fields);
+        console.log('Target node fields:', edgeTargetNode.data.fields);
+
         const newEdge = {
           id: `ai-edge-${Date.now()}`,
           source: action.source,
           target: action.target,
-          sourceHandle: action.sourceHandle,
-          targetHandle: action.targetHandle,
+          sourceHandle: sourceHandle,
+          targetHandle: targetHandle,
           type: 'smoothstep',
           animated: true,
           style: { 
