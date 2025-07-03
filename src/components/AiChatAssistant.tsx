@@ -373,6 +373,11 @@ Be conversational and helpful. Always explain what you understand and what you'l
             ...action.data
           }
         };
+        
+        console.log('=== AI ASSISTANT NODE CREATION ===');
+        console.log('Creating node:', newNode);
+        console.log('Node fields:', newNode.data.fields);
+        
         setNodes(prev => [...prev, newNode]);
         toast.success(`${action.nodeType} node created successfully!`);
         break;
