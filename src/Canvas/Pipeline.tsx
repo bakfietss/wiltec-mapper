@@ -374,33 +374,33 @@ const Pipeline = () => {
               </div>
               
               {/* Small square minimap below controls */}
-              <div className="bg-background/95 border border-border rounded-lg shadow-lg overflow-hidden pointer-events-auto" style={{ width: '120px', height: '120px' }}>
+              <div className="bg-background border border-border/30 rounded-xl shadow-xl overflow-hidden pointer-events-auto backdrop-blur-sm" style={{ width: '140px', height: '140px' }}>
                 <MiniMap 
                   zoomable
                   pannable
-                  nodeStrokeWidth={1}
-                  nodeStrokeColor="#64748b"
+                  nodeStrokeWidth={0}
                   style={{ 
-                    width: '120px', 
-                    height: '120px',
-                    background: 'hsl(var(--muted))'
+                    width: '140px', 
+                    height: '140px',
+                    background: 'hsl(var(--background))',
+                    borderRadius: '12px'
                   }}
                   nodeColor={(node) => {
                     switch (node.type) {
-                      case 'source': return 'hsl(142, 76%, 36%)';
+                      case 'source': return 'hsl(142, 76%, 50%)';
                       case 'target': return 'hsl(0, 84%, 60%)';
                       case 'transform': return 'hsl(217, 91%, 60%)';
-                      case 'concat': return 'hsl(38, 92%, 50%)';
-                      case 'conversionMapping': return 'hsl(262, 83%, 58%)';
-                      case 'coalesce': return 'hsl(280, 87%, 65%)';
-                      case 'splitter': return 'hsl(340, 82%, 52%)';
-                      case 'ifThen': return 'hsl(291, 64%, 42%)';
-                      case 'staticValue': return 'hsl(199, 89%, 48%)';
-                      default: return 'hsl(215, 16%, 47%)';
+                      case 'concat': return 'hsl(38, 92%, 60%)';
+                      case 'conversionMapping': return 'hsl(262, 83%, 65%)';
+                      case 'coalesce': return 'hsl(280, 87%, 70%)';
+                      case 'splitter': return 'hsl(340, 82%, 60%)';
+                      case 'ifThen': return 'hsl(291, 64%, 50%)';
+                      case 'staticValue': return 'hsl(199, 89%, 55%)';
+                      default: return 'hsl(220, 13%, 69%)';
                     }
                   }}
-                  nodeClassName="rounded-sm"
-                  maskColor="hsl(var(--background) / 0.8)"
+                  nodeClassName="rounded-md"
+                  maskColor="hsl(var(--muted) / 0.2)"
                 />
               </div>
             </div>

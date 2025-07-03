@@ -63,7 +63,7 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-gray-100 relative overflow-hidden">
+    <div className="h-screen relative overflow-hidden">
       <NavigationBar />
       
       {/* Template Conversion Notification */}
