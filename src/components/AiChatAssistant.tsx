@@ -417,10 +417,18 @@ Be conversational and helpful. Always explain what you understand and what you'l
         const { fields } = action.details || action;
         const sourceNode = nodes.find(n => n.type === 'source');
         if (sourceNode && Array.isArray(fields)) {
+          // Convert legacy field format to SchemaField format if needed
+          const schemaFields = fields.map((field: any, index: number) => ({
+            id: field.id || `field-${Date.now()}-${index}`,
+            name: field.name || 'New Field',
+            type: field.type || 'string',
+            exampleValue: field.value || field.exampleValue || ''
+          }));
+          
           const currentFields = Array.isArray(sourceNode.data.fields) ? sourceNode.data.fields : [];
           setNodes(prev => prev.map(node => 
             node.id === sourceNode.id 
-              ? { ...node, data: { ...node.data, fields: [...currentFields, ...fields] }}
+              ? { ...node, data: { ...node.data, fields: [...currentFields, ...schemaFields] }}
               : node
           ));
           toast.success('Source node updated successfully!');
