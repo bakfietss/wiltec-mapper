@@ -3,6 +3,7 @@ import {
   ReactFlow,
   Controls,
   Background,
+  MiniMap,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -320,7 +321,7 @@ const Pipeline = () => {
             onConnect={onConnect}
             nodeTypes={nodeTypes}
             fitView
-            className="bg-gray-50"
+            className="bg-gray-50 w-full h-full"
             onInit={handleReactFlowInit}
             onDrop={onDrop}
             onDragOver={onDragOver}
@@ -335,7 +336,39 @@ const Pipeline = () => {
             }}
           >
             <Background />
-            <Controls />
+            
+            {/* Custom positioned controls and minimap at bottom left */}
+            <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+              {/* Controls positioned horizontally above minimap */}
+              <div className="flex">
+                <Controls 
+                  showZoom={true}
+                  showFitView={true}
+                  showInteractive={true}
+                  className="bg-white/90 border border-gray-200 rounded-lg shadow-lg"
+                />
+              </div>
+              
+              {/* Minimap below controls */}
+              <div className="bg-white/90 border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                <MiniMap 
+                  zoomable
+                  pannable
+                  className="w-48 h-32"
+                  nodeStrokeWidth={3}
+                  nodeColor={(node) => {
+                    switch (node.type) {
+                      case 'source': return '#22c55e';
+                      case 'target': return '#ef4444';
+                      case 'transform': return '#3b82f6';
+                      case 'concat': return '#f59e0b';
+                      case 'conversionMapping': return '#8b5cf6';
+                      default: return '#6b7280';
+                    }
+                  }}
+                />
+              </div>
+            </div>
           </ReactFlow>
           
           <MappingToolbar 
