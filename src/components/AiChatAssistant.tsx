@@ -560,19 +560,67 @@ Be conversational and helpful. Always explain what you understand and what you'l
         if (action.edgeId) {
           // Direct edge ID deletion
           setEdges(prev => prev.filter(edge => edge.id !== action.edgeId));
+          toast.success('Connection deleted successfully!');
         } else if (action.source && action.target) {
           // Find edge by source/target/handles and delete it
-          setEdges(prev => prev.filter(edge => {
+          const currentEdges = getEdges();
+          
+          // Resolve field names to actual handles for both source and target
+          const resolvedSourceHandle = findFieldIdByName(action.source, action.sourceHandle || '');
+          const resolvedTargetHandle = findFieldIdByName(action.target, action.targetHandle || '');
+          
+          console.log('=== AI EDGE DELETION DEBUG ===');
+          console.log('Looking for edge to delete:', {
+            source: action.source,
+            target: action.target,
+            originalSourceHandle: action.sourceHandle,
+            originalTargetHandle: action.targetHandle,
+            resolvedSourceHandle,
+            resolvedTargetHandle
+          });
+          console.log('Available edges:', currentEdges.map(e => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: e.sourceHandle,
+            targetHandle: e.targetHandle
+          })));
+          
+          const edgesToDelete = currentEdges.filter(edge => {
             const matchesSource = edge.source === action.source;
             const matchesTarget = edge.target === action.target;
-            const matchesSourceHandle = !action.sourceHandle || edge.sourceHandle === action.sourceHandle;
-            const matchesTargetHandle = !action.targetHandle || edge.targetHandle === action.targetHandle;
             
-            // Return false to remove the edge if all conditions match
-            return !(matchesSource && matchesTarget && matchesSourceHandle && matchesTargetHandle);
-          }));
+            // Try multiple handle matching strategies
+            let matchesSourceHandle = true;
+            let matchesTargetHandle = true;
+            
+            if (action.sourceHandle) {
+              matchesSourceHandle = edge.sourceHandle === action.sourceHandle || 
+                                  edge.sourceHandle === resolvedSourceHandle ||
+                                  edge.sourceHandle?.toLowerCase() === action.sourceHandle.toLowerCase();
+            }
+            
+            if (action.targetHandle) {
+              matchesTargetHandle = edge.targetHandle === action.targetHandle || 
+                                  edge.targetHandle === resolvedTargetHandle ||
+                                  edge.targetHandle?.toLowerCase() === action.targetHandle.toLowerCase();
+            }
+            
+            return matchesSource && matchesTarget && matchesSourceHandle && matchesTargetHandle;
+          });
+          
+          console.log('Edges to delete:', edgesToDelete);
+          
+          if (edgesToDelete.length > 0) {
+            setEdges(prev => prev.filter(edge => 
+              !edgesToDelete.some(deleteEdge => deleteEdge.id === edge.id)
+            ));
+            toast.success(`${edgesToDelete.length} connection(s) deleted successfully!`);
+          } else {
+            toast.error('No matching connection found to delete');
+            console.error('No matching edge found for deletion criteria');
+          }
         }
-        toast.success('Connection deleted successfully!');
         break;
 
       // Legacy support for old action format
