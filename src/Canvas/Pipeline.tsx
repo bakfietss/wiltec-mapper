@@ -316,7 +316,7 @@ const Pipeline = () => {
 
   return (
     <ReactFlowProvider>
-      <div className={`flex h-screen bg-gray-50 w-full ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+      <div className={`h-screen w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : 'flex bg-gray-50'}`}>
         {/* Hide sidebar in fullscreen mode */}
         {!isFullscreen && (
           <DataSidebar 
@@ -326,7 +326,7 @@ const Pipeline = () => {
             onDataChange={setSampleData}
           />
         )}
-        <div className="flex-1 relative overflow-hidden" ref={reactFlowWrapper}>
+        <div className={`${isFullscreen ? 'w-full h-full' : 'flex-1'} relative overflow-hidden`} ref={reactFlowWrapper}>
           <ReactFlow
             nodes={enhancedNodes}
             edges={edges}
@@ -374,28 +374,33 @@ const Pipeline = () => {
               </div>
               
               {/* Small square minimap below controls */}
-              <div className="bg-white/95 border border-gray-200 rounded-lg shadow-lg overflow-hidden pointer-events-auto" style={{ width: '120px', height: '120px' }}>
+              <div className="bg-background/95 border border-border rounded-lg shadow-lg overflow-hidden pointer-events-auto" style={{ width: '120px', height: '120px' }}>
                 <MiniMap 
                   zoomable
                   pannable
-                  nodeStrokeWidth={2}
+                  nodeStrokeWidth={1}
+                  nodeStrokeColor="#64748b"
                   style={{ 
                     width: '120px', 
                     height: '120px',
-                    background: 'transparent'
+                    background: 'hsl(var(--muted))'
                   }}
                   nodeColor={(node) => {
                     switch (node.type) {
-                      case 'source': return '#22c55e';
-                      case 'target': return '#ef4444';
-                      case 'transform': return '#3b82f6';
-                      case 'concat': return '#f59e0b';
-                      case 'conversionMapping': return '#8b5cf6';
-                      default: return '#6b7280';
+                      case 'source': return 'hsl(142, 76%, 36%)';
+                      case 'target': return 'hsl(0, 84%, 60%)';
+                      case 'transform': return 'hsl(217, 91%, 60%)';
+                      case 'concat': return 'hsl(38, 92%, 50%)';
+                      case 'conversionMapping': return 'hsl(262, 83%, 58%)';
+                      case 'coalesce': return 'hsl(280, 87%, 65%)';
+                      case 'splitter': return 'hsl(340, 82%, 52%)';
+                      case 'ifThen': return 'hsl(291, 64%, 42%)';
+                      case 'staticValue': return 'hsl(199, 89%, 48%)';
+                      default: return 'hsl(215, 16%, 47%)';
                     }
                   }}
-                  nodeClassName={(node) => 'minimap-node'}
-                  maskColor="rgba(255, 255, 255, 0.1)"
+                  nodeClassName="rounded-sm"
+                  maskColor="hsl(var(--background) / 0.8)"
                 />
               </div>
             </div>
