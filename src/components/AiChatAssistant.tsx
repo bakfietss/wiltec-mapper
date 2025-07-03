@@ -223,30 +223,68 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
     const nodes = getNodes();
     const edges = getEdges();
     
-    const systemPrompt = `You are an AI assistant for a data mapping application. You can help users:
+    const systemPrompt = `You are an expert AI assistant for a visual data mapping application. You understand how to create and modify mapping workflows.
 
-1. Create transform nodes (string operations, concat, split, etc.)
-2. Modify source/target nodes (add/remove fields)
-3. Create connections between nodes
-4. Analyze and optimize mappings
+## Available Node Types:
+- **source**: Input data nodes with fields (like database tables)
+- **target**: Output data nodes with fields (where data maps to)
+- **transform**: String transformations (uppercase, lowercase, substring, trim, prefix, suffix)
+- **concat**: Combines multiple fields with a delimiter
+- **splitter**: Splits text into multiple parts
+- **coalesce**: Returns first non-null value from multiple inputs
+- **ifthen**: Conditional logic node
+- **static**: Static value nodes
+- **mapping**: Direct field-to-field mappings
 
-Current canvas state:
-- Nodes: ${JSON.stringify(nodes.map(n => ({ id: n.id, type: n.type, data: n.data })))}
-- Edges: ${JSON.stringify(edges.map(e => ({ source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })))}
+## Current Canvas State:
+- Nodes: ${JSON.stringify(nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })), null, 2)}
+- Edges: ${JSON.stringify(edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })), null, 2)}
 
-When the user asks you to perform actions, respond with:
-1. A natural language explanation of what you're doing
-2. JSON instructions for the actions to perform (if applicable)
+## Your Capabilities:
+1. **Create any type of node** with proper configuration
+2. **Modify existing nodes** (add/remove fields, change properties)
+3. **Create connections** between nodes
+4. **Delete nodes or edges**
+5. **Analyze and optimize** mapping workflows
 
-For actions, use this format:
+## Response Format:
+Always respond with:
+1. Natural language explanation of what you're doing
+2. JSON action instructions (if performing actions)
+
+## Action Format:
 {
-  "action": "create_transform" | "modify_source" | "modify_target" | "create_connection" | "analysis",
-  "details": {
-    // specific action details
-  }
+  "actions": [
+    {
+      "type": "create_node",
+      "nodeType": "transform|concat|source|target|etc",
+      "position": { "x": 400, "y": 200 },
+      "data": { /* node-specific data */ }
+    },
+    {
+      "type": "modify_node", 
+      "nodeId": "existing-node-id",
+      "updates": { /* properties to update */ }
+    },
+    {
+      "type": "create_edge",
+      "source": "node-id",
+      "target": "node-id", 
+      "sourceHandle": "field-name",
+      "targetHandle": "field-name"
+    },
+    {
+      "type": "delete_node",
+      "nodeId": "node-id"
+    },
+    {
+      "type": "delete_edge", 
+      "edgeId": "edge-id"
+    }
+  ]
 }
 
-Be conversational and helpful. Explain what you understand and what you'll do.`;
+Be conversational and helpful. Always explain what you understand and what you'll do before taking actions.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -281,43 +319,116 @@ Be conversational and helpful. Explain what you understand and what you'll do.`;
       if (jsonMatch) {
         const actionData = JSON.parse(jsonMatch[0]);
         
-        if (actionData.action === 'create_transform') {
-          // Create transform node based on AI instructions
-          const { transformType, config, position } = actionData.details;
-          const nodeId = `ai-transform-${Date.now()}`;
-          
-          const newNode = {
-            id: nodeId,
-            type: transformType === 'concat' ? 'concat' : 'transform',
-            position: position || { x: 400, y: Math.max(...getNodes().map(n => n.position.y), 100) + 150 },
-            data: {
-              label: 'AI Generated Transform',
-              transformType: transformType,
-              ...config
-            }
-          };
-          
-          setNodes(prev => [...prev, newNode]);
-          toast.success('Transform node created successfully!');
-        } else if (actionData.action === 'modify_source') {
-          // Modify source node fields
-          const { fields } = actionData.details;
-          const sourceNode = getNodes().find(n => n.type === 'source');
-          
-          if (sourceNode && Array.isArray(fields)) {
-            const currentFields = Array.isArray(sourceNode.data.fields) ? sourceNode.data.fields : [];
-            setNodes(prev => prev.map(node => 
-              node.id === sourceNode.id 
-                ? { ...node, data: { ...node.data, fields: [...currentFields, ...fields] }}
-                : node
-            ));
-            toast.success('Source node updated successfully!');
-          }
+        if (actionData.actions && Array.isArray(actionData.actions)) {
+          // Process multiple actions
+          actionData.actions.forEach((action: any) => {
+            executeSingleAction(action);
+          });
+        } else if (actionData.action) {
+          // Legacy single action format
+          executeSingleAction(actionData);
         }
-        // Add more action types as needed
       }
     } catch (error) {
-      console.log('No executable actions found in AI response');
+      console.log('No executable actions found in AI response', error);
+    }
+  };
+
+  const executeSingleAction = (action: any) => {
+    const nodes = getNodes();
+    const edges = getEdges();
+    
+    switch (action.type || action.action) {
+      case 'create_node':
+        const nodeId = `ai-${action.nodeType}-${Date.now()}`;
+        const newNode = {
+          id: nodeId,
+          type: action.nodeType,
+          position: action.position || { x: 400, y: Math.max(...nodes.map(n => n.position.y), 100) + 150 },
+          data: {
+            label: `AI Generated ${action.nodeType}`,
+            ...action.data
+          }
+        };
+        setNodes(prev => [...prev, newNode]);
+        toast.success(`${action.nodeType} node created successfully!`);
+        break;
+
+      case 'modify_node':
+        setNodes(prev => prev.map(node => 
+          node.id === action.nodeId 
+            ? { ...node, data: { ...node.data, ...action.updates } }
+            : node
+        ));
+        toast.success('Node updated successfully!');
+        break;
+
+      case 'create_edge':
+        const newEdge = {
+          id: `ai-edge-${Date.now()}`,
+          source: action.source,
+          target: action.target,
+          sourceHandle: action.sourceHandle,
+          targetHandle: action.targetHandle,
+          type: 'smoothstep',
+          animated: true,
+          style: { 
+            strokeWidth: 2,
+            stroke: '#3b82f6',
+            strokeDasharray: '5,5'
+          }
+        };
+        setEdges(prev => [...prev, newEdge]);
+        toast.success('Connection created successfully!');
+        break;
+
+      case 'delete_node':
+        setNodes(prev => prev.filter(node => node.id !== action.nodeId));
+        setEdges(prev => prev.filter(edge => 
+          edge.source !== action.nodeId && edge.target !== action.nodeId
+        ));
+        toast.success('Node deleted successfully!');
+        break;
+
+      case 'delete_edge':
+        setEdges(prev => prev.filter(edge => edge.id !== action.edgeId));
+        toast.success('Connection deleted successfully!');
+        break;
+
+      // Legacy support for old action format
+      case 'create_transform':
+        const { transformType, config, position } = action.details || action;
+        const transformNodeId = `ai-transform-${Date.now()}`;
+        const transformNode = {
+          id: transformNodeId,
+          type: transformType === 'concat' ? 'concat' : 'transform',
+          position: position || { x: 400, y: Math.max(...nodes.map(n => n.position.y), 100) + 150 },
+          data: {
+            label: 'AI Generated Transform',
+            transformType: transformType,
+            ...config
+          }
+        };
+        setNodes(prev => [...prev, transformNode]);
+        toast.success('Transform node created successfully!');
+        break;
+
+      case 'modify_source':
+        const { fields } = action.details || action;
+        const sourceNode = nodes.find(n => n.type === 'source');
+        if (sourceNode && Array.isArray(fields)) {
+          const currentFields = Array.isArray(sourceNode.data.fields) ? sourceNode.data.fields : [];
+          setNodes(prev => prev.map(node => 
+            node.id === sourceNode.id 
+              ? { ...node, data: { ...node.data, fields: [...currentFields, ...fields] }}
+              : node
+          ));
+          toast.success('Source node updated successfully!');
+        }
+        break;
+
+      default:
+        console.log('Unknown action type:', action.type || action.action);
     }
   };
 
