@@ -42,14 +42,46 @@ export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[])
 };
 
 export const importSourceNode = (config: SourceNodeConfig): Node => {
+  // Extract all unique field names from sample data to create complete schema
+  const sampleData = config.sampleData || [];
+  const allFieldNames = new Set<string>();
+  
+  // Add schema fields
+  config.schema.fields.forEach(field => allFieldNames.add(field.name));
+  
+  // Add fields from sample data
+  sampleData.forEach(item => {
+    Object.keys(item).forEach(key => allFieldNames.add(key));
+  });
+  
+  // Create complete field list with proper types and IDs
+  const completeFields = Array.from(allFieldNames).map(fieldName => {
+    // First check if field exists in schema
+    const existingField = config.schema.fields.find(f => f.name === fieldName);
+    if (existingField) {
+      return existingField;
+    }
+    
+    // Otherwise create a new field based on sample data
+    const sampleValue = sampleData.find(item => item[fieldName] !== undefined)?.[fieldName];
+    const fieldType = typeof sampleValue === 'number' ? 'number' : 'string';
+    
+    return {
+      id: `field-${Date.now()}-${fieldName}`,
+      name: fieldName,
+      type: fieldType,
+      exampleValue: sampleValue?.toString() || ''
+    };
+  });
+  
   return {
     id: config.id,
     type: 'source',
     position: config.position,
     data: {
       label: config.label,
-      fields: config.schema.fields,
-      data: config.sampleData || []
+      fields: completeFields,
+      data: sampleData
     }
   };
 };

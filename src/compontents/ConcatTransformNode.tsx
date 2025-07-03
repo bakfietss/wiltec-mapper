@@ -99,22 +99,7 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
   const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
 
   return (
-    <div className="relative border-2 rounded-lg shadow-lg min-w-64 max-w-80 border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50">
-      {/* Dynamic input handles for each rule */}
-      {sortedRules.map((rule, index) => (
-        <Handle
-          key={rule.id}
-          id={rule.id}
-          type="target"
-          position={Position.Left}
-          className="w-3 h-3 bg-orange-500 border-2 border-white hover:bg-orange-600 shadow-sm"
-          style={{ 
-            left: '-6px', 
-            top: `${60 + (index * 32)}px`
-          }}
-        />
-      ))}
-      
+    <div className="relative border-2 rounded-lg shadow-sm min-w-64 max-w-80 border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50">
       <div className="p-4">
         <div className="flex items-center gap-3 mb-3">
           <div className="p-2 bg-white rounded-lg shadow-sm border border-orange-200">
@@ -229,10 +214,22 @@ const ConcatTransformNode: React.FC<{ data: ConcatTransformNodeData; id: string 
           </Sheet>
         </div>
         
-        {/* Show field rules in the node */}
+        {/* Show field rules in the node with handles */}
         <div className="space-y-1 mb-3">
           {sortedRules.map((rule, index) => (
-            <div key={rule.id} className="flex items-center gap-2 text-xs">
+            <div key={rule.id} className="relative flex items-center gap-2 text-xs">
+              <Handle
+                key={rule.id}
+                id={rule.id}
+                type="target"
+                position={Position.Left}
+                className="w-3 h-3 bg-orange-500 border-2 border-white hover:bg-orange-600 shadow-sm absolute"
+                style={{ 
+                  left: '-20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)'
+                }}
+              />
               <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
               <span className="text-gray-700 truncate flex-1">
                 {index + 1}. {rule.sourceField}
