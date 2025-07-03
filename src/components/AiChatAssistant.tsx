@@ -22,16 +22,30 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('openai-api-key') || '');
   const [showKeyInput, setShowKeyInput] = useState(!localStorage.getItem('openai-api-key'));
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // Load messages from session storage
+    const savedMessages = sessionStorage.getItem('ai-chat-messages');
+    if (savedMessages) {
+      try {
+        return JSON.parse(savedMessages).map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+      }
+    }
+    
+    // Default welcome message
+    return [{
       id: '1',
       role: 'ai',
       content: !localStorage.getItem('openai-api-key') 
         ? "Hi! I'm your AI mapping assistant. First, please enter your OpenAI API key to get started. I can then help you with any mapping task - from creating transforms to modifying source nodes and much more!"
         : "Hi! I'm your AI mapping assistant. I can help you with any mapping task:\n\n• Add or modify fields in source/target nodes\n• Create any type of transform\n• Build complex mapping workflows\n• Analyze and optimize your mappings\n\nJust describe what you need in natural language!",
       timestamp: new Date()
-    }
-  ]);
+    }];
+  });
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,6 +57,11 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
 
   useEffect(() => {
     scrollToBottom();
+  }, [messages]);
+
+  // Save messages to session storage whenever they change
+  useEffect(() => {
+    sessionStorage.setItem('ai-chat-messages', JSON.stringify(messages));
   }, [messages]);
 
   const parseUserRequest = (request: string) => {
@@ -223,7 +242,13 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
     const nodes = getNodes();
     const edges = getEdges();
     
+    // Include recent conversation context for better AI understanding
+    const recentMessages = messages.slice(-4).map(msg => `${msg.role}: ${msg.content}`).join('\n\n');
+    
     const systemPrompt = `You are an expert AI assistant for a visual data mapping application. You understand how to create and modify mapping workflows.
+
+## Recent Conversation Context:
+${recentMessages}
 
 ## Available Node Types:
 - **source**: Input data nodes with fields (like database tables)
