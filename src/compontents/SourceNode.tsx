@@ -281,6 +281,16 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
 
     const allEdges = useStore((store) => store.edges);
 
+    // Sync incoming data changes from React Flow to local state
+    useEffect(() => {
+        if (data.fields && JSON.stringify(data.fields) !== JSON.stringify(fields)) {
+            setFields(data.fields);
+        }
+        if (data.data && JSON.stringify(data.data) !== JSON.stringify(nodeData)) {
+            setNodeData(data.data);
+        }
+    }, [data.fields, data.data]);
+
     useEffect(() => {
         const connectedPaths = new Set<string>();
 
