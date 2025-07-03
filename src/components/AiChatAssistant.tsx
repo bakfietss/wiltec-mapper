@@ -421,25 +421,51 @@ Be conversational and helpful. Always explain what you understand and what you'l
   };
 
   const executeAIAction = (response: string) => {
+    console.log('=== EXECUTING AI ACTIONS ===');
+    console.log('AI Response:', response);
+    
     try {
-      // Try to extract JSON instructions from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const actionData = JSON.parse(jsonMatch[0]);
+      // Try to extract JSON from markdown code blocks first
+      const codeBlockMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+      let jsonString = '';
+      
+      if (codeBlockMatch) {
+        jsonString = codeBlockMatch[1].trim();
+        console.log('Found JSON in code block:', jsonString);
+      } else {
+        // Fallback: Try to find JSON object in the response
+        const jsonMatch = response.match(/\{(?:[^{}]|{[^{}]*})*\}/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[0];
+          console.log('Found JSON object:', jsonString);
+        }
+      }
+      
+      if (jsonString) {
+        const actionData = JSON.parse(jsonString);
+        console.log('Parsed action data:', actionData);
         
         if (actionData.actions && Array.isArray(actionData.actions)) {
+          console.log(`Executing ${actionData.actions.length} actions...`);
           // Process multiple actions sequentially to handle dependencies
           actionData.actions.forEach((action: any, index: number) => {
+            console.log(`Scheduling action ${index + 1}:`, action);
             // Small delay for each action to ensure proper state updates
             setTimeout(() => executeSingleAction(action), index * 100);
           });
         } else if (actionData.action) {
+          console.log('Executing single legacy action:', actionData);
           // Legacy single action format
           executeSingleAction(actionData);
+        } else {
+          console.log('No valid actions found in parsed data');
         }
+      } else {
+        console.log('No JSON found in AI response');
       }
     } catch (error) {
-      console.log('No executable actions found in AI response', error);
+      console.error('Error parsing/executing AI actions:', error);
+      console.log('Response content for debugging:', response);
     }
   };
 
