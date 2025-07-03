@@ -355,11 +355,24 @@ Be conversational and helpful. Always explain what you understand and what you'l
         break;
 
       case 'modify_node':
-        setNodes(prev => prev.map(node => 
-          node.id === action.nodeId 
-            ? { ...node, data: { ...node.data, ...action.updates } }
-            : node
-        ));
+        setNodes(prev => prev.map(node => {
+          if (node.id === action.nodeId) {
+            const updates = { ...action.updates };
+            
+            // Convert legacy fields format to SchemaField format for source nodes
+            if (node.type === 'source' && updates.fields && Array.isArray(updates.fields)) {
+              updates.fields = updates.fields.map((field: any, index: number) => ({
+                id: field.id || `field-${Date.now()}-${index}`,
+                name: field.name,
+                type: field.type || 'string',
+                exampleValue: field.value || field.exampleValue || ''
+              }));
+            }
+            
+            return { ...node, data: { ...node.data, ...updates } };
+          }
+          return node;
+        }));
         toast.success('Node updated successfully!');
         break;
 
