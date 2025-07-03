@@ -249,6 +249,11 @@ For source and target nodes, fields MUST use this exact SchemaField format:
   "exampleValue": "actual_value_or_empty_string"
 }
 
+## CRITICAL: Handle Connection Rules
+- ALL React Flow handles use the field.id as the handle identifier, NOT the field.name
+- When creating edges, ALWAYS use field.id for both sourceHandle and targetHandle
+- Example: If field has id="firstname" and name="voornaam", use "firstname" for the handle
+
 ## Your Capabilities:
 1. **Create any type of node** with proper configuration
 2. **Modify existing nodes** (add/remove fields, change properties)
