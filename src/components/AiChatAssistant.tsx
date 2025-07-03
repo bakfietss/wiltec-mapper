@@ -229,12 +229,12 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
 - **source**: Input data nodes with fields (like database tables)
 - **target**: Output data nodes with fields (where data maps to)
 - **transform**: String transformations (uppercase, lowercase, substring, trim, prefix, suffix)
-- **concat**: Combines multiple fields with a delimiter
-- **splitter**: Splits text into multiple parts
-- **coalesce**: Returns first non-null value from multiple inputs
-- **ifthen**: Conditional logic node
-- **static**: Static value nodes
-- **mapping**: Direct field-to-field mappings
+- **concatTransform**: Combines multiple fields with a delimiter
+- **splitterTransform**: Splits text into multiple parts
+- **coalesceTransform**: Returns first non-null value from multiple inputs
+- **ifThen**: Conditional logic node
+- **staticValue**: Static value nodes
+- **conversionMapping**: Field value mapping/translation tables (e.g., "van" → "naar")
 
 ## Current Canvas State:
 - Nodes: ${JSON.stringify(nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })), null, 2)}
@@ -253,6 +253,8 @@ For source and target nodes, fields MUST use this exact SchemaField format:
 - You can use EITHER field.id OR field.name for handles - the system will auto-resolve field names to IDs
 - For create_edge actions, you can use field names like "Voorvoegsel" or "reference_5" and the system will find the correct field IDs
 - Example: "sourceHandle": "Voorvoegsel", "targetHandle": "reference_5" will work perfectly
+- For conversionMapping nodes: use "input" as targetHandle and "output" as sourceHandle
+- IMPORTANT: When creating multi-step workflows (source → conversionMapping → target), you need the actual node ID of the created conversionMapping node for the second edge
 
 ## Your Capabilities:
 1. **Create any type of node** with proper configuration
@@ -271,9 +273,17 @@ Always respond with:
   "actions": [
     {
       "type": "create_node",
-      "nodeType": "transform|concat|source|target|etc",
+      "nodeType": "transform|concatTransform|conversionMapping|source|target|etc",
       "position": { "x": 400, "y": 200 },
-      "data": { /* node-specific data */ }
+      "data": { 
+        // For conversionMapping nodes:
+        "label": "Field Mapping",
+        "mappings": [
+          { "id": "map-1", "from": "van", "to": "naar" },
+          { "id": "map-2", "from": "toe", "to": "naartoe" }
+        ],
+        "isExpanded": true
+      }
     },
     {
       "type": "modify_node", 
