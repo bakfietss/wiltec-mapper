@@ -338,24 +338,31 @@ const Pipeline = () => {
             <Background />
             
             {/* Custom positioned controls and minimap at bottom left */}
-            <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+            <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-3">
               {/* Controls positioned horizontally above minimap */}
-              <div className="flex">
+              <div className="flex justify-start">
                 <Controls 
                   showZoom={true}
                   showFitView={true}
                   showInteractive={true}
-                  className="bg-white/90 border border-gray-200 rounded-lg shadow-lg"
+                  className="!bg-white/90 !border !border-gray-200 !rounded-lg !shadow-lg !flex !flex-row !p-1"
+                  style={{ 
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'
+                  }}
                 />
               </div>
               
-              {/* Minimap below controls */}
+              {/* Small square minimap below controls */}
               <div className="bg-white/90 border border-gray-200 rounded-lg shadow-lg overflow-hidden">
                 <MiniMap 
                   zoomable
                   pannable
-                  className="w-48 h-32"
-                  nodeStrokeWidth={3}
+                  className="!w-32 !h-32"
+                  style={{ width: '128px', height: '128px' }}
+                  nodeStrokeWidth={2}
                   nodeColor={(node) => {
                     switch (node.type) {
                       case 'source': return '#22c55e';
