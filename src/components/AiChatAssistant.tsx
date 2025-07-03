@@ -279,7 +279,34 @@ For source and target nodes, fields MUST use this exact SchemaField format:
 - For create_edge actions, you can use field names like "Voorvoegsel" or "reference_5" and the system will find the correct field IDs
 - Example: "sourceHandle": "Voorvoegsel", "targetHandle": "reference_5" will work perfectly
 - For conversionMapping nodes: use "input" as targetHandle and "output" as sourceHandle
-- IMPORTANT: When creating multi-step workflows (source → conversionMapping → target), you need the actual node ID of the created conversionMapping node for the second edge
+- IMPORTANT: For multi-step workflows, use "storeAsId" to store the created node ID, then reference it with "$storedId" syntax
+
+## Multi-Step Workflow Example:
+{
+  "actions": [
+    {
+      "type": "create_node",
+      "nodeType": "conversionMapping",
+      "position": { "x": 100, "y": 200 },
+      "storeAsId": "newMappingNode",
+      "data": { /* node data */ }
+    },
+    {
+      "type": "create_edge",
+      "source": "source-node-id",
+      "target": "$newMappingNode",
+      "sourceHandle": "Voorvoegsel",
+      "targetHandle": "input"
+    },
+    {
+      "type": "create_edge", 
+      "source": "$newMappingNode",
+      "target": "target-node-id",
+      "sourceHandle": "output",
+      "targetHandle": "reference_4"
+    }
+  ]
+}
 
 ## Your Capabilities:
 1. **Create any type of node** with proper configuration
@@ -381,9 +408,10 @@ Be conversational and helpful. Always explain what you understand and what you'l
         const actionData = JSON.parse(jsonMatch[0]);
         
         if (actionData.actions && Array.isArray(actionData.actions)) {
-          // Process multiple actions
-          actionData.actions.forEach((action: any) => {
-            executeSingleAction(action);
+          // Process multiple actions sequentially to handle dependencies
+          actionData.actions.forEach((action: any, index: number) => {
+            // Small delay for each action to ensure proper state updates
+            setTimeout(() => executeSingleAction(action), index * 100);
           });
         } else if (actionData.action) {
           // Legacy single action format
@@ -398,13 +426,25 @@ Be conversational and helpful. Always explain what you understand and what you'l
   const findFieldIdByName = (nodeId: string, fieldName: string) => {
     const nodes = getNodes();
     const node = nodes.find(n => n.id === nodeId);
-    if (!node || !node.data.fields || !Array.isArray(node.data.fields)) return null;
+    if (!node || !node.data.fields || !Array.isArray(node.data.fields)) return fieldName;
     
-    const field = (node.data.fields as any[]).find((f: any) => 
-      f.name?.toLowerCase() === fieldName.toLowerCase() ||
-      f.id?.toLowerCase().includes(fieldName.toLowerCase())
-    );
-    return field?.id || null;
+    const field = (node.data.fields as any[]).find((f: any) => {
+      // Try exact match first
+      if (f.name === fieldName || f.id === fieldName) return true;
+      // Try case-insensitive match
+      if (f.name?.toLowerCase() === fieldName.toLowerCase()) return true;
+      // Try partial ID match (for generated IDs)
+      if (f.id?.toLowerCase().includes(fieldName.toLowerCase())) return true;
+      return false;
+    });
+    
+    console.log(`Field resolution for "${fieldName}" in node ${nodeId}:`, {
+      nodeFields: node.data.fields.map((f: any) => ({ id: f.id, name: f.name })),
+      foundField: field,
+      resultId: field?.id || fieldName
+    });
+    
+    return field?.id || fieldName;
   };
 
   const executeSingleAction = (action: any) => {
@@ -429,6 +469,12 @@ Be conversational and helpful. Always explain what you understand and what you'l
         console.log('Node fields:', newNode.data.fields);
         
         setNodes(prev => [...prev, newNode]);
+        
+        // Store the created node ID for subsequent actions
+        if (action.storeAsId) {
+          (window as any)[action.storeAsId] = nodeId;
+        }
+        
         toast.success(`${action.nodeType} node created successfully!`);
         break;
 
@@ -442,47 +488,52 @@ Be conversational and helpful. Always explain what you understand and what you'l
         break;
 
       case 'create_edge':
-        // Validate that the handles exist before creating the edge
-        const edgeSourceNode = nodes.find(n => n.id === action.source);
-        const edgeTargetNode = nodes.find(n => n.id === action.target);
+        // Resolve node IDs (in case they reference stored IDs)
+        let sourceNodeId = action.source;
+        let targetNodeId = action.target;
+        
+        // Check for stored node IDs (for multi-step workflows)
+        if (sourceNodeId.startsWith('$') && (window as any)[sourceNodeId.slice(1)]) {
+          sourceNodeId = (window as any)[sourceNodeId.slice(1)];
+        }
+        if (targetNodeId.startsWith('$') && (window as any)[targetNodeId.slice(1)]) {
+          targetNodeId = (window as any)[targetNodeId.slice(1)];
+        }
+        
+        // Validate that the nodes exist
+        const currentNodes = getNodes(); // Get fresh nodes state
+        const edgeSourceNode = currentNodes.find(n => n.id === sourceNodeId);
+        const edgeTargetNode = currentNodes.find(n => n.id === targetNodeId);
         
         if (!edgeSourceNode || !edgeTargetNode) {
-          console.error('Edge creation failed: Source or target node not found');
+          console.error('Edge creation failed: Source or target node not found', {
+            sourceId: sourceNodeId,
+            targetId: targetNodeId,
+            availableNodes: currentNodes.map(n => n.id)
+          });
           toast.error('Connection failed: Node not found');
           break;
         }
 
-        // Auto-find field IDs if field names were provided instead
+        // Auto-find field IDs if field names were provided
         let sourceHandle = action.sourceHandle;
         let targetHandle = action.targetHandle;
         
-        // If the handle looks like a field name rather than ID, try to find the actual field ID
-        if (sourceHandle && !sourceHandle.startsWith('field-') && !sourceHandle.includes('value-')) {
-          const foundSourceId = findFieldIdByName(action.source, sourceHandle);
-          if (foundSourceId) {
-            sourceHandle = foundSourceId;
-            console.log(`Auto-resolved source handle: ${action.sourceHandle} -> ${foundSourceId}`);
-          }
-        }
-        
-        if (targetHandle && !targetHandle.startsWith('field-') && !targetHandle.includes('value-')) {
-          const foundTargetId = findFieldIdByName(action.target, targetHandle);
-          if (foundTargetId) {
-            targetHandle = foundTargetId;
-            console.log(`Auto-resolved target handle: ${action.targetHandle} -> ${foundTargetId}`);
-          }
-        }
+        // Always try to resolve field names to IDs
+        sourceHandle = findFieldIdByName(sourceNodeId, sourceHandle);
+        targetHandle = findFieldIdByName(targetNodeId, targetHandle);
 
         console.log('=== AI EDGE CREATION DEBUG ===');
-        console.log('Source node:', action.source, 'Handle:', sourceHandle);
-        console.log('Target node:', action.target, 'Handle:', targetHandle);
+        console.log('Original action:', action);
+        console.log('Resolved source node:', sourceNodeId, 'Handle:', sourceHandle);
+        console.log('Resolved target node:', targetNodeId, 'Handle:', targetHandle);
         console.log('Source node fields:', edgeSourceNode.data.fields);
         console.log('Target node fields:', edgeTargetNode.data.fields);
 
         const newEdge = {
           id: `ai-edge-${Date.now()}`,
-          source: action.source,
-          target: action.target,
+          source: sourceNodeId,
+          target: targetNodeId,
           sourceHandle: sourceHandle,
           targetHandle: targetHandle,
           type: 'smoothstep',
