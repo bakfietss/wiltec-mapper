@@ -240,6 +240,15 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
 - Nodes: ${JSON.stringify(nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })), null, 2)}
 - Edges: ${JSON.stringify(edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })), null, 2)}
 
+## IMPORTANT: Field Format Requirements
+For source and target nodes, fields MUST use this exact SchemaField format:
+{
+  "id": "unique-field-id",
+  "name": "field_name", 
+  "type": "string|number|boolean|date|object|array",
+  "exampleValue": "actual_value_or_empty_string"
+}
+
 ## Your Capabilities:
 1. **Create any type of node** with proper configuration
 2. **Modify existing nodes** (add/remove fields, change properties)
@@ -264,7 +273,16 @@ Always respond with:
     {
       "type": "modify_node", 
       "nodeId": "existing-node-id",
-      "updates": { /* properties to update */ }
+      "updates": { 
+        "fields": [
+          {
+            "id": "field-123",
+            "name": "fieldName",
+            "type": "string",
+            "exampleValue": "value"
+          }
+        ]
+      }
     },
     {
       "type": "create_edge",
@@ -355,24 +373,11 @@ Be conversational and helpful. Always explain what you understand and what you'l
         break;
 
       case 'modify_node':
-        setNodes(prev => prev.map(node => {
-          if (node.id === action.nodeId) {
-            const updates = { ...action.updates };
-            
-            // Convert legacy fields format to SchemaField format for source nodes
-            if (node.type === 'source' && updates.fields && Array.isArray(updates.fields)) {
-              updates.fields = updates.fields.map((field: any, index: number) => ({
-                id: field.id || `field-${Date.now()}-${index}`,
-                name: field.name,
-                type: field.type || 'string',
-                exampleValue: field.value || field.exampleValue || ''
-              }));
-            }
-            
-            return { ...node, data: { ...node.data, ...updates } };
-          }
-          return node;
-        }));
+        setNodes(prev => prev.map(node => 
+          node.id === action.nodeId 
+            ? { ...node, data: { ...node.data, ...action.updates } }
+            : node
+        ));
         toast.success('Node updated successfully!');
         break;
 
