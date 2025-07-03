@@ -284,7 +284,21 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
     // Sync incoming data changes from React Flow to local state
     useEffect(() => {
         if (data.fields && JSON.stringify(data.fields) !== JSON.stringify(fields)) {
-            setFields(data.fields);
+            // Check if fields are in legacy format and migrate them
+            const migratedFields = data.fields.map((field: any, index: number) => {
+                // If field has 'value' property, it's legacy format
+                if (field.value !== undefined && !field.id) {
+                    return {
+                        id: field.id || `migrated-field-${Date.now()}-${index}`,
+                        name: field.name,
+                        type: field.type || 'string',
+                        exampleValue: field.value
+                    } as SchemaField;
+                }
+                // Already in new format
+                return field as SchemaField;
+            });
+            setFields(migratedFields);
         }
         if (data.data && JSON.stringify(data.data) !== JSON.stringify(nodeData)) {
             setNodeData(data.data);
