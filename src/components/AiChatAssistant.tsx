@@ -382,6 +382,17 @@ Be conversational and helpful. Always explain what you understand and what you'l
         break;
 
       case 'create_edge':
+        // Validate that the handles exist before creating the edge
+        const edgeSourceNode = nodes.find(n => n.id === action.source);
+        const edgeTargetNode = nodes.find(n => n.id === action.target);
+        
+        if (!edgeSourceNode || !edgeTargetNode) {
+          console.error('Edge creation failed: Source or target node not found');
+          toast.error('Connection failed: Node not found');
+          break;
+        }
+
+        // For target nodes, make sure we use field.id as the handle, not field.name
         const newEdge = {
           id: `ai-edge-${Date.now()}`,
           source: action.source,
