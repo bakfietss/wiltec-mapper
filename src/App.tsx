@@ -9,8 +9,7 @@ import TemplateMapper from './pages/TemplateMapper';
 import NotFound from './pages/NotFound';
 import './App.css';
 
-// Temporary AI pages (preserved but not in main navigation)
-import AiMapper from './pages/temp-ai-pages/AiMapper';
+import AiMapper from './pages/AiMapper';
 
 const queryClient = new QueryClient();
 
@@ -24,6 +23,7 @@ function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/manual" element={<Index />} />
               <Route path="/template-mapper" element={<TemplateMapper />} />
+              <Route path="/ai-mapper" element={<AiMapper />} />
               
               {/* Temporary AI routes - preserved but not in main nav */}
               <Route path="/temp/ai-mapper" element={<AiMapper />} />

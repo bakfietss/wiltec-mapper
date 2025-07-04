@@ -37,6 +37,16 @@ const NavigationBar = () => {
           <Wand2 className="w-4 h-4" />
           Template Mapper
         </Button>
+
+        <Button
+          variant={isActive('/ai-mapper') ? "default" : "ghost"}
+          size="sm"
+          onClick={() => navigate('/ai-mapper')}
+          className="flex items-center gap-2"
+        >
+          <Brain className="w-4 h-4" />
+          AI Mapper
+        </Button>
         
         <Button
           variant={isActive('/manual') ? "default" : "ghost"}
