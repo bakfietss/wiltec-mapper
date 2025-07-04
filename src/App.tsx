@@ -23,6 +23,7 @@ function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/manual" element={<Index />} />
               <Route path="/template-mapper" element={<TemplateMapper />} />
+              <Route path="/build-by-template" element={<TemplateMapper />} />
               <Route path="/ai-mapper" element={<AiMapper />} />
               
               {/* Temporary AI routes - preserved but not in main nav */}

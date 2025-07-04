@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from './ui/button';
-import { Brain, Settings, Home, Wand2 } from 'lucide-react';
+import { Brain, Settings, Home, Wand2, FileText } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const NavigationBar = () => {
@@ -29,13 +29,13 @@ const NavigationBar = () => {
         </Button>
         
         <Button
-          variant={isActive('/template-mapper') ? "default" : "ghost"}
+          variant={isActive('/build-by-template') ? "default" : "ghost"}
           size="sm"
-          onClick={() => navigate('/template-mapper')}
+          onClick={() => navigate('/build-by-template')}
           className="flex items-center gap-2"
         >
-          <Wand2 className="w-4 h-4" />
-          Template Mapper
+          <FileText className="w-4 h-4" />
+          Build by Template
         </Button>
 
         <Button
