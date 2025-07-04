@@ -29,6 +29,8 @@ import { useManualUpdateTrigger } from '../hooks/useManualUpdateTrigger';
 import { toast } from 'sonner';
 import AiChatAssistant from '../components/AiChatAssistant';
 import CanvasMiniMap from './components/CanvasMiniMap';
+import { MappingService } from '../services/MappingService';
+import { useAuth } from '../contexts/AuthContext';
 
 const initialNodes: Node[] = [
   {
@@ -47,10 +49,12 @@ const Pipeline = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [currentMappingName, setCurrentMappingName] = useState<string>('Untitled Mapping');
+  const [currentMappingVersion, setCurrentMappingVersion] = useState<string>('');
   const [sampleData, setSampleData] = useState<any[]>([]);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [isManagerExpanded, setIsManagerExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const { user } = useAuth();
 
   // Listen for fullscreen changes
   useEffect(() => {
@@ -300,10 +304,22 @@ const Pipeline = () => {
     toast.success('New mapping created!');
   }, [setNodes, setEdges, fieldStore]);
 
-  const handleSaveMapping = useCallback((name: string) => {
-    setCurrentMappingName(name);
-    toast.success('Mapping name updated!');
-  }, []);
+  const handleSaveMapping = useCallback(async (name: string) => {
+    if (!user) {
+      toast.error('Please log in to save mappings');
+      return;
+    }
+
+    try {
+      const savedMapping = await MappingService.saveMapping(name, nodes, edges, user);
+      setCurrentMappingName(savedMapping.name);
+      setCurrentMappingVersion(savedMapping.version);
+      toast.success(`Mapping saved as ${savedMapping.name} ${savedMapping.version}!`);
+    } catch (error) {
+      console.error('Failed to save mapping:', error);
+      toast.error(`Failed to save mapping: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [nodes, edges, user]);
 
   const handleExportDocumentation = useCallback(() => {
     try {
@@ -397,6 +413,7 @@ const Pipeline = () => {
                 onSaveMapping={handleSaveMapping}
                 onExportDocumentation={handleExportDocumentation}
                 currentMappingName={currentMappingName}
+                currentMappingVersion={currentMappingVersion}
                 isExpanded={isManagerExpanded}
                 onToggleExpanded={setIsManagerExpanded}
               />

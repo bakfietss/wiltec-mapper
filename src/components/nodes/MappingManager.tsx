@@ -11,6 +11,7 @@ interface MappingManagerProps {
   onSaveMapping?: (name: string) => void;
   onExportDocumentation?: () => void;
   currentMappingName?: string;
+  currentMappingVersion?: string;
   isExpanded?: boolean;
   onToggleExpanded?: (expanded: boolean) => void;
 }
@@ -22,6 +23,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   onSaveMapping,
   onExportDocumentation,
   currentMappingName = 'Untitled Mapping',
+  currentMappingVersion = '',
   isExpanded = false,
   onToggleExpanded
 }) => {
@@ -76,7 +78,14 @@ const MappingManager: React.FC<MappingManagerProps> = ({
             <Settings className="w-4 h-4 text-gray-600" />
             <div className="flex flex-col">
               <span className="font-semibold text-gray-900 text-sm">Mapping Manager</span>
-              <span className="text-xs text-gray-500">{currentMappingName}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">{currentMappingName}</span>
+                {currentMappingVersion && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-medium">
+                    {currentMappingVersion}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
