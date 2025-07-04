@@ -29,13 +29,13 @@ const NavigationBar = () => {
         </Button>
         
         <Button
-          variant={isActive('/build-by-template') ? "default" : "ghost"}
+          variant={isActive('/template-mapper') ? "default" : "ghost"}
           size="sm"
-          onClick={() => navigate('/build-by-template')}
+          onClick={() => navigate('/template-mapper')}
           className="flex items-center gap-2"
         >
-          <FileText className="w-4 h-4" />
-          Build by Template
+          <Wand2 className="w-4 h-4" />
+          Template Mapper
         </Button>
 
         <Button
