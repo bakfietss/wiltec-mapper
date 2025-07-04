@@ -60,9 +60,16 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   };
 
   const handleSaveMapping = () => {
+    console.log('=== SAVE BUTTON CLICKED IN UI ===');
+    console.log('Save mapping name:', saveMappingName);
+    console.log('onSaveMapping function exists:', !!onSaveMapping);
+    
     if (saveMappingName.trim() && onSaveMapping) {
+      console.log('Calling onSaveMapping with name:', saveMappingName.trim());
       onSaveMapping(saveMappingName.trim());
       setIsSaveMappingOpen(false);
+    } else {
+      console.log('Save blocked - name empty or no callback');
     }
   };
 
