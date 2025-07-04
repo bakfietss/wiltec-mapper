@@ -305,13 +305,26 @@ const Pipeline = () => {
   }, [setNodes, setEdges, fieldStore]);
 
   const handleSaveMapping = useCallback(async (name: string) => {
+    console.log('=== SAVE MAPPING CLICKED ===');
+    console.log('User object:', user);
+    console.log('Mapping name:', name);
+    
     if (!user) {
+      console.log('No user found - authentication required');
       toast.error('Please log in to save mappings');
       return;
     }
 
     try {
-      const savedMapping = await MappingService.saveMapping(name, nodes, edges, user);
+      console.log('Attempting to save mapping...');
+      // Create a temporary user object with ID for Supabase
+      const supabaseUser = {
+        id: user.username || 'temp-user-id', // Use username as temp ID
+        email: user.username,
+        ...user
+      };
+      const savedMapping = await MappingService.saveMapping(name, nodes, edges, supabaseUser);
+      console.log('Mapping saved successfully:', savedMapping);
       setCurrentMappingName(savedMapping.name);
       setCurrentMappingVersion(savedMapping.version);
       toast.success(`Mapping saved as ${savedMapping.name} ${savedMapping.version}!`);
