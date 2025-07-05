@@ -36,6 +36,15 @@ export class MappingService {
       throw new Error('User must be authenticated to save mappings');
     }
 
+    console.log('=== MAPPING SERVICE DEBUG ===');
+    console.log('currentUser object:', JSON.stringify(currentUser, null, 2));
+    console.log('currentUser.id:', currentUser.id);
+    console.log('typeof currentUser.id:', typeof currentUser.id);
+
+    if (!currentUser.id) {
+      throw new Error('User ID is required but not found in user object');
+    }
+
     // Get next version
     const { data: version, error: versionError } = await supabase
       .rpc('get_next_version', {
