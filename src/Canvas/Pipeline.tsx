@@ -317,9 +317,18 @@ const Pipeline = () => {
 
     try {
       console.log('Attempting to save mapping...');
-      // Create a temporary user object with ID for Supabase
+      // Generate a consistent UUID from username
+      const generateUUIDFromString = (str: string) => {
+        const hash = str.split('').reduce((a, b) => {
+          a = ((a << 5) - a) + b.charCodeAt(0);
+          return a & a;
+        }, 0);
+        const hex = Math.abs(hash).toString(16).padStart(8, '0');
+        return `${hex.slice(0,8)}-${hex.slice(0,4)}-4${hex.slice(1,4)}-8${hex.slice(0,3)}-${hex.slice(0,12)}`.slice(0, 36);
+      };
+      
       const supabaseUser = {
-        id: user.username || 'temp-user-id', // Use username as temp ID
+        id: generateUUIDFromString(user.username),
         email: user.username,
         ...user
       };
