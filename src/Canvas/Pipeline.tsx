@@ -323,8 +323,8 @@ const Pipeline = () => {
           a = ((a << 5) - a) + b.charCodeAt(0);
           return a & a;
         }, 0);
-        const hex = Math.abs(hash).toString(16).padStart(8, '0');
-        return `${hex.slice(0,8)}-${hex.slice(0,4)}-4${hex.slice(1,4)}-8${hex.slice(0,3)}-${hex.slice(0,12)}`.slice(0, 36);
+        const hex = Math.abs(hash).toString(16).padStart(32, '0');
+        return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(12,15)}-8${hex.slice(15,18)}-${hex.slice(18,30)}`;
       };
       
       const supabaseUser = {
