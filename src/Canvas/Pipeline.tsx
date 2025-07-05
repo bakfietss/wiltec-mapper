@@ -307,34 +307,24 @@ const Pipeline = () => {
   const handleSaveMapping = useCallback(async (name: string) => {
     console.log('=== SAVE MAPPING CLICKED ===');
     console.log('User object:', user);
-    console.log('User object keys:', user ? Object.keys(user) : 'null');
-    console.log('User.id:', user?.id);
-    console.log('User.email:', user?.email);
-    console.log('User.username:', user?.username);
     
     if (!user) {
       console.log('No user found - authentication required');
-      toast.error('Please log in to save mappings');
+      toast.error('Please wait for system authentication');
       return;
     }
 
-    if (!user.id) {
-      console.log('User object missing id field - clearing localStorage and requiring re-login');
-      localStorage.removeItem('user');
-      toast.error('Please log in again - user session is invalid');
+    // Prompt user for their email
+    const userEmail = prompt('Enter your email address to save this mapping:');
+    if (!userEmail || !userEmail.trim()) {
+      toast.error('Email is required to save mappings');
       return;
     }
 
     try {
-      console.log('Attempting to save mapping...');
+      console.log('Attempting to save mapping with email:', userEmail);
       
-      // User object now has proper structure from AuthContext
-      const supabaseUser = {
-        id: user.id,
-        email: user.email,
-        username: user.username
-      };
-      const savedMapping = await MappingService.saveMapping(name, nodes, edges, supabaseUser);
+      const savedMapping = await MappingService.saveMapping(name, nodes, edges, userEmail.trim());
       console.log('Mapping saved successfully:', savedMapping);
       setCurrentMappingName(savedMapping.name);
       setCurrentMappingVersion(savedMapping.version);

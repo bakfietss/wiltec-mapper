@@ -84,6 +84,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           updated_at: string | null
+          user_email: string | null
           user_id: string | null
           version: string
         }
@@ -94,6 +95,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           updated_at?: string | null
+          user_email?: string | null
           user_id?: string | null
           version: string
         }
@@ -104,6 +106,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           updated_at?: string | null
+          user_email?: string | null
           user_id?: string | null
           version?: string
         }
@@ -141,7 +144,9 @@ export type Database = {
     }
     Functions: {
       get_active_mapping: {
-        Args: { p_user_id: string; p_name: string }
+        Args:
+          | { p_user_email: string; p_name: string }
+          | { p_user_id: string; p_name: string }
         Returns: {
           config: Json
           created_at: string | null
@@ -149,12 +154,15 @@ export type Database = {
           is_active: boolean | null
           name: string
           updated_at: string | null
+          user_email: string | null
           user_id: string | null
           version: string
         }
       }
       get_next_version: {
-        Args: { p_user_id: string; p_name: string }
+        Args:
+          | { p_user_email: string; p_name: string }
+          | { p_user_id: string; p_name: string }
         Returns: string
       }
     }

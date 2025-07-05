@@ -7,7 +7,6 @@ import Landing from './pages/Landing';
 import Index from './pages/Index';
 import TemplateMapper from './pages/TemplateMapper';
 import NotFound from './pages/NotFound';
-import Auth from './pages/Auth';
 import './App.css';
 
 import AiMapper from './pages/AiMapper';
@@ -22,7 +21,6 @@ function App() {
           <div className="App">
             <Routes>
               <Route path="/" element={<Landing />} />
-              <Route path="/auth" element={<Auth />} />
               <Route path="/manual" element={<Index />} />
               <Route path="/template-mapper" element={<TemplateMapper />} />
               <Route path="/ai-mapper" element={<AiMapper />} />

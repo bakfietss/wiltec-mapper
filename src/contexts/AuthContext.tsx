@@ -22,6 +22,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Auto-login with system account
+    const initSystemAuth = async () => {
+      try {
+        // Check if already authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          const authUser = {
+            id: session.user.id,
+            email: session.user.email,
+            username: 'System User',
+            loginTime: new Date().toISOString()
+          };
+          setUser(authUser);
+          return;
+        }
+
+        // Auto-login with system account
+        const { error } = await supabase.auth.signInWithPassword({
+          email: 'bakfietss@hotmail.com',
+          password: 'system123!@#'
+        });
+
+        if (error) {
+          console.error('System auth error:', error);
+          // If login fails, try to create the system account
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: 'bakfietss@hotmail.com',
+            password: 'system123!@#'
+          });
+          
+          if (signUpError) {
+            console.error('System account creation error:', signUpError);
+          }
+        }
+      } catch (error) {
+        console.error('System authentication failed:', error);
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -29,32 +69,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const authUser = {
             id: session.user.id,
             email: session.user.email,
-            username: session.user.email?.split('@')[0] || 'user',
+            username: 'System User',
             loginTime: new Date().toISOString()
           };
           setUser(authUser);
         } else {
           setUser(null);
+          // Retry system auth if session lost
+          setTimeout(initSystemAuth, 1000);
         }
       }
     );
 
-    const initAuth = async () => {
-      // Check for existing Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        const authUser = {
-          id: session.user.id,
-          email: session.user.email,
-          username: session.user.email?.split('@')[0] || 'user',
-          loginTime: new Date().toISOString()
-        };
-        setUser(authUser);
-      }
-    };
-
-    initAuth();
+    initSystemAuth();
     
     return () => subscription.unsubscribe();
   }, []);
