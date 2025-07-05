@@ -73,6 +73,13 @@ const MappingManager: React.FC<MappingManagerProps> = ({
     }
   };
 
+  const handleButtonClick = (e: React.MouseEvent) => {
+    console.log('=== BUTTON PHYSICALLY CLICKED ===');
+    e.preventDefault();
+    e.stopPropagation();
+    handleSaveMapping();
+  };
+
   return (
     <div 
       className="absolute top-4 right-4 z-10 bg-white border border-gray-200 rounded-lg shadow-lg"
@@ -182,7 +189,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                           Cancel
                         </Button>
                         <Button 
-                          onClick={handleSaveMapping} 
+                          onClick={handleButtonClick} 
                           disabled={!saveMappingName.trim()}
                           type="button"
                         >
