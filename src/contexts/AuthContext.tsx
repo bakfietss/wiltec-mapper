@@ -22,13 +22,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    console.log('=== AUTH CONTEXT INITIALIZING ===');
+    
     // Auto-login with system account
     const initSystemAuth = async () => {
+      console.log('=== ATTEMPTING SYSTEM AUTH ===');
       try {
         // Check if already authenticated
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('Current session check:', { session: !!session, sessionError });
         
         if (session?.user) {
+          console.log('Existing session found, setting user');
           const authUser = {
             id: session.user.id,
             email: session.user.email,
@@ -36,26 +41,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             loginTime: new Date().toISOString()
           };
           setUser(authUser);
+          console.log('User set from existing session:', authUser);
           return;
         }
 
+        console.log('No existing session, attempting system login...');
         // Auto-login with system account
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: 'bakfietss@hotmail.com',
           password: 'system123!@#'
         });
 
+        console.log('Login attempt result:', { data: !!data, error });
+
         if (error) {
           console.error('System auth error:', error);
+          console.log('Attempting to create system account...');
           // If login fails, try to create the system account
-          const { error: signUpError } = await supabase.auth.signUp({
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
             email: 'bakfietss@hotmail.com',
-            password: 'system123!@#'
+            password: 'system123!@#',
+            options: {
+              emailRedirectTo: `${window.location.origin}/`
+            }
           });
           
+          console.log('Sign up result:', { signUpData: !!signUpData, signUpError });
           if (signUpError) {
             console.error('System account creation error:', signUpError);
+          } else {
+            console.log('System account created, check email for confirmation');
           }
+        } else {
+          console.log('System login successful');
         }
       } catch (error) {
         console.error('System authentication failed:', error);
@@ -65,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('=== AUTH STATE CHANGED ===', { event, session: !!session });
         if (session?.user) {
           const authUser = {
             id: session.user.id,
@@ -73,10 +92,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             loginTime: new Date().toISOString()
           };
           setUser(authUser);
+          console.log('User set from auth state change:', authUser);
         } else {
           setUser(null);
+          console.log('User cleared, session lost');
           // Retry system auth if session lost
-          setTimeout(initSystemAuth, 1000);
+          setTimeout(() => {
+            console.log('Retrying system auth after session loss...');
+            initSystemAuth();
+          }, 2000);
         }
       }
     );
