@@ -45,7 +45,26 @@ const Login = () => {
         // Bypass API validation - directly log in
         console.log('Bypassing API validation, logging in directly...');
         
+        // Generate consistent UUID from username
+        const generateTestUUID = (username: string) => {
+          let hash = 0;
+          for (let i = 0; i < username.length; i++) {
+            const char = username.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+          }
+          const positiveHash = Math.abs(hash);
+          let hex = positiveHash.toString(16).padStart(8, '0');
+          while (hex.length < 32) {
+            hex = hex + positiveHash.toString(16);
+          }
+          hex = hex.substring(0, 32);
+          return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-8${hex.slice(17,20)}-${hex.slice(20,32)}`;
+        };
+
         const userData = {
+          id: generateTestUUID(username),
+          email: `${username}@test.com`, // Proper email format
           username: username,
           loginTime: new Date().toISOString()
         };
@@ -104,7 +123,26 @@ const Login = () => {
       console.log('API Response:', result);
 
       if (response.ok && result.success) {
+        // Generate consistent UUID from username
+        const generateTestUUID = (username: string) => {
+          let hash = 0;
+          for (let i = 0; i < username.length; i++) {
+            const char = username.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+          }
+          const positiveHash = Math.abs(hash);
+          let hex = positiveHash.toString(16).padStart(8, '0');
+          while (hex.length < 32) {
+            hex = hex + positiveHash.toString(16);
+          }
+          hex = hex.substring(0, 32);
+          return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-8${hex.slice(17,20)}-${hex.slice(20,32)}`;
+        };
+
         const userData = {
+          id: generateTestUUID(username),
+          email: `${username}@test.com`, // Proper email format
           username: username,
           loginTime: new Date().toISOString()
         };

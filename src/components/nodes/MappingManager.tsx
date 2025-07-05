@@ -190,7 +190,11 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                           Cancel
                         </Button>
                         <Button 
-                          onClick={handleButtonClick} 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleSaveMapping();
+                          }} 
                           disabled={!saveMappingName.trim()}
                           type="button"
                         >
