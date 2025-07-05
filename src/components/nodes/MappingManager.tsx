@@ -172,7 +172,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                     <DialogHeader>
                       <DialogTitle>Save Mapping</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Mapping Name
@@ -182,6 +182,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                           onChange={(e) => setSaveMappingName(e.target.value)}
                           placeholder="Enter mapping name..."
                           onKeyDown={(e) => e.key === 'Enter' && handleSaveMapping()}
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                       <div className="flex justify-end gap-2">

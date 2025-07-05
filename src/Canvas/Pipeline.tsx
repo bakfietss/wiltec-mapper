@@ -317,20 +317,35 @@ const Pipeline = () => {
 
     try {
       console.log('Attempting to save mapping...');
-      // Generate a consistent UUID from username
+      // Generate a consistent UUID from username using a better hash function
       const generateUUIDFromString = (str: string) => {
-        const hash = str.split('').reduce((a, b) => {
-          a = ((a << 5) - a) + b.charCodeAt(0);
-          return a & a;
-        }, 0);
-        const hex = Math.abs(hash).toString(16).padStart(32, '0');
-        return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(12,15)}-8${hex.slice(15,18)}-${hex.slice(18,30)}`;
+        // Create a longer hash by using multiple rounds and ensuring minimum length
+        let hash = 0;
+        const fullStr = str + str + str; // Repeat to ensure sufficient length
+        for (let i = 0; i < fullStr.length; i++) {
+          const char = fullStr.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash = hash & hash; // Convert to 32-bit integer
+        }
+        
+        // Convert to positive number and create a proper hex string
+        const positiveHash = Math.abs(hash);
+        let hex = positiveHash.toString(16).padStart(8, '0');
+        
+        // Ensure we have enough characters by repeating the hex string
+        while (hex.length < 32) {
+          hex = hex + positiveHash.toString(16);
+        }
+        hex = hex.substring(0, 32);
+        
+        // Format as UUID v4
+        return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-8${hex.slice(17,20)}-${hex.slice(20,32)}`;
       };
       
       const supabaseUser = {
         id: generateUUIDFromString(user.username),
-        email: user.username,
-        ...user
+        email: user.username, // Use username as email for now
+        username: user.username
       };
       const savedMapping = await MappingService.saveMapping(name, nodes, edges, supabaseUser);
       console.log('Mapping saved successfully:', savedMapping);
