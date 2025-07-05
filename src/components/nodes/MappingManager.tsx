@@ -181,7 +181,11 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                         <Button variant="outline" onClick={() => setIsSaveMappingOpen(false)}>
                           Cancel
                         </Button>
-                        <Button onClick={handleSaveMapping} disabled={!saveMappingName.trim()}>
+                        <Button 
+                          onClick={handleSaveMapping} 
+                          disabled={!saveMappingName.trim()}
+                          type="button"
+                        >
                           Save
                         </Button>
                       </div>
