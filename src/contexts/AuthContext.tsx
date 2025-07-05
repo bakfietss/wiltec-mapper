@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const initAuth = async () => {
-      // Check for existing Supabase session first
+      // Check for existing Supabase session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
@@ -51,38 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           loginTime: new Date().toISOString()
         };
         setUser(authUser);
-        return;
-      }
-
-      // If no session and in development mode, auto-login with test user
-      const isDevelopment = import.meta.env.DEV;
-      if (isDevelopment) {
-        console.log('Development mode: Signing in with test user');
-        
-        // Try to sign in with test credentials
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: 'test@example.com',
-          password: 'testpassword123'
-        });
-        
-        if (error) {
-          console.log('Test user not found, creating...');
-          // If sign in fails, create the test user
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: 'test@example.com',
-            password: 'testpassword123',
-            options: {
-              emailRedirectTo: `${window.location.origin}/`
-            }
-          });
-          
-          if (signUpError) {
-            console.error('Failed to create test user:', signUpError);
-            return;
-          }
-          
-          console.log('Test user created, please check email to confirm (or disable email confirmation in Supabase)');
-        }
       }
     };
 
