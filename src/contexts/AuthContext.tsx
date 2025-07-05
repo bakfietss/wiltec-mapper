@@ -25,11 +25,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        // Ensure the user object has all required fields
+        if (parsedUser.id && parsedUser.email && parsedUser.username) {
+          setUser(parsedUser);
+        } else {
+          console.log('Stored user missing required fields, clearing...');
+          localStorage.removeItem('user');
+        }
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('user');
       }
+    }
+    
+    // If no valid user and in development mode, set up test user
+    const isDevelopment = import.meta.env.DEV;
+    if (isDevelopment && !storedUser) {
+      console.log('Development mode: Creating test user');
+      const testUser = {
+        id: '12345678-1234-4123-8123-123456789012',
+        email: 'testuser@test.com',
+        username: 'testuser',
+        loginTime: new Date().toISOString()
+      };
+      setUser(testUser);
+      localStorage.setItem('user', JSON.stringify(testUser));
     }
   }, []);
 
