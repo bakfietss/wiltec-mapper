@@ -307,11 +307,21 @@ const Pipeline = () => {
   const handleSaveMapping = useCallback(async (name: string) => {
     console.log('=== SAVE MAPPING CLICKED ===');
     console.log('User object:', user);
-    console.log('Mapping name:', name);
+    console.log('User object keys:', user ? Object.keys(user) : 'null');
+    console.log('User.id:', user?.id);
+    console.log('User.email:', user?.email);
+    console.log('User.username:', user?.username);
     
     if (!user) {
       console.log('No user found - authentication required');
       toast.error('Please log in to save mappings');
+      return;
+    }
+
+    if (!user.id) {
+      console.log('User object missing id field - clearing localStorage and requiring re-login');
+      localStorage.removeItem('user');
+      toast.error('Please log in again - user session is invalid');
       return;
     }
 
