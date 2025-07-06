@@ -14,6 +14,7 @@ import {
   ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useLocation } from 'react-router-dom';
 
 import { nodeTypes, useNodeFactories } from './NodeFactories';
 import { useFieldStore } from '../store/fieldStore';
@@ -55,6 +56,7 @@ const Pipeline = () => {
   const [isManagerExpanded, setIsManagerExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { user } = useAuth();
+  const location = useLocation();
 
   // Listen for fullscreen changes
   useEffect(() => {
@@ -108,6 +110,42 @@ const Pipeline = () => {
       }
     }
   }, [setNodes, setEdges]);
+
+  // Check for mapping to load from Control Panel edit button
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.mappingToLoad) {
+      try {
+        const { mappingToLoad } = state;
+        console.log('Loading mapping from Control Panel:', mappingToLoad);
+        
+        // Extract UI config from the saved mapping
+        const uiConfig = mappingToLoad.ui_config;
+        if (uiConfig && uiConfig.nodes && uiConfig.edges) {
+          setNodes(uiConfig.nodes);
+          setEdges(uiConfig.edges);
+          setCurrentMappingName(mappingToLoad.name);
+          setCurrentMappingVersion(mappingToLoad.version);
+          
+          // Load sample data if available in source nodes
+          const sourceNodes = uiConfig.nodes.filter((node: any) => node.type === 'source');
+          if (sourceNodes.length > 0 && sourceNodes[0].sampleData) {
+            setSampleData(sourceNodes[0].sampleData);
+          }
+          
+          toast.success(`Mapping "${mappingToLoad.name}" loaded for editing`);
+        } else {
+          toast.error('Invalid mapping configuration');
+        }
+      } catch (error) {
+        console.error('Failed to load mapping from Control Panel:', error);
+        toast.error('Failed to load mapping');
+      }
+      
+      // Clear the state to prevent re-loading on subsequent renders
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, setNodes, setEdges]);
 
   // Listen for custom events from Index page
   useEffect(() => {
@@ -314,11 +352,32 @@ const Pipeline = () => {
     if (!mappingName?.trim()) return;
 
     try {
+      // Generate both UI and execution configurations like the export function does
+      const { exportUIMappingConfiguration } = await import('./exporters/UIConfigExporter');
+      const { exportExecutionMapping } = await import('./exporters/ExecutionConfigExporter');
+      
+      const uiConfig = exportUIMappingConfiguration(nodes, edges, mappingName.trim());
+      const rawExecutionConfig = exportExecutionMapping(nodes, edges, mappingName.trim());
+      
+      // Convert to the format expected by MappingService
+      const executionConfig = {
+        name: rawExecutionConfig.name,
+        version: rawExecutionConfig.version,
+        category: 'General',
+        mappings: rawExecutionConfig.mappings,
+        arrays: rawExecutionConfig.arrays,
+        metadata: rawExecutionConfig.metadata
+      };
+
       const savedMapping = await MappingService.saveMapping(
         mappingName.trim(),
         nodes,
         edges,
-        user.id
+        user.id,
+        'General', // default category
+        undefined, // description
+        undefined, // tags
+        executionConfig // pass the converted execution config
       );
 
       console.log('Mapping saved successfully:', savedMapping);
