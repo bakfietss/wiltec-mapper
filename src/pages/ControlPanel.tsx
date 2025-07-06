@@ -8,7 +8,9 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Play, Pause, Eye, Download, Trash2, Tag, Calendar, Edit, RotateCcw, FileText, Activity } from 'lucide-react';
+import { Play, Pause, Eye, Trash2, Tag, Calendar, Edit, RotateCcw, FileText, Activity } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,6 +21,8 @@ const ControlPanel = () => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
+  const [deleteConfirmationName, setDeleteConfirmationName] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -64,6 +68,27 @@ const ControlPanel = () => {
     // Navigate to manual mapper with the mapping data
     navigate('/manual', { state: { mappingToLoad: mapping } });
   };
+
+  const handleDeleteMapping = (mapping: SavedMapping) => {
+    setDeleteDialog({ open: true, mapping });
+    setDeleteConfirmationName('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog.mapping) return;
+    
+    try {
+      await MappingService.deleteMapping(deleteDialog.mapping.id, user!.id);
+      setMappings(prev => prev.filter(m => m.id !== deleteDialog.mapping!.id));
+      toast.success(`Mapping "${deleteDialog.mapping.name}" deleted successfully`);
+      setDeleteDialog({ open: false, mapping: null });
+    } catch (error) {
+      console.error('Failed to delete mapping:', error);
+      toast.error('Failed to delete mapping');
+    }
+  };
+
+  const isDeleteNameValid = deleteDialog.mapping?.name === deleteConfirmationName;
 
   const handleRetryTransformation = (logId: string) => {
     // TODO: Implement retry logic
@@ -249,10 +274,12 @@ const ControlPanel = () => {
                             <Button size="sm" variant="outline">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteMapping(mapping)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -319,6 +346,56 @@ const ControlPanel = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, mapping: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Mapping</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this mapping? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {deleteDialog.mapping && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="font-medium">{deleteDialog.mapping.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Version: {deleteDialog.mapping.version} • Category: {deleteDialog.mapping.category}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Type the mapping name to confirm deletion:
+                </label>
+                <Input
+                  value={deleteConfirmationName}
+                  onChange={(e) => setDeleteConfirmationName(e.target.value)}
+                  placeholder={deleteDialog.mapping.name}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialog({ open: false, mapping: null })}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmDelete}
+              disabled={!isDeleteNameValid}
+            >
+              Delete Mapping
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

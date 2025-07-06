@@ -177,6 +177,22 @@ export class MappingService {
     }
   }
 
+  static async deleteMapping(id: string, userId: string): Promise<void> {
+    if (!userId) {
+      throw new Error('User authentication is required to delete mappings');
+    }
+
+    const { error } = await supabase
+      .from('mappings')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(`Failed to delete mapping: ${error.message}`);
+    }
+  }
+
   static async getMappingsByCategory(userId: string, category?: string): Promise<SavedMapping[]> {
     if (!userId) {
       throw new Error('User authentication is required to fetch mappings');
