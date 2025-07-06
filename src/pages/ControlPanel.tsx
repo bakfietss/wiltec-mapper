@@ -1,327 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { MappingService, SavedMapping } from '@/services/MappingService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Play, Pause, Eye, Trash2, Tag, Calendar, Edit, RotateCcw, FileText, Activity, Key } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { Activity, FileText, Key, BarChart3, Settings } from 'lucide-react';
 import { ApiKeyManager } from '@/components/ApiKeyManager';
 
 const ControlPanel = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [mappings, setMappings] = useState<SavedMapping[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
-  const [deleteConfirmationName, setDeleteConfirmationName] = useState('');
-
+  const [loading, setLoading] = useState(false);
+  
   useEffect(() => {
     if (user?.id) {
-      fetchMappings();
       fetchLogs();
     }
   }, [user?.id]);
 
-  const fetchMappings = async () => {
+  const fetchLogs = async () => {
     try {
       setLoading(true);
-      const data = await MappingService.getMappings(user!.id);
-      setMappings(data);
+      // TODO: Implement log fetching from mapping_logs table
+      setLogs([]);
     } catch (error) {
-      console.error('Failed to fetch mappings:', error);
-      toast.error('Failed to load mappings');
+      console.error('Failed to fetch logs:', error);
+      toast.error('Failed to load logs');
     } finally {
       setLoading(false);
     }
   };
-
-  const fetchLogs = async () => {
-    // TODO: Implement log fetching from mapping_logs table
-    setLogs([]);
-  };
-
-  const handleToggleStatus = async (id: string, isActive: boolean) => {
-    try {
-      await MappingService.toggleMappingStatus(id, user!.id, isActive);
-      setMappings(prev => 
-        prev.map(mapping => 
-          mapping.id === id ? { ...mapping, is_active: isActive } : mapping
-        )
-      );
-      toast.success(`Mapping ${isActive ? 'activated' : 'deactivated'}`);
-    } catch (error) {
-      console.error('Failed to toggle mapping status:', error);
-      toast.error('Failed to update mapping status');
-    }
-  };
-
-  const handleEditMapping = (mapping: SavedMapping) => {
-    // Navigate to manual mapper with the mapping data
-    navigate('/manual', { state: { mappingToLoad: mapping } });
-  };
-
-  const handleDeleteMapping = (mapping: SavedMapping) => {
-    setDeleteDialog({ open: true, mapping });
-    setDeleteConfirmationName('');
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteDialog.mapping) return;
-    
-    try {
-      await MappingService.deleteMapping(deleteDialog.mapping.id, user!.id);
-      setMappings(prev => prev.filter(m => m.id !== deleteDialog.mapping!.id));
-      toast.success(`Mapping "${deleteDialog.mapping.name}" deleted successfully`);
-      setDeleteDialog({ open: false, mapping: null });
-    } catch (error) {
-      console.error('Failed to delete mapping:', error);
-      toast.error('Failed to delete mapping');
-    }
-  };
-
-  const isDeleteNameValid = deleteDialog.mapping?.name === deleteConfirmationName;
-
-  const handleRetryTransformation = (logId: string) => {
-    // TODO: Implement retry logic
-    toast.info('Retry functionality coming soon');
-  };
-
-  const categories = Array.from(new Set(mappings.map(m => m.category).filter(Boolean)));
-  const filteredMappings = selectedCategory === 'all' 
-    ? mappings 
-    : mappings.filter(m => m.category === selectedCategory);
-
-  const activeMappings = mappings.filter(m => m.is_active);
-  const totalMappings = mappings.length;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading control panel...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto px-6 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">Control Panel</h1>
         <p className="text-muted-foreground">
-          Manage mappings, monitor transformations, and control your data workflows.
+          Monitor system performance, manage API keys, and configure system settings.
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* Overview Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Mappings</CardTitle>
-            <Tag className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">API Requests</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalMappings}</div>
-            <p className="text-xs text-muted-foreground">Across all categories</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Last 24 hours</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Mappings</CardTitle>
-            <Play className="h-4 w-4 text-emerald-600" />
+            <CardTitle className="text-sm font-medium">Transformations</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{activeMappings.length}</div>
-            <p className="text-xs text-muted-foreground">Currently enabled</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Completed today</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            <Tag className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <Activity className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{categories.length}</div>
-            <p className="text-xs text-muted-foreground">Different categories</p>
+            <div className="text-2xl font-bold text-emerald-600">100%</div>
+            <p className="text-xs text-muted-foreground">Last 7 days</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Keys</CardTitle>
+            <Key className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">API keys active</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="mappings" className="space-y-6">
+      <Tabs defaultValue="api-keys" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="mappings" className="flex items-center gap-2">
-            <Tag className="h-4 w-4" />
-            Mapping Manager
-          </TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Logs & Transformations
-          </TabsTrigger>
           <TabsTrigger value="api-keys" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
             API Keys
           </TabsTrigger>
-          <TabsTrigger value="data" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Data Insights
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            System Logs
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Settings
           </TabsTrigger>
         </TabsList>
 
-        {/* Mapping Manager Tab */}
-        <TabsContent value="mappings" className="space-y-6">
-          {/* Category Filter */}
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              variant={selectedCategory === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedCategory('all')}
-            >
-              All Categories
-            </Button>
-            {categories.map(category => (
-              <Button 
-                key={category}
-                variant={selectedCategory === category ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
-
-          {/* Mappings Table */}
-          {filteredMappings.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Tag className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No mappings found</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  {selectedCategory === 'all' 
-                    ? "You haven't created any mappings yet. Start by using one of the builder tools."
-                    : `No mappings found in the "${selectedCategory}" category.`
-                  }
-                </p>
-                <Button onClick={() => navigate('/template-mapper')}>
-                  Create Your First Mapping
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Mappings</CardTitle>
-                <CardDescription>Manage your data transformation mappings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Version</TableHead>
-                      <TableHead>Updated</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMappings.map((mapping) => (
-                      <TableRow key={mapping.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={mapping.is_active}
-                              onCheckedChange={(checked) => handleToggleStatus(mapping.id, checked)}
-                            />
-                            {mapping.is_active ? (
-                              <Badge variant="default" className="bg-emerald-100 text-emerald-800">
-                                Active
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">Inactive</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{mapping.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{mapping.category}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{mapping.version}</Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {format(new Date(mapping.updated_at), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => handleEditMapping(mapping)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteMapping(mapping)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+        {/* API Keys Tab */}
+        <TabsContent value="api-keys" className="space-y-6">
+          <ApiKeyManager />
         </TabsContent>
 
-        {/* Logs & Transformations Tab */}
+        {/* System Logs Tab */}
         <TabsContent value="logs" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Transformation Logs</CardTitle>
-              <CardDescription>Monitor and retry data transformations</CardDescription>
+              <CardTitle>System Logs</CardTitle>
+              <CardDescription>Monitor transformation requests and system events</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Timestamp</TableHead>
-                    <TableHead>Mapping</TableHead>
+                    <TableHead>Event Type</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Records</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Details</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <TableRow>
                     <TableCell className="text-muted-foreground">
-                      No transformation logs yet
+                      No system logs yet
                     </TableCell>
-                    <TableCell>-</TableCell>
                     <TableCell>-</TableCell>
                     <TableCell>-</TableCell>
                     <TableCell>-</TableCell>
@@ -332,80 +146,44 @@ const ControlPanel = () => {
           </Card>
         </TabsContent>
 
-        {/* API Keys Tab */}
-        <TabsContent value="api-keys" className="space-y-6">
-          <ApiKeyManager />
-        </TabsContent>
-
-        {/* Data Insights Tab */}
-        <TabsContent value="data" className="space-y-6">
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Data Transformation Insights</CardTitle>
-              <CardDescription>View before and after transformation data</CardDescription>
+              <CardTitle>System Analytics</CardTitle>
+              <CardDescription>Performance metrics and usage statistics</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No data insights available</h3>
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No analytics data available</h3>
                 <p className="text-muted-foreground">
-                  Data insights will appear here once you start running transformations.
+                  Analytics will appear here once you start using the transformation endpoints.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Settings</CardTitle>
+              <CardDescription>Configure system preferences and options</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Settings panel coming soon</h3>
+                <p className="text-muted-foreground">
+                  System configuration options will be available here.
                 </p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, mapping: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Mapping</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this mapping? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {deleteDialog.mapping && (
-            <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="font-medium">{deleteDialog.mapping.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Version: {deleteDialog.mapping.version} • Category: {deleteDialog.mapping.category}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Type the mapping name to confirm deletion:
-                </label>
-                <Input
-                  value={deleteConfirmationName}
-                  onChange={(e) => setDeleteConfirmationName(e.target.value)}
-                  placeholder={deleteDialog.mapping.name}
-                />
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setDeleteDialog({ open: false, mapping: null })}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleConfirmDelete}
-              disabled={!isDeleteNameValid}
-            >
-              Delete Mapping
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

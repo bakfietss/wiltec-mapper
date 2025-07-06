@@ -27,7 +27,7 @@ const builderItems = [
 ];
 
 const mappingItems = [
-  { title: 'My Mappings', url: '/', icon: Home },
+  { title: 'My Mappings', url: '/my-mappings', icon: Home },
 ];
 
 const navigationItems = [
