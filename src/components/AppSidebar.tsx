@@ -1,0 +1,132 @@
+import React from 'react';
+import { Home, Wand2, Brain, Settings, LogOut, User } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+
+const navigationItems = [
+  { title: 'Home', url: '/', icon: Home },
+  { title: 'Template Mapper', url: '/template-mapper', icon: Wand2 },
+  { title: 'AI Mapper', url: '/ai-mapper', icon: Brain },
+  { title: 'Manual Mapper', url: '/manual', icon: Settings },
+];
+
+export function AppSidebar() {
+  const { state } = useSidebar();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+
+  const isCollapsed = state === 'collapsed';
+
+  const handleLogout = async () => {
+    await logout();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    });
+    navigate('/');
+  };
+
+  const isActive = (path: string) => {
+    if (path === '/' && (location.pathname === '/' || location.pathname === '/manual')) {
+      // Handle the case where manual is considered part of home
+      return location.pathname === '/';
+    }
+    return location.pathname === path;
+  };
+
+  const getNavClassName = (isActiveRoute: boolean) =>
+    isActiveRoute 
+      ? "bg-primary text-primary-foreground font-medium" 
+      : "hover:bg-muted/50";
+
+  return (
+    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
+      <SidebarHeader className="border-b p-4">
+        {!isCollapsed && (
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Settings className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-lg">Mapping Tool</h2>
+              <p className="text-sm text-muted-foreground">Data Transformation</p>
+            </div>
+          </div>
+        )}
+        {isCollapsed && (
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto">
+            <Settings className="w-4 h-4 text-primary-foreground" />
+          </div>
+        )}
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className={({ isActive: navIsActive }) => 
+                        getNavClassName(navIsActive || isActive(item.url))
+                      }
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {user && (
+        <SidebarFooter className="border-t p-4">
+          <div className="space-y-2">
+            {!isCollapsed && (
+              <>
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium truncate">{user.username}</span>
+                </div>
+                <Separator />
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size={isCollapsed ? "icon" : "sm"}
+              onClick={handleLogout}
+              className="w-full justify-start"
+            >
+              <LogOut className="w-4 h-4" />
+              {!isCollapsed && <span className="ml-2">Logout</span>}
+            </Button>
+          </div>
+        </SidebarFooter>
+      )}
+    </Sidebar>
+  );
+}

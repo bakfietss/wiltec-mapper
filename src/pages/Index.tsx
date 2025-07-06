@@ -2,8 +2,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Canvas from '../Canvas/Canvas';
 import DataSidebar from '../components/nodes/DataSidebar';
-import NavigationBar from '../components/NavigationBar';
-import UserHeader from '../components/UserHeader';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Wand2, X } from 'lucide-react';
@@ -65,12 +63,9 @@ const Index = () => {
 
   return (
     <div className="h-screen relative overflow-hidden">
-      <NavigationBar />
-      <UserHeader />
-      
       {/* Template Conversion Notification */}
       {templateConversion && (
-        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-20 w-96">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 w-96">
           <Alert className="border-blue-200 bg-blue-50">
             <Wand2 className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
