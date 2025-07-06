@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import Canvas from '../Canvas/Canvas';
 import DataSidebar from '../components/nodes/DataSidebar';
 import NavigationBar from '../components/NavigationBar';
+import UserHeader from '../components/UserHeader';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Wand2, X } from 'lucide-react';
@@ -65,6 +66,7 @@ const Index = () => {
   return (
     <div className="h-screen relative overflow-hidden">
       <NavigationBar />
+      <UserHeader />
       
       {/* Template Conversion Notification */}
       {templateConversion && (

@@ -5,6 +5,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Upload, Play, Copy, Check, Download, ArrowRight, Sparkles, Wand2, Map } from 'lucide-react';
 import NavigationBar from '../components/NavigationBar';
+import UserHeader from '../components/UserHeader';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
 import { TemplateGenerationService } from '../services/TemplateGenerationService';
@@ -352,6 +353,7 @@ const TemplateMapper = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
+      <UserHeader />
       
       <div className="container mx-auto px-6 py-8 mt-16">
         <div className="mb-8">
