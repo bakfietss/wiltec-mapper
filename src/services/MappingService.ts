@@ -219,4 +219,61 @@ export class MappingService {
       execution_config: item.execution_config as unknown as ExecutionMappingConfig
     }));
   }
+
+  static async getLatestMappings(userId: string): Promise<SavedMapping[]> {
+    if (!userId) {
+      throw new Error('User authentication is required to fetch mappings');
+    }
+
+    const { data, error } = await supabase
+      .from('mappings')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name', { ascending: true })
+      .order('version', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch mappings: ${error.message}`);
+    }
+
+    // Group by name+category and get only the latest version of each
+    const latestMappings = new Map<string, any>();
+    
+    (data || []).forEach(item => {
+      const key = `${item.name}-${item.category}`;
+      if (!latestMappings.has(key)) {
+        latestMappings.set(key, item);
+      }
+    });
+
+    return Array.from(latestMappings.values()).map(item => ({
+      ...item,
+      ui_config: item.ui_config as unknown as SavedMappingConfig,
+      execution_config: item.execution_config as unknown as ExecutionMappingConfig
+    }));
+  }
+
+  static async getMappingVersions(userId: string, name: string, category: string): Promise<SavedMapping[]> {
+    if (!userId) {
+      throw new Error('User authentication is required to fetch mappings');
+    }
+
+    const { data, error } = await supabase
+      .from('mappings')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('name', name)
+      .eq('category', category)
+      .order('version', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch mapping versions: ${error.message}`);
+    }
+
+    return (data || []).map(item => ({
+      ...item,
+      ui_config: item.ui_config as unknown as SavedMappingConfig,
+      execution_config: item.execution_config as unknown as ExecutionMappingConfig
+    }));
+  }
 }

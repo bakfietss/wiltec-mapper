@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Play, Eye, Trash2, Tag, Edit } from 'lucide-react';
+import { Play, Eye, Trash2, Tag, Edit, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,6 +21,11 @@ const MyMappings = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
   const [deleteConfirmationName, setDeleteConfirmationName] = useState('');
+  const [versionDialog, setVersionDialog] = useState<{ open: boolean; mapping: SavedMapping | null; versions: SavedMapping[] }>({ 
+    open: false, 
+    mapping: null, 
+    versions: [] 
+  });
 
   useEffect(() => {
     if (user?.id) {
@@ -31,7 +36,7 @@ const MyMappings = () => {
   const fetchMappings = async () => {
     try {
       setLoading(true);
-      const data = await MappingService.getMappings(user!.id);
+      const data = await MappingService.getLatestMappings(user!.id);
       setMappings(data);
     } catch (error) {
       console.error('Failed to fetch mappings:', error);
@@ -63,6 +68,40 @@ const MyMappings = () => {
   const handleDeleteMapping = (mapping: SavedMapping) => {
     setDeleteDialog({ open: true, mapping });
     setDeleteConfirmationName('');
+  };
+
+  const handleVersionHistory = async (mapping: SavedMapping) => {
+    try {
+      const versions = await MappingService.getMappingVersions(user!.id, mapping.name, mapping.category);
+      setVersionDialog({ open: true, mapping, versions });
+    } catch (error) {
+      console.error('Failed to fetch mapping versions:', error);
+      toast.error('Failed to load version history');
+    }
+  };
+
+  const handleActivateVersion = async (versionMapping: SavedMapping) => {
+    try {
+      // First deactivate all versions of this mapping
+      const allVersions = versionDialog.versions;
+      for (const version of allVersions) {
+        if (version.is_active) {
+          await MappingService.toggleMappingStatus(version.id, user!.id, false);
+        }
+      }
+      
+      // Then activate the selected version
+      await MappingService.toggleMappingStatus(versionMapping.id, user!.id, true);
+      
+      // Refresh mappings and close dialog
+      await fetchMappings();
+      setVersionDialog({ open: false, mapping: null, versions: [] });
+      
+      toast.success(`Activated version ${versionMapping.version} of "${versionMapping.name}"`);
+    } catch (error) {
+      console.error('Failed to activate version:', error);
+      toast.error('Failed to activate version');
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -229,28 +268,35 @@ const MyMappings = () => {
                     <TableCell className="text-muted-foreground">
                       {format(new Date(mapping.updated_at), 'MMM d, yyyy')}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleEditMapping(mapping)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteMapping(mapping)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                     <TableCell>
+                       <div className="flex gap-2">
+                         <Button 
+                           size="sm" 
+                           variant="outline" 
+                           onClick={() => handleEditMapping(mapping)}
+                         >
+                           <Edit className="h-4 w-4" />
+                         </Button>
+                         <Button 
+                           size="sm" 
+                           variant="outline"
+                           onClick={() => handleVersionHistory(mapping)}
+                         >
+                           <History className="h-4 w-4" />
+                         </Button>
+                         <Button size="sm" variant="outline">
+                           <Eye className="h-4 w-4" />
+                         </Button>
+                         <Button 
+                           size="sm" 
+                           variant="outline" 
+                           className="text-destructive hover:text-destructive"
+                           onClick={() => handleDeleteMapping(mapping)}
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -304,6 +350,81 @@ const MyMappings = () => {
               disabled={!isDeleteNameValid}
             >
               Delete Mapping
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Version History Dialog */}
+      <Dialog open={versionDialog.open} onOpenChange={(open) => setVersionDialog({ open, mapping: null, versions: [] })}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Version History</DialogTitle>
+            <DialogDescription>
+              {versionDialog.mapping && `All versions of "${versionDialog.mapping.name}" mapping`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {versionDialog.mapping && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="font-medium">{versionDialog.mapping.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Category: {versionDialog.mapping.category}
+                </p>
+              </div>
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {versionDialog.versions.map((version) => (
+                    <TableRow key={version.id}>
+                      <TableCell>
+                        <Badge variant="secondary">{version.version}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {version.is_active ? (
+                          <Badge variant="default" className="bg-emerald-100 text-emerald-800">
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Inactive</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(new Date(version.updated_at), 'MMM d, yyyy HH:mm')}
+                      </TableCell>
+                      <TableCell>
+                        {!version.is_active && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleActivateVersion(version)}
+                          >
+                            Activate
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setVersionDialog({ open: false, mapping: null, versions: [] })}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
