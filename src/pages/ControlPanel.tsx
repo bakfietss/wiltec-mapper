@@ -5,19 +5,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Play, Pause, Eye, Download, Trash2, Tag, Calendar } from 'lucide-react';
+import { Play, Pause, Eye, Download, Trash2, Tag, Calendar, Edit, RotateCcw, FileText, Activity } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const ControlPanel = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [mappings, setMappings] = useState<SavedMapping[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   useEffect(() => {
     if (user?.id) {
       fetchMappings();
+      fetchLogs();
     }
   }, [user?.id]);
 
@@ -32,6 +38,11 @@ const ControlPanel = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchLogs = async () => {
+    // TODO: Implement log fetching from mapping_logs table
+    setLogs([]);
   };
 
   const handleToggleStatus = async (id: string, isActive: boolean) => {
@@ -49,6 +60,16 @@ const ControlPanel = () => {
     }
   };
 
+  const handleEditMapping = (mapping: SavedMapping) => {
+    // Navigate to manual mapper with the mapping data
+    navigate('/manual', { state: { mappingToLoad: mapping } });
+  };
+
+  const handleRetryTransformation = (logId: string) => {
+    // TODO: Implement retry logic
+    toast.info('Retry functionality coming soon');
+  };
+
   const categories = Array.from(new Set(mappings.map(m => m.category).filter(Boolean)));
   const filteredMappings = selectedCategory === 'all' 
     ? mappings 
@@ -62,7 +83,7 @@ const ControlPanel = () => {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading mappings...</p>
+          <p className="text-muted-foreground">Loading control panel...</p>
         </div>
       </div>
     );
@@ -73,7 +94,7 @@ const ControlPanel = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">Control Panel</h1>
         <p className="text-muted-foreground">
-          Manage your data mappings, view status, and control which mappings are active.
+          Manage mappings, monitor transformations, and control your data workflows.
         </p>
       </div>
 
@@ -93,10 +114,10 @@ const ControlPanel = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Mappings</CardTitle>
-            <Play className="h-4 w-4 text-green-600" />
+            <Play className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeMappings.length}</div>
+            <div className="text-2xl font-bold text-emerald-600">{activeMappings.length}</div>
             <p className="text-xs text-muted-foreground">Currently enabled</p>
           </CardContent>
         </Card>
@@ -113,111 +134,191 @@ const ControlPanel = () => {
         </Card>
       </div>
 
-      {/* Category Filter */}
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            variant={selectedCategory === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedCategory('all')}
-          >
-            All Categories
-          </Button>
-          {categories.map(category => (
-            <Button 
-              key={category}
-              variant={selectedCategory === category ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </Button>
-          ))}
-        </div>
-      </div>
+      {/* Main Tabs */}
+      <Tabs defaultValue="mappings" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="mappings" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Mapping Manager
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Logs & Transformations
+          </TabsTrigger>
+          <TabsTrigger value="data" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Data Insights
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Mappings List */}
-      {filteredMappings.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Tag className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No mappings found</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              {selectedCategory === 'all' 
-                ? "You haven't created any mappings yet. Start by using one of the builder tools."
-                : `No mappings found in the "${selectedCategory}" category.`
-              }
-            </p>
-            <Button onClick={() => window.location.href = '/template-mapper'}>
-              Create Your First Mapping
+        {/* Mapping Manager Tab */}
+        <TabsContent value="mappings" className="space-y-6">
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant={selectedCategory === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedCategory('all')}
+            >
+              All Categories
             </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {filteredMappings.map((mapping) => (
-            <Card key={mapping.id} className={mapping.is_active ? 'border-green-200 bg-green-50/50' : ''}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      {mapping.is_active ? (
-                        <Play className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Pause className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <CardTitle className="text-lg">{mapping.name}</CardTitle>
-                    </div>
-                    <Badge variant="secondary">{mapping.version}</Badge>
-                    <Badge variant="outline">{mapping.category}</Badge>
-                  </div>
-                  <Switch
-                    checked={mapping.is_active}
-                    onCheckedChange={(checked) => handleToggleStatus(mapping.id, checked)}
-                  />
-                </div>
-                {mapping.description && (
-                  <CardDescription>{mapping.description}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Updated {format(new Date(mapping.updated_at), 'MMM d, yyyy')}
-                    </div>
-                    {mapping.tags && mapping.tags.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Tag className="h-4 w-4" />
-                        {mapping.tags.slice(0, 2).map(tag => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {mapping.tags.length > 2 && (
-                          <span className="text-xs">+{mapping.tags.length - 2} more</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+            {categories.map(category => (
+              <Button 
+                key={category}
+                variant={selectedCategory === category ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+
+          {/* Mappings Table */}
+          {filteredMappings.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Tag className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No mappings found</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  {selectedCategory === 'all' 
+                    ? "You haven't created any mappings yet. Start by using one of the builder tools."
+                    : `No mappings found in the "${selectedCategory}" category.`
+                  }
+                </p>
+                <Button onClick={() => navigate('/template-mapper')}>
+                  Create Your First Mapping
+                </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Mappings</CardTitle>
+                <CardDescription>Manage your data transformation mappings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Version</TableHead>
+                      <TableHead>Updated</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMappings.map((mapping) => (
+                      <TableRow key={mapping.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={mapping.is_active}
+                              onCheckedChange={(checked) => handleToggleStatus(mapping.id, checked)}
+                            />
+                            {mapping.is_active ? (
+                              <Badge variant="default" className="bg-emerald-100 text-emerald-800">
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{mapping.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{mapping.category}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{mapping.version}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(mapping.updated_at), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleEditMapping(mapping)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Logs & Transformations Tab */}
+        <TabsContent value="logs" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Transformation Logs</CardTitle>
+              <CardDescription>Monitor and retry data transformations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Mapping</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Records</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="text-muted-foreground">
+                      No transformation logs yet
+                    </TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Data Insights Tab */}
+        <TabsContent value="data" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Transformation Insights</CardTitle>
+              <CardDescription>View before and after transformation data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No data insights available</h3>
+                <p className="text-muted-foreground">
+                  Data insights will appear here once you start running transformations.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
