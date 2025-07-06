@@ -85,7 +85,13 @@ export class MappingService {
       }
     };
 
-    // Note: We keep is_active as user-controlled, so no automatic deactivation
+    // Deactivate all previous versions of this mapping
+    await supabase
+      .from('mappings')
+      .update({ is_active: false })
+      .eq('user_id', userId)
+      .eq('name', name)
+      .eq('category', category);
 
     // Save new mapping with user ID
     const { data, error } = await supabase
@@ -174,6 +180,31 @@ export class MappingService {
 
     if (error) {
       throw new Error(`Failed to update mapping status: ${error.message}`);
+    }
+  }
+
+  static async activateVersion(id: string, userId: string, name: string, category: string): Promise<void> {
+    if (!userId) {
+      throw new Error('User authentication is required to update mappings');
+    }
+
+    // First deactivate all versions of this mapping
+    await supabase
+      .from('mappings')
+      .update({ is_active: false })
+      .eq('user_id', userId)
+      .eq('name', name)
+      .eq('category', category);
+
+    // Then activate the specific version
+    const { error } = await supabase
+      .from('mappings')
+      .update({ is_active: true })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(`Failed to activate mapping version: ${error.message}`);
     }
   }
 

@@ -82,16 +82,12 @@ const MyMappings = () => {
 
   const handleActivateVersion = async (versionMapping: SavedMapping) => {
     try {
-      // First deactivate all versions of this mapping
-      const allVersions = versionDialog.versions;
-      for (const version of allVersions) {
-        if (version.is_active) {
-          await MappingService.toggleMappingStatus(version.id, user!.id, false);
-        }
-      }
-      
-      // Then activate the selected version
-      await MappingService.toggleMappingStatus(versionMapping.id, user!.id, true);
+      await MappingService.activateVersion(
+        versionMapping.id, 
+        user!.id, 
+        versionMapping.name, 
+        versionMapping.category
+      );
       
       // Refresh mappings and close dialog
       await fetchMappings();
