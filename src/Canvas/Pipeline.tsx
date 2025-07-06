@@ -381,6 +381,8 @@ const Pipeline = () => {
       );
 
       console.log('Mapping saved successfully:', savedMapping);
+      setCurrentMappingName(mappingName.trim());
+      setCurrentMappingVersion(savedMapping.version);
       toast.success(`Mapping "${mappingName}" saved as version ${savedMapping.version}`);
     } catch (error) {
       console.error('Failed to save mapping:', error);

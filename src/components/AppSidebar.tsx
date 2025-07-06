@@ -26,9 +26,14 @@ const builderItems = [
   { title: 'Manual Mapper', url: '/manual', icon: Settings },
 ];
 
+const mappingItems = [
+  { title: 'My Mappings', url: '/', icon: Home },
+];
+
 const navigationItems = [
   { title: 'Control Panel', url: '/', icon: Home },
   { title: 'Builder', items: builderItems, icon: FolderOpen },
+  { title: 'Mappings', items: mappingItems, icon: FolderOpen },
 ];
 
 export function AppSidebar() {
@@ -38,6 +43,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [builderOpen, setBuilderOpen] = useState(true);
+  const [mappingsOpen, setMappingsOpen] = useState(true);
 
   const isCollapsed = state === 'collapsed';
 
@@ -59,6 +65,10 @@ export function AppSidebar() {
 
   const isBuilderActive = () => {
     return builderItems.some(item => location.pathname === item.url);
+  };
+
+  const isMappingsActive = () => {
+    return mappingItems.some(item => location.pathname === item.url);
   };
 
   const getNavClassName = (isActiveRoute: boolean) =>
@@ -127,6 +137,44 @@ export function AppSidebar() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="ml-4">
                     {builderItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            className={({ isActive: navIsActive }) => 
+                              getNavClassName(navIsActive)
+                            }
+                          >
+                            <item.icon className="w-4 h-4" />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarMenuItem>
+
+              {/* Mappings Section */}
+              <SidebarMenuItem>
+                <Collapsible 
+                  open={mappingsOpen || isCollapsed} 
+                  onOpenChange={setMappingsOpen}
+                  className="w-full"
+                >
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton className={`w-full justify-between ${isMappingsActive() ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
+                      <div className="flex items-center">
+                        <FolderOpen className="w-4 h-4" />
+                        {!isCollapsed && <span className="ml-2">Mappings</span>}
+                      </div>
+                      {!isCollapsed && (
+                        <ChevronDown className={`w-4 h-4 transition-transform ${mappingsOpen ? 'rotate-180' : ''}`} />
+                      )}
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="ml-4">
+                    {mappingItems.map((item) => (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
                           <NavLink
