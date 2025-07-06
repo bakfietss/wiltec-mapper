@@ -4,14 +4,27 @@ import { Node, Edge } from '@xyflow/react';
 export interface SavedMappingConfig {
   name: string;
   version: string;
+  category: string;
+  description?: string;
+  tags?: string[];
   nodes: Node[];
   edges: Edge[];
   metadata?: {
-    description?: string;
-    tags?: string[];
     author?: string;
     created_at?: string;
     created_by?: string;
+  };
+}
+
+export interface ExecutionMappingConfig {
+  name: string;
+  version: string;
+  category: string;
+  mappings: any[];
+  arrays?: any[];
+  metadata?: {
+    description?: string;
+    author?: string;
   };
 }
 
@@ -19,7 +32,11 @@ export interface SavedMapping {
   id: string;
   name: string;
   version: string;
-  config: SavedMappingConfig;
+  category: string;
+  description?: string;
+  tags?: string[];
+  ui_config: SavedMappingConfig;
+  execution_config?: ExecutionMappingConfig;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -30,47 +47,45 @@ export class MappingService {
     name: string,
     nodes: Node[],
     edges: Edge[],
-    userId: string
+    userId: string,
+    category: string = 'General',
+    description?: string,
+    tags?: string[],
+    executionConfig?: ExecutionMappingConfig
   ): Promise<SavedMapping> {
     if (!userId) {
       throw new Error('User authentication is required to save mappings');
     }
 
-    // Get next version using user ID
+    // Get next version using user ID and category
     const { data: version, error: versionError } = await supabase
       .rpc('get_next_version', {
         p_user_id: userId,
-        p_name: name
+        p_name: name,
+        p_category: category
       });
 
     if (versionError) {
       throw new Error(`Failed to get next version: ${versionError.message}`);
     }
 
-    // Create mapping configuration
-    const config: SavedMappingConfig = {
+    // Create UI configuration
+    const uiConfig: SavedMappingConfig = {
       name,
       version,
+      category,
+      description,
+      tags,
       nodes,
       edges,
       metadata: {
-        description: `Mapping version ${version}`,
         author: userId,
         created_at: new Date().toISOString(),
         created_by: userId
       }
     };
 
-    // Deactivate previous versions for this user
-    const { error: deactivateError } = await supabase
-      .from('mappings')
-      .update({ is_active: false })
-      .eq('user_id', userId)
-      .eq('name', name);
-
-    if (deactivateError) {
-      throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
-    }
+    // Note: We keep is_active as user-controlled, so no automatic deactivation
 
     // Save new mapping with user ID
     const { data, error } = await supabase
@@ -79,7 +94,12 @@ export class MappingService {
         user_id: userId,
         name,
         version,
-        config: config as any,
+        category,
+        description,
+        tags,
+        config: uiConfig as any, // Keep for backward compatibility
+        ui_config: uiConfig as any,
+        execution_config: executionConfig as any,
         is_active: true
       })
       .select()
@@ -91,7 +111,8 @@ export class MappingService {
 
     return {
       ...data,
-      config: data.config as unknown as SavedMappingConfig
+      ui_config: data.ui_config as unknown as SavedMappingConfig,
+      execution_config: data.execution_config as unknown as ExecutionMappingConfig
     };
   }
 
@@ -112,11 +133,12 @@ export class MappingService {
 
     return (data || []).map(item => ({
       ...item,
-      config: item.config as unknown as SavedMappingConfig
+      ui_config: item.ui_config as unknown as SavedMappingConfig,
+      execution_config: item.execution_config as unknown as ExecutionMappingConfig
     }));
   }
 
-  static async getActiveMapping(name: string, userId: string): Promise<SavedMapping | null> {
+  static async getActiveMapping(name: string, userId: string, category?: string): Promise<SavedMapping | null> {
     if (!userId) {
       throw new Error('User authentication is required to fetch mappings');
     }
@@ -124,7 +146,8 @@ export class MappingService {
     const { data, error } = await supabase
       .rpc('get_active_mapping', {
         p_user_id: userId,
-        p_name: name
+        p_name: name,
+        p_category: category
       });
 
     if (error) {
@@ -133,7 +156,51 @@ export class MappingService {
 
     return data ? {
       ...data,
-      config: data.config as unknown as SavedMappingConfig
+      ui_config: data.ui_config as unknown as SavedMappingConfig,
+      execution_config: data.execution_config as unknown as ExecutionMappingConfig
     } : null;
+  }
+
+  static async toggleMappingStatus(id: string, userId: string, isActive: boolean): Promise<void> {
+    if (!userId) {
+      throw new Error('User authentication is required to update mappings');
+    }
+
+    const { error } = await supabase
+      .from('mappings')
+      .update({ is_active: isActive })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(`Failed to update mapping status: ${error.message}`);
+    }
+  }
+
+  static async getMappingsByCategory(userId: string, category?: string): Promise<SavedMapping[]> {
+    if (!userId) {
+      throw new Error('User authentication is required to fetch mappings');
+    }
+
+    let query = supabase
+      .from('mappings')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query.order('updated_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch mappings: ${error.message}`);
+    }
+
+    return (data || []).map(item => ({
+      ...item,
+      ui_config: item.ui_config as unknown as SavedMappingConfig,
+      execution_config: item.execution_config as unknown as ExecutionMappingConfig
+    }));
   }
 }

@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Index from './pages/Index';
 import TemplateMapper from './pages/TemplateMapper';
+import ControlPanel from './pages/ControlPanel';
 import Auth from './pages/Auth';
 import NotFound from './pages/NotFound';
 import './App.css';
@@ -24,9 +25,29 @@ function App() {
         <Router>
           <Routes>
             {/* Public routes without sidebar */}
-            <Route path="/" element={<Landing />} />
+            <Route path="/landing" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="*" element={<NotFound />} />
+            
+            {/* Protected routes with sidebar */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <div className="flex-1 flex flex-col">
+                      <header className="h-12 flex items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                        <SidebarTrigger className="ml-4" />
+                        <h1 className="ml-4 font-semibold">Control Panel</h1>
+                      </header>
+                      <main className="flex-1">
+                        <ControlPanel />
+                      </main>
+                    </div>
+                  </div>
+                </SidebarProvider>
+              </ProtectedRoute>
+            } />
             
             {/* Protected routes with sidebar */}
             <Route path="/manual" element={

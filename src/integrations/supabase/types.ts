@@ -78,33 +78,48 @@ export type Database = {
       }
       mappings: {
         Row: {
+          category: string | null
           config: Json
           created_at: string | null
+          description: string | null
+          execution_config: Json | null
           id: string
           is_active: boolean | null
           name: string
+          tags: string[] | null
+          ui_config: Json | null
           updated_at: string | null
           user_email: string | null
           user_id: string | null
           version: string
         }
         Insert: {
+          category?: string | null
           config: Json
           created_at?: string | null
+          description?: string | null
+          execution_config?: Json | null
           id?: string
           is_active?: boolean | null
           name: string
+          tags?: string[] | null
+          ui_config?: Json | null
           updated_at?: string | null
           user_email?: string | null
           user_id?: string | null
           version: string
         }
         Update: {
+          category?: string | null
           config?: Json
           created_at?: string | null
+          description?: string | null
+          execution_config?: Json | null
           id?: string
           is_active?: boolean | null
           name?: string
+          tags?: string[] | null
+          ui_config?: Json | null
           updated_at?: string | null
           user_email?: string | null
           user_id?: string | null
@@ -147,12 +162,18 @@ export type Database = {
         Args:
           | { p_user_email: string; p_name: string }
           | { p_user_id: string; p_name: string }
+          | { p_user_id: string; p_name: string; p_category?: string }
         Returns: {
+          category: string | null
           config: Json
           created_at: string | null
+          description: string | null
+          execution_config: Json | null
           id: string
           is_active: boolean | null
           name: string
+          tags: string[] | null
+          ui_config: Json | null
           updated_at: string | null
           user_email: string | null
           user_id: string | null
@@ -163,6 +184,7 @@ export type Database = {
         Args:
           | { p_user_email: string; p_name: string }
           | { p_user_id: string; p_name: string }
+          | { p_user_id: string; p_name: string; p_category?: string }
         Returns: string
       }
     }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Home, Wand2, Brain, Settings, LogOut, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Wand2, Brain, Settings, LogOut, User, ChevronDown, FolderOpen } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -18,12 +18,17 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const navigationItems = [
-  { title: 'Home', url: '/', icon: Home },
+const builderItems = [
   { title: 'Template Mapper', url: '/template-mapper', icon: Wand2 },
   { title: 'AI Mapper', url: '/ai-mapper', icon: Brain },
   { title: 'Manual Mapper', url: '/manual', icon: Settings },
+];
+
+const navigationItems = [
+  { title: 'Control Panel', url: '/', icon: Home },
+  { title: 'Builder', items: builderItems, icon: FolderOpen },
 ];
 
 export function AppSidebar() {
@@ -32,6 +37,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const [builderOpen, setBuilderOpen] = useState(true);
 
   const isCollapsed = state === 'collapsed';
 
@@ -45,11 +51,14 @@ export function AppSidebar() {
   };
 
   const isActive = (path: string) => {
-    if (path === '/' && (location.pathname === '/' || location.pathname === '/manual')) {
-      // Handle the case where manual is considered part of home
-      return location.pathname === '/';
+    if (path === '/' && location.pathname === '/') {
+      return true;
     }
     return location.pathname === path;
+  };
+
+  const isBuilderActive = () => {
+    return builderItems.some(item => location.pathname === item.url);
   };
 
   const getNavClassName = (isActiveRoute: boolean) =>
@@ -83,21 +92,58 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className={({ isActive: navIsActive }) => 
-                        getNavClassName(navIsActive || isActive(item.url))
-                      }
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {/* Control Panel */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/"
+                    className={({ isActive: navIsActive }) => 
+                      getNavClassName(navIsActive || isActive('/'))
+                    }
+                  >
+                    <Home className="w-4 h-4" />
+                    {!isCollapsed && <span>Control Panel</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Builder Section */}
+              <SidebarMenuItem>
+                <Collapsible 
+                  open={builderOpen || isCollapsed} 
+                  onOpenChange={setBuilderOpen}
+                  className="w-full"
+                >
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton className={`w-full justify-between ${isBuilderActive() ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
+                      <div className="flex items-center">
+                        <FolderOpen className="w-4 h-4" />
+                        {!isCollapsed && <span className="ml-2">Builder</span>}
+                      </div>
+                      {!isCollapsed && (
+                        <ChevronDown className={`w-4 h-4 transition-transform ${builderOpen ? 'rotate-180' : ''}`} />
+                      )}
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="ml-4">
+                    {builderItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            className={({ isActive: navIsActive }) => 
+                              getNavClassName(navIsActive)
+                            }
+                          >
+                            <item.icon className="w-4 h-4" />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
