@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -14,6 +15,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [useTestCredentials, setUseTestCredentials] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,6 +28,17 @@ const Auth = () => {
       navigate(from, { replace: true });
     }
   }, [user, navigate, from]);
+
+  // Handle test credentials checkbox
+  useEffect(() => {
+    if (useTestCredentials) {
+      setEmail('test@example.com');
+      setPassword('test123456');
+    } else {
+      setEmail('');
+      setPassword('');
+    }
+  }, [useTestCredentials]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +155,17 @@ const Auth = () => {
             
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox 
+                    id="use-test-credentials" 
+                    checked={useTestCredentials}
+                    onCheckedChange={(checked) => setUseTestCredentials(checked === true)}
+                  />
+                  <Label htmlFor="use-test-credentials" className="text-sm text-muted-foreground">
+                    Use testing credentials for quick access
+                  </Label>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="signin-email">Email</Label>
                   <Input
@@ -151,6 +175,7 @@ const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={useTestCredentials}
                   />
                 </div>
                 <div className="space-y-2">
@@ -162,6 +187,7 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={useTestCredentials}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -173,6 +199,17 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox 
+                    id="use-test-credentials-signup" 
+                    checked={useTestCredentials}
+                    onCheckedChange={(checked) => setUseTestCredentials(checked === true)}
+                  />
+                  <Label htmlFor="use-test-credentials-signup" className="text-sm text-muted-foreground">
+                    Use testing credentials for quick signup
+                  </Label>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
@@ -182,6 +219,7 @@ const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={useTestCredentials}
                   />
                 </div>
                 <div className="space-y-2">
@@ -194,6 +232,7 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
+                    disabled={useTestCredentials}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
