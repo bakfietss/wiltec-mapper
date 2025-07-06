@@ -34,6 +34,29 @@ const Auth = () => {
     if (useTestCredentials) {
       setEmail('test@example.com');
       setPassword('test123456');
+      
+      // Auto-create test account if it doesn't exist
+      const createTestAccount = async () => {
+        try {
+          const { error } = await supabase.auth.signUp({
+            email: 'test@example.com',
+            password: 'test123456',
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth`,
+              data: { skip_confirmation: true }
+            }
+          });
+          
+          // Ignore "user already exists" errors - that's expected
+          if (error && !error.message.includes('already registered')) {
+            console.log('Test account creation result:', error);
+          }
+        } catch (err) {
+          console.log('Test account setup:', err);
+        }
+      };
+      
+      createTestAccount();
     } else {
       setEmail('');
       setPassword('');
