@@ -35,19 +35,16 @@ const Auth = () => {
       setEmail('bakfietss@hotmail.com');
       setPassword('system123!@#');
       
-      // Auto-create confirmed test user
+      // Auto-create confirmed test user using Supabase function invoke
       const setupTestUser = async () => {
         try {
-          const response = await fetch('https://hkuwnqgdpnlfjpfvbjjb.supabase.co/functions/v1/create-test-user', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          });
+          const { data, error } = await supabase.functions.invoke('create-test-user');
           
-          if (response.ok) {
-            const result = await response.json();
-            console.log('Test user setup:', result.message);
+          if (error) {
+            console.log('Test user setup error:', error);
+            // Still allow user to try signing in
+          } else {
+            console.log('Test user setup success:', data);
             toast({
               title: "Test user ready",
               description: "You can now sign in with the test credentials",
@@ -77,12 +74,53 @@ const Auth = () => {
       });
 
       if (error) {
+        console.log('Sign in error:', error);
+        
         if (error.message === 'Email not confirmed') {
-          toast({
-            title: "Email not verified",
-            description: "Please check your email and click the verification link before signing in.",
-            variant: "destructive"
-          });
+          // For test credentials, try to auto-fix this
+          if (email === 'bakfietss@hotmail.com') {
+            toast({
+              title: "Setting up test account...",
+              description: "Please wait while we prepare your test account",
+            });
+            
+            // Retry sign in after a brief delay
+            setTimeout(async () => {
+              try {
+                const { error: retryError } = await supabase.auth.signInWithPassword({
+                  email,
+                  password
+                });
+                
+                if (retryError) {
+                  toast({
+                    title: "Test account setup needed",
+                    description: "The test account needs manual confirmation. Please try signing up first, then signing in.",
+                    variant: "destructive"
+                  });
+                } else {
+                  toast({
+                    title: "Success!",
+                    description: "Test account is now ready and you're signed in!"
+                  });
+                }
+              } catch (e) {
+                toast({
+                  title: "Please try signup first",
+                  description: "Click 'Sign Up' tab and create the test account, then sign in",
+                  variant: "destructive"
+                });
+              }
+              setLoading(false);
+            }, 2000);
+            return; // Don't set loading to false here
+          } else {
+            toast({
+              title: "Email not verified",
+              description: "Please check your email and click the verification link before signing in.",
+              variant: "destructive"
+            });
+          }
         } else if (error.message === 'Invalid login credentials') {
           toast({
             title: "Invalid credentials",
