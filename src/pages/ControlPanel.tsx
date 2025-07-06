@@ -8,11 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Play, Pause, Eye, Trash2, Tag, Calendar, Edit, RotateCcw, FileText, Activity } from 'lucide-react';
+import { Play, Pause, Eye, Trash2, Tag, Calendar, Edit, RotateCcw, FileText, Activity, Key } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { ApiKeyManager } from '@/components/ApiKeyManager';
 
 const ControlPanel = () => {
   const { user } = useAuth();
@@ -161,7 +162,7 @@ const ControlPanel = () => {
 
       {/* Main Tabs */}
       <Tabs defaultValue="mappings" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="mappings" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
             Mapping Manager
@@ -169,6 +170,10 @@ const ControlPanel = () => {
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Logs & Transformations
+          </TabsTrigger>
+          <TabsTrigger value="api-keys" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            API Keys
           </TabsTrigger>
           <TabsTrigger value="data" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -325,6 +330,11 @@ const ControlPanel = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* API Keys Tab */}
+        <TabsContent value="api-keys" className="space-y-6">
+          <ApiKeyManager />
         </TabsContent>
 
         {/* Data Insights Tab */}
