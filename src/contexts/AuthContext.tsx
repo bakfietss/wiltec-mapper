@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -11,7 +12,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (user: User) => void;
+  loading: boolean;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -20,111 +21,59 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('=== AUTH CONTEXT INITIALIZING ===');
-    
-    // Auto-login with system account
-    const initSystemAuth = async () => {
-      console.log('=== ATTEMPTING SYSTEM AUTH ===');
-      try {
-        // Check if already authenticated
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log('Current session check:', { session: !!session, sessionError });
-        
-        if (session?.user) {
-          console.log('Existing session found, setting user');
-          const authUser = {
-            id: session.user.id,
-            email: session.user.email,
-            username: 'System User',
-            loginTime: new Date().toISOString()
-          };
-          setUser(authUser);
-          console.log('User set from existing session:', authUser);
-          return;
-        }
-
-        console.log('No existing session, attempting system login...');
-        // Auto-login with system account
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: 'bakfietss@hotmail.com',
-          password: 'system123!@#'
-        });
-
-        console.log('Login attempt result:', { data: !!data, error });
-
-        if (error) {
-          console.error('System auth error:', error);
-          console.log('Attempting to create system account...');
-          // If login fails, try to create the system account
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: 'bakfietss@hotmail.com',
-            password: 'system123!@#',
-            options: {
-              emailRedirectTo: `${window.location.origin}/`
-            }
-          });
-          
-          console.log('Sign up result:', { signUpData: !!signUpData, signUpError });
-          if (signUpError) {
-            console.error('System account creation error:', signUpError);
-          } else {
-            console.log('System account created, check email for confirmation');
-          }
-        } else {
-          console.log('System login successful');
-        }
-      } catch (error) {
-        console.error('System authentication failed:', error);
-      }
-    };
-
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('=== AUTH STATE CHANGED ===', { event, session: !!session });
+        console.log('Auth state changed:', { event, hasSession: !!session });
+        
         if (session?.user) {
           const authUser = {
             id: session.user.id,
             email: session.user.email,
-            username: 'System User',
+            username: session.user.email?.split('@')[0] || 'User',
             loginTime: new Date().toISOString()
           };
           setUser(authUser);
-          console.log('User set from auth state change:', authUser);
+          console.log('User authenticated:', authUser.email);
         } else {
           setUser(null);
-          console.log('User cleared, session lost');
-          // Retry system auth if session lost
-          setTimeout(() => {
-            console.log('Retrying system auth after session loss...');
-            initSystemAuth();
-          }, 2000);
+          console.log('User signed out');
         }
+        
+        setLoading(false);
       }
     );
 
-    initSystemAuth();
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const authUser = {
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.email?.split('@')[0] || 'User',
+          loginTime: new Date().toISOString()
+        };
+        setUser(authUser);
+        console.log('Existing session found:', authUser.email);
+      }
+      setLoading(false);
+    });
     
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
-
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('user');
   };
 
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, loading, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

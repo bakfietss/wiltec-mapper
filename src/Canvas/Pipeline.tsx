@@ -304,36 +304,30 @@ const Pipeline = () => {
     toast.success('New mapping created!');
   }, [setNodes, setEdges, fieldStore]);
 
-  const handleSaveMapping = useCallback(async (name: string) => {
-    console.log('=== SAVE MAPPING CLICKED ===');
-    console.log('User object:', user);
-    
+  const handleSaveMapping = async () => {
     if (!user) {
-      console.log('No user found - authentication required');
-      toast.error('Please wait for system authentication');
+      toast.error('Please log in to save mappings');
       return;
     }
 
-    // Prompt user for their email
-    const userEmail = prompt('Enter your email address to save this mapping:');
-    if (!userEmail || !userEmail.trim()) {
-      toast.error('Email is required to save mappings');
-      return;
-    }
+    const mappingName = prompt('Enter a name for this mapping:');
+    if (!mappingName?.trim()) return;
 
     try {
-      console.log('Attempting to save mapping with email:', userEmail);
-      
-      const savedMapping = await MappingService.saveMapping(name, nodes, edges, userEmail.trim());
+      const savedMapping = await MappingService.saveMapping(
+        mappingName.trim(),
+        nodes,
+        edges,
+        user.id
+      );
+
       console.log('Mapping saved successfully:', savedMapping);
-      setCurrentMappingName(savedMapping.name);
-      setCurrentMappingVersion(savedMapping.version);
-      toast.success(`Mapping saved as ${savedMapping.name} ${savedMapping.version}!`);
+      toast.success(`Mapping "${mappingName}" saved as version ${savedMapping.version}`);
     } catch (error) {
       console.error('Failed to save mapping:', error);
-      toast.error(`Failed to save mapping: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(error instanceof Error ? error.message : "Failed to save mapping");
     }
-  }, [nodes, edges, user]);
+  };
 
   const handleExportDocumentation = useCallback(() => {
     try {

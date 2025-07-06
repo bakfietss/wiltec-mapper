@@ -1,28 +1,38 @@
 
 import React from 'react';
 import { ThemeProvider } from '../Theme/ThemeContext';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Brain, Settings, ArrowRight, Zap, Eye, Wand2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import UserHeader from '../components/UserHeader';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowRight, Zap, Settings, Brain, LogIn, Wand2, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Landing = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <ThemeProvider>
       <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <UserHeader />
-        
         <div className="container mx-auto px-4 py-16">
-          <div className="max-w-4xl mx-auto text-center mb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-6">
-              Smart Data Mapping Platform
+          <div className="text-center mb-16">
+            <div className="flex justify-end mb-4">
+              {!user ? (
+                <Button onClick={() => navigate('/auth')} variant="outline">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In
+                </Button>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Welcome back, {user.username}!
+                </div>
+              )}
+            </div>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Transform Your Data
             </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-              Transform your data with AI-powered suggestions or precise manual control. 
-              Choose the approach that fits your workflow.
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Create powerful data transformations with our visual mapping tools. Choose your approach and start building.
             </p>
           </div>
 

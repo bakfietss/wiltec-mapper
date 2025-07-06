@@ -30,16 +30,16 @@ export class MappingService {
     name: string,
     nodes: Node[],
     edges: Edge[],
-    userEmail: string
+    userId: string
   ): Promise<SavedMapping> {
-    if (!userEmail) {
-      throw new Error('User email is required to save mappings');
+    if (!userId) {
+      throw new Error('User authentication is required to save mappings');
     }
 
-    // Get next version using user email
+    // Get next version using user ID
     const { data: version, error: versionError } = await supabase
       .rpc('get_next_version', {
-        p_user_email: userEmail,
+        p_user_id: userId,
         p_name: name
       });
 
@@ -55,28 +55,28 @@ export class MappingService {
       edges,
       metadata: {
         description: `Mapping version ${version}`,
-        author: userEmail,
+        author: userId,
         created_at: new Date().toISOString(),
-        created_by: userEmail
+        created_by: userId
       }
     };
 
-    // Deactivate previous versions for this user email
+    // Deactivate previous versions for this user
     const { error: deactivateError } = await supabase
       .from('mappings')
       .update({ is_active: false })
-      .eq('user_email', userEmail)
+      .eq('user_id', userId)
       .eq('name', name);
 
     if (deactivateError) {
       throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
     }
 
-    // Save new mapping with user email
+    // Save new mapping with user ID
     const { data, error } = await supabase
       .from('mappings')
       .insert({
-        user_email: userEmail,
+        user_id: userId,
         name,
         version,
         config: config as any,
@@ -95,15 +95,15 @@ export class MappingService {
     };
   }
 
-  static async getMappings(userEmail: string): Promise<SavedMapping[]> {
-    if (!userEmail) {
-      throw new Error('User email is required to fetch mappings');
+  static async getMappings(userId: string): Promise<SavedMapping[]> {
+    if (!userId) {
+      throw new Error('User authentication is required to fetch mappings');
     }
 
     const { data, error } = await supabase
       .from('mappings')
       .select('*')
-      .eq('user_email', userEmail)
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false });
 
     if (error) {
@@ -116,14 +116,14 @@ export class MappingService {
     }));
   }
 
-  static async getActiveMapping(name: string, userEmail: string): Promise<SavedMapping | null> {
-    if (!userEmail) {
-      throw new Error('User email is required to fetch mappings');
+  static async getActiveMapping(name: string, userId: string): Promise<SavedMapping | null> {
+    if (!userId) {
+      throw new Error('User authentication is required to fetch mappings');
     }
 
     const { data, error } = await supabase
       .rpc('get_active_mapping', {
-        p_user_email: userEmail,
+        p_user_id: userId,
         p_name: name
       });
 

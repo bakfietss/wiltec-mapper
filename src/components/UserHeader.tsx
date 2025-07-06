@@ -11,13 +11,13 @@ const UserHeader = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast({
       title: "Logged out",
       description: "You have been successfully logged out",
     });
-    navigate('/login');
+    navigate('/');
   };
 
   if (!user) {
