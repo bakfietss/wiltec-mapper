@@ -34,11 +34,37 @@ const Auth = () => {
     if (useTestCredentials) {
       setEmail('bakfietss@hotmail.com');
       setPassword('system123!@#');
+      
+      // Auto-create confirmed test user
+      const setupTestUser = async () => {
+        try {
+          const response = await fetch('https://hkuwnqgdpnlfjpfvbjjb.supabase.co/functions/v1/create-test-user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('Test user setup:', result.message);
+            toast({
+              title: "Test user ready",
+              description: "You can now sign in with the test credentials",
+            });
+          }
+        } catch (err) {
+          console.log('Test user setup failed:', err);
+          // Don't show error to user - they can still try to sign in
+        }
+      };
+      
+      setupTestUser();
     } else {
       setEmail('');
       setPassword('');
     }
-  }, [useTestCredentials]);
+  }, [useTestCredentials, toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
