@@ -325,7 +325,7 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         
         const dataValue = getValue(dataObject, handleId);
         console.log('Data value found:', dataValue);
-        if (dataValue !== undefined) {
+        if (dataValue !== undefined && dataValue !== null && dataValue !== '') {
             return dataValue;
         }
     }
