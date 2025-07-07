@@ -42,76 +42,9 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         }
     }, [data.fields, data.data, data.initialExpandedFields]);
 
-    // Auto-expand connected fields
-    useEffect(() => {
-        const connectedPaths = new Set<string>();
+    // No auto-expand during rendering - only use initialExpandedFields from import
 
-        allEdges.forEach((edge) => {
-            if (edge.source === id && edge.sourceHandle) {
-                const path = edge.sourceHandle;
-                
-                // Build parent paths for expansion
-                const parts = path.split('.');
-                for (let i = 0; i < parts.length; i++) {
-                    let parentPath = parts.slice(0, i + 1).join('.');
-                    // Clean array indices for expansion
-                    parentPath = parentPath.replace(/\[.*?\]/g, '');
-                    if (parentPath) {
-                        connectedPaths.add(parentPath);
-                    }
-                }
-            }
-        });
-
-        if (connectedPaths.size > 0) {
-            setExpandedFields(prev => {
-                const merged = new Set([...prev, ...connectedPaths]);
-                return merged;
-            });
-        }
-    }, [allEdges, id]);
-
-    // Auto-expand fields that have example values (like TargetNode logic) - BUT ONLY ONCE
-    useEffect(() => {
-        const shouldExpand = (field: SchemaField): boolean => {
-            // Check if this field has an example value
-            if (field.exampleValue !== undefined && field.exampleValue !== null && field.exampleValue !== '') {
-                return true;
-            }
-            
-            // Check if any child field has a value (recursive)
-            if (field.children) {
-                return field.children.some(child => shouldExpand(child));
-            }
-            
-            return false;
-        };
-        
-        const newExpanded = new Set(expandedFields);
-        let hasChanges = false;
-        
-        const checkFieldRecursive = (fieldsArray: SchemaField[]) => {
-            fieldsArray.forEach(field => {
-                if ((field.type === 'object' || field.type === 'array') && shouldExpand(field)) {
-                    // Only auto-expand if not already manually controlled
-                    if (!newExpanded.has(field.id)) {
-                        newExpanded.add(field.id);
-                        hasChanges = true;
-                    }
-                }
-                if (field.children) {
-                    checkFieldRecursive(field.children);
-                }
-            });
-        };
-        
-        checkFieldRecursive(fields);
-        
-        if (hasChanges) {
-            setExpandedFields(newExpanded);
-        }
-        // Only run when fields change, NOT when expandedFields changes
-    }, [fields]);
+    // No auto-expand during rendering - fields only expand manually or from import
 
     // Use the sync hook for data persistence
     useNodeDataSync(id, { 

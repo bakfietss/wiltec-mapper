@@ -28,46 +28,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
     
-    // Auto-expand fields that have values or connections
-    useEffect(() => {
-        const shouldExpand = (field: SchemaField): boolean => {
-            // Check if this field has a value
-            if (fieldValues[field.id] !== undefined && fieldValues[field.id] !== null && fieldValues[field.id] !== '') {
-                return true;
-            }
-            
-            // Check if any child field has a value (recursive)
-            if (field.children) {
-                return field.children.some(child => shouldExpand(child));
-            }
-            
-            return false;
-        };
-        
-        const newExpanded = new Set(expandedFields);
-        let hasChanges = false;
-        
-        const checkFieldRecursive = (fieldsArray: SchemaField[]) => {
-            fieldsArray.forEach(field => {
-                if ((field.type === 'object' || field.type === 'array') && shouldExpand(field)) {
-                    if (!newExpanded.has(field.id)) {
-                        newExpanded.add(field.id);
-                        hasChanges = true;
-                    }
-                }
-                if (field.children) {
-                    checkFieldRecursive(field.children);
-                }
-            });
-        };
-        
-        checkFieldRecursive(fields);
-        
-        if (hasChanges) {
-            setExpandedFields(newExpanded);
-        }
-        // Only run when fields change OR fieldValues change, NOT when expandedFields changes
-    }, [fieldValues, fields]);
+    // Initialize expanded fields from import data (no auto-expand during rendering)
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
