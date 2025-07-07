@@ -115,6 +115,27 @@ const DataField: React.FC<{
     }
     
     if (value && typeof value === 'object') {
+        // If this is the root object (path is empty), render each field individually
+        if (path === '') {
+            return (
+                <div>
+                    {Object.entries(value).map(([key, val]) => (
+                        <DataField
+                            key={key}
+                            path={key}
+                            value={val}
+                            level={level}
+                            onFieldToggle={onFieldToggle}
+                            onFieldExpansionToggle={onFieldExpansionToggle}
+                            selectedFields={selectedFields}
+                            expandedFields={expandedFields}
+                        />
+                    ))}
+                </div>
+            );
+        }
+        
+        // Regular object field rendering
         return (
             <div>
                 <div 
@@ -328,6 +349,27 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
 
     const { label } = data;
     const hasData = nodeData.length > 0 && nodeData[0];
+
+    // Get all available field names from both sources
+    const getAvailableFields = () => {
+        const fieldSet = new Set<string>();
+        
+        // Add manual schema field names mapped to their IDs
+        fields.forEach(field => {
+            fieldSet.add(field.name); // Add by name for backward compatibility
+            fieldSet.add(field.id);   // Add by ID for proper handle creation
+        });
+        
+        // Add sample data field names
+        if (hasData) {
+            Object.keys(nodeData[0]).forEach(key => {
+                fieldSet.add(key);
+            });
+        }
+        
+        console.log(`Available fields for source node ${id}:`, Array.from(fieldSet));
+        return Array.from(fieldSet);
+    };
 
     const addField = () => {
         const newField: SchemaField = {
@@ -623,7 +665,25 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </div>
             )}
             
-            {fields.length === 0 && (
+            {/* Sample Data Fields */}
+            {hasData && (
+                <div className="space-y-1 mb-2">
+                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Sample Data Fields:</div>
+                    <div className="space-y-1">
+                        <DataField
+                            path=""
+                            value={nodeData[0]}
+                            level={0}
+                            onFieldToggle={handleDataFieldToggle}
+                            onFieldExpansionToggle={handleFieldExpansionToggle}
+                            selectedFields={selectedFields}
+                            expandedFields={expandedFields}
+                        />
+                    </div>
+                </div>
+            )}
+            
+            {fields.length === 0 && !hasData && (
                 <div className="text-center py-3 text-gray-500 text-xs">
                     No data available. Click edit to import JSON data or add manual fields.
                 </div>

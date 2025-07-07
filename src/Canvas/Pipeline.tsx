@@ -151,7 +151,7 @@ const Pipeline = () => {
             });
           });
           
-          // Add edges with longer delay to ensure handles are ready
+          // Add edges with proper delay to ensure handles are ready
           setTimeout(() => {
             console.log('Setting edges...');
             setEdges(uiConfig.edges);
@@ -160,7 +160,7 @@ const Pipeline = () => {
               console.log('Triggering update...');
               triggerUpdate('MAPPING_LOADED_FROM_DB');
             }, 100);
-          }, 500); // Increased delay even more
+          }, 200); // Reduced delay since handles should be created properly now
           
           setCurrentMappingName(mappingToLoad.name);
           setCurrentMappingVersion(mappingToLoad.version);
