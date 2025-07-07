@@ -474,19 +474,24 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                                         className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                                             selectedFields.has(`${fieldPath}[0].${key}`) ? 'bg-blue-50' : ''
                                         }`}
-                                         style={{ paddingLeft: `${20 + (level + 1) * 12}px` }}
+                                        style={{ paddingLeft: `${20 + (level + 1) * 12}px` }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleFieldToggle(`${fieldPath}[0].${key}`);
                                         }}
                                     >
+                                        <div className="w-3 h-3" />
                                         <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
                                             {key}
                                         </span>
-                                        <span className="text-xs text-gray-500 max-w-24 truncate">
-                                            {typeof value === 'string' ? `"${value.length > 20 ? value.substring(0, 20) + '...' : value}"` : String(value)}
-                                        </span>
-                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(typeof value)}`}>
+                                        <div className="text-xs min-w-[80px] text-center">
+                                            <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
+                                                {typeof value === 'string' ? 
+                                                    (value.length > 15 ? value.substring(0, 15) + '...' : value) : 
+                                                    String(value)}
+                                            </span>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(Array.isArray(value) ? 'array' : typeof value)}`}>
                                             {Array.isArray(value) ? 'array' : typeof value}
                                         </span>
                                         
@@ -521,13 +526,18 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                                             handleFieldToggle(`${fieldPath}.${key}`);
                                         }}
                                     >
+                                        <div className="w-3 h-3" />
                                         <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
                                             {key}
                                         </span>
-                                        <span className="text-xs text-gray-500 max-w-24 truncate">
-                                            {typeof value === 'string' ? `"${value.length > 20 ? value.substring(0, 20) + '...' : value}"` : String(value)}
-                                        </span>
-                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(typeof value)}`}>
+                                        <div className="text-xs min-w-[80px] text-center">
+                                            <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
+                                                {typeof value === 'string' ? 
+                                                    (value.length > 15 ? value.substring(0, 15) + '...' : value) : 
+                                                    String(value)}
+                                            </span>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(Array.isArray(value) ? 'array' : typeof value)}`}>
                                             {Array.isArray(value) ? 'array' : typeof value}
                                         </span>
                                         
@@ -591,10 +601,10 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
             <NodeResizer
                 color="#ff0071"
                 isVisible={selected}
-                minWidth={280}
-                maxWidth={500}
-                minHeight={200}
-                maxHeight={600}
+                minWidth={320}
+                maxWidth={600}
+                minHeight={250}
+                maxHeight={800}
             />
             
             {/* Header */}
@@ -630,17 +640,21 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 </NodeEditSheet>
             </div>
 
-            {/* Fields Display - Use manual fields like TargetNode */}
-            <ScrollArea className="max-h-96">
+            {/* Fields Display */}
+            <ScrollArea className="flex-1" style={{ maxHeight: 'calc(100% - 60px)' }}>
                 <div className="p-2">
                     {hasFields ? (
                         <div className="space-y-1">
-                            <div className="text-xs font-medium text-gray-500 px-2 py-1">Fields:</div>
+                            <div className="text-xs font-medium text-gray-500 px-2 py-1">
+                                Source Fields ({fields.length}):
+                            </div>
                             {fields.map((field) => renderSchemaField(field, 0))}
                         </div>
                     ) : hasData ? (
                         <div className="space-y-1">
-                            <div className="text-xs font-medium text-gray-500 px-2 py-1">Auto-generated Fields:</div>
+                            <div className="text-xs font-medium text-gray-500 px-2 py-1">
+                                Auto-generated Fields ({Object.keys(nodeData[0] || {}).length}):
+                            </div>
                             <DataField
                                 path=""
                                 value={nodeData[0] || {}}
