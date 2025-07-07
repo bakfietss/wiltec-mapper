@@ -76,7 +76,7 @@ const DataField: React.FC<{
                             onFieldToggle(path);
                         }}
                     >
-                        {fieldName}[]
+                        {fieldName}
                     </span>
                     <span className="text-xs text-gray-500">({value.length} items)</span>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('array')}`}>
@@ -98,18 +98,21 @@ const DataField: React.FC<{
                     }}
                 />
                 
-                {isExpanded && value.map((item, index) => (
-                    <DataField
-                        key={`${path}[${index}]`}
-                        path={`${path}[${index}]`}
-                        value={item}
-                        level={level + 1}
-                        onFieldToggle={onFieldToggle}
-                        onFieldExpansionToggle={onFieldExpansionToggle}
-                        selectedFields={selectedFields}
-                        expandedFields={expandedFields}
-                    />
-                ))}
+                {/* Show structure of array elements without individual indices */}
+                {isExpanded && value.length > 0 && value[0] && typeof value[0] === 'object' && (
+                    Object.entries(value[0]).map(([key, val]) => (
+                        <DataField
+                            key={`${path}.${key}`}
+                            path={`${path}[0].${key}`}
+                            value={val}
+                            level={level + 1}
+                            onFieldToggle={onFieldToggle}
+                            onFieldExpansionToggle={onFieldExpansionToggle}
+                            selectedFields={selectedFields}
+                            expandedFields={expandedFields}
+                        />
+                    ))
+                )}
             </div>
         );
     }
