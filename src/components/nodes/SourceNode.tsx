@@ -400,7 +400,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
                 >
-                    {field.children && field.children.length > 0 && (
+                    {(field.children && field.children.length > 0) || (field.type === 'array' || field.type === 'object') && (
                         <div
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -446,7 +446,94 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     />
                 </div>
                 
-                {/* Render children if expanded */}
+                {/* For arrays and objects with sample data, show nested structure from data */}
+                {isExpanded && (field.type === 'array' || field.type === 'object') && hasData && (
+                    <div>
+                        {field.type === 'array' && nodeData[0]?.[field.name] && Array.isArray(nodeData[0][field.name]) && nodeData[0][field.name].length > 0 && (
+                            Object.entries(nodeData[0][field.name][0] || {}).map(([key, value]) => (
+                                <div key={`${fieldPath}[0].${key}`}>
+                                    <div 
+                                        className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
+                                            selectedFields.has(`${fieldPath}[0].${key}`) ? 'bg-blue-50' : ''
+                                        }`}
+                                        style={{ paddingLeft: `${8 + (level + 1) * 12}px` }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleFieldToggle(`${fieldPath}[0].${key}`);
+                                        }}
+                                    >
+                                        <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                                            {key}
+                                        </span>
+                                        <span className="text-xs text-gray-500 max-w-24 truncate">
+                                            {typeof value === 'string' ? `"${value.length > 20 ? value.substring(0, 20) + '...' : value}"` : String(value)}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(typeof value)}`}>
+                                            {Array.isArray(value) ? 'array' : typeof value}
+                                        </span>
+                                        
+                                        <Handle
+                                            type="source"
+                                            position={Position.Right}
+                                            id={`${fieldPath}[0].${key}`}
+                                            className={`w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !right-1 ${
+                                                selectedFields.has(`${fieldPath}[0].${key}`) ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                                            }`}
+                                            style={{
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                zIndex: 10
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        
+                        {field.type === 'object' && nodeData[0]?.[field.name] && (
+                            Object.entries(nodeData[0][field.name] || {}).map(([key, value]) => (
+                                <div key={`${fieldPath}.${key}`}>
+                                    <div 
+                                        className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
+                                            selectedFields.has(`${fieldPath}.${key}`) ? 'bg-blue-50' : ''
+                                        }`}
+                                        style={{ paddingLeft: `${8 + (level + 1) * 12}px` }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleFieldToggle(`${fieldPath}.${key}`);
+                                        }}
+                                    >
+                                        <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                                            {key}
+                                        </span>
+                                        <span className="text-xs text-gray-500 max-w-24 truncate">
+                                            {typeof value === 'string' ? `"${value.length > 20 ? value.substring(0, 20) + '...' : value}"` : String(value)}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(typeof value)}`}>
+                                            {Array.isArray(value) ? 'array' : typeof value}
+                                        </span>
+                                        
+                                        <Handle
+                                            type="source"
+                                            position={Position.Right}
+                                            id={`${fieldPath}.${key}`}
+                                            className={`w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !right-1 ${
+                                                selectedFields.has(`${fieldPath}.${key}`) ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                                            }`}
+                                            style={{
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                zIndex: 10
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+                
+                {/* Render manual children if they exist */}
                 {isExpanded && field.children && field.children.map((childField) => 
                     renderSchemaField({
                         ...childField,
