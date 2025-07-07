@@ -643,7 +643,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </NodeEditSheet>
             </div>
 
-            {/* Unified Schema Fields - Single Source of Truth */}
+            {/* Unified Field Display - Always use same logic */}
             {fields.length > 0 ? (
                 <div className="space-y-1 mb-2">
                     <div className="text-xs font-medium text-gray-500 px-2 py-1">Schema Fields:</div>
@@ -680,7 +680,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </div>
             ) : (
                 <div className="text-center py-3 text-gray-500 text-xs">
-                    No schema defined. Click edit to import JSON data or add manual fields.
+                    No fields available. Click edit to import JSON data or add manual fields.
                 </div>
             )}
         </div>

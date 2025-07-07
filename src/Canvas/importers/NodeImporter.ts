@@ -44,32 +44,37 @@ export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[])
 export const importSourceNode = (config: SourceNodeConfig): Node => {
   const sampleData = config.sampleData || [];
   
-  // If schema fields exist, use them as the primary source of truth
-  let finalFields = config.schema.fields;
+  // Create a unified field list by merging schema fields with sample data fields
+  const allFieldNames = new Set<string>();
+  const finalFields: any[] = [];
   
-  // If no schema fields defined, only extract top-level primitive fields from sample data
-  if (finalFields.length === 0 && sampleData.length > 0) {
-    const topLevelFields: any[] = [];
+  // First, add all schema fields
+  config.schema.fields.forEach(field => {
+    finalFields.push(field);
+    allFieldNames.add(field.name);
+  });
+  
+  // Then add any missing fields from sample data
+  if (sampleData.length > 0) {
     const firstItem = sampleData[0];
-    
     Object.entries(firstItem).forEach(([key, value]) => {
-      // Only include primitive values and direct object/array references
-      // Don't recursively expand complex nested structures
-      const fieldType = Array.isArray(value) ? 'array' : 
-                       (value && typeof value === 'object') ? 'object' :
-                       typeof value === 'number' ? 'number' : 'string';
-      
-      topLevelFields.push({
-        id: `field-${Date.now()}-${key}`,
-        name: key,
-        type: fieldType,
-        exampleValue: Array.isArray(value) ? `[Array with ${value.length} items]` :
-                     (value && typeof value === 'object') ? '[Object]' :
-                     value?.toString() || ''
-      });
+      if (!allFieldNames.has(key)) {
+        // Determine field type based on sample value
+        const fieldType = Array.isArray(value) ? 'array' : 
+                         (value && typeof value === 'object') ? 'object' :
+                         typeof value === 'number' ? 'number' : 'string';
+        
+        finalFields.push({
+          id: `field-${Date.now()}-${key}`,
+          name: key,
+          type: fieldType,
+          exampleValue: Array.isArray(value) ? `[Array with ${value.length} items]` :
+                       (value && typeof value === 'object') ? '[Object]' :
+                       value?.toString() || ''
+        });
+        allFieldNames.add(key);
+      }
     });
-    
-    finalFields = topLevelFields;
   }
   
   return {
