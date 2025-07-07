@@ -159,17 +159,46 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                 </Dialog>
 
                 {/* Save Mapping */}
-                <button 
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 rounded border border-purple-200"
-                  onClick={(e) => {
-                    console.log('=== SAVE BUTTON CLICKED ===');
-                    e.stopPropagation();
-                    handleSaveMapping();
-                  }}
-                >
-                  <Save className="w-4 h-4" />
-                  Save Mapping
-                </button>
+                <Dialog open={isSaveMappingOpen} onOpenChange={setIsSaveMappingOpen}>
+                  <DialogTrigger asChild>
+                    <button 
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 rounded border border-purple-200"
+                      onClick={(e) => {
+                        console.log('=== SAVE BUTTON CLICKED ===');
+                        e.stopPropagation();
+                      }}
+                    >
+                      <Save className="w-4 h-4" />
+                      Save Mapping
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Save Mapping</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Mapping Name
+                        </label>
+                        <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded border">
+                          {currentMappingName}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          To change the mapping name, edit it in the My Mappings page.
+                        </p>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsSaveMappingOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleSaveMapping}>
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 
