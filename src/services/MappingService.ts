@@ -98,7 +98,11 @@ export class MappingService {
       deactivateQuery = deactivateQuery.is('category', null);
     }
     
-    await deactivateQuery;
+    const { error: deactivateError } = await deactivateQuery;
+    if (deactivateError) {
+      console.error('Failed to deactivate previous versions:', deactivateError);
+      throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
+    }
 
     // Save new mapping with user ID
     const { data, error } = await supabase
@@ -208,7 +212,10 @@ export class MappingService {
       deactivateQuery = deactivateQuery.is('category', null);
     }
     
-    await deactivateQuery;
+    const { error: deactivateError } = await deactivateQuery;
+    if (deactivateError) {
+      throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
+    }
 
     // Then activate the specific version
     const { error } = await supabase
