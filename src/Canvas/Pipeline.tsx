@@ -371,31 +371,47 @@ const Pipeline = () => {
           }
         });
         
-        // Analyze edges to determine which source fields need expansion
+        // AUDIT TRAIL: Analyze edges to determine which source fields need expansion
+        console.log('=== IMPORT EXPANSION AUDIT TRAIL ===');
+        console.log('Total imported edges:', importedEdges.length);
+        
         const sourceFieldsToExpand = new Map<string, Set<string>>();
-        importedEdges.forEach(edge => {
+        importedEdges.forEach((edge, index) => {
+          console.log(`Edge ${index + 1}:`, {
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle
+          });
+          
           if (edge.sourceHandle) {
             const sourceNodeId = edge.source;
             if (!sourceFieldsToExpand.has(sourceNodeId)) {
               sourceFieldsToExpand.set(sourceNodeId, new Set());
             }
             
-            // Simple approach: expand every part of the path
             const fieldPath = edge.sourceHandle;
-            console.log(`=== EXPANDING PATH: ${fieldPath} ===`);
+            console.log(`🔍 Analyzing path: ${fieldPath}`);
             
+            // Split by dots and also handle array indices
             const pathParts = fieldPath.split('.');
-            let buildingPath = '';
+            console.log('Path parts:', pathParts);
             
-            // Add every intermediate path for expansion
+            // Build all parent paths that need to be expanded
             for (let i = 0; i < pathParts.length - 1; i++) {
-              if (buildingPath) buildingPath += '.';
-              buildingPath += pathParts[i];
-              
-              sourceFieldsToExpand.get(sourceNodeId)!.add(buildingPath);
-              console.log(`Will expand: ${buildingPath}`);
+              const parentPath = pathParts.slice(0, i + 1).join('.');
+              sourceFieldsToExpand.get(sourceNodeId)!.add(parentPath);
+              console.log(`📂 Will expand: ${parentPath}`);
             }
+          } else {
+            console.log('⚠️ Edge has no sourceHandle - skipping');
           }
+        });
+        
+        // Summary of what will be expanded
+        sourceFieldsToExpand.forEach((fieldsSet, nodeId) => {
+          console.log(`📋 Node ${nodeId} will expand:`, Array.from(fieldsSet));
         });
         
         // Apply auto-expansion to source nodes based on their connections
