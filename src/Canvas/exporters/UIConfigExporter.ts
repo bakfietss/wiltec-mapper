@@ -249,7 +249,7 @@ export const exportUIMappingConfiguration = (
       });
     });
 
-  // Extract connections
+  // Extract connections with proper source handle normalization
   edges.forEach(edge => {
     const sourceNode = nodes.find(n => n.id === edge.source);
     
@@ -261,11 +261,28 @@ export const exportUIMappingConfiguration = (
       connectionType = 'mapping';
     }
 
+    // Normalize source handle - ensure we use current field names, not old IDs
+    let normalizedSourceHandle = edge.sourceHandle || '';
+    
+    // If source is a source node, ensure we're using the field name not any legacy ID
+    if (sourceNode?.type === 'source' && normalizedSourceHandle) {
+      // Find the actual field in the source node data by ID or name
+      const sourceFields = Array.isArray(sourceNode.data?.fields) ? sourceNode.data.fields : [];
+      const matchingField = sourceFields.find((field: any) => 
+        field.id === normalizedSourceHandle || field.name === normalizedSourceHandle
+      );
+      
+      if (matchingField) {
+        normalizedSourceHandle = matchingField.name; // Always use the field name
+        console.log(`Normalized source handle from ${edge.sourceHandle} to ${normalizedSourceHandle}`);
+      }
+    }
+
     config.connections.push({
       id: edge.id,
       sourceNodeId: edge.source,
       targetNodeId: edge.target,
-      sourceHandle: edge.sourceHandle || '',
+      sourceHandle: normalizedSourceHandle,
       targetHandle: edge.targetHandle || '',
       type: connectionType
     });
