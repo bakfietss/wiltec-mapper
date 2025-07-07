@@ -85,13 +85,20 @@ export class MappingService {
       }
     };
 
-    // Deactivate all previous versions of this mapping
-    await supabase
+    // Deactivate all previous versions of this mapping (handle null category properly)
+    let deactivateQuery = supabase
       .from('mappings')
       .update({ is_active: false })
       .eq('user_id', userId)
-      .eq('name', name)
-      .eq('category', category);
+      .eq('name', name);
+    
+    if (category) {
+      deactivateQuery = deactivateQuery.eq('category', category);
+    } else {
+      deactivateQuery = deactivateQuery.is('category', null);
+    }
+    
+    await deactivateQuery;
 
     // Save new mapping with user ID
     const { data, error } = await supabase
@@ -188,13 +195,20 @@ export class MappingService {
       throw new Error('User authentication is required to update mappings');
     }
 
-    // First deactivate all versions of this mapping
-    await supabase
+    // First deactivate all versions of this mapping (handle null category properly)
+    let deactivateQuery = supabase
       .from('mappings')
       .update({ is_active: false })
       .eq('user_id', userId)
-      .eq('name', name)
-      .eq('category', category);
+      .eq('name', name);
+    
+    if (category) {
+      deactivateQuery = deactivateQuery.eq('category', category);
+    } else {
+      deactivateQuery = deactivateQuery.is('category', null);
+    }
+    
+    await deactivateQuery;
 
     // Then activate the specific version
     const { error } = await supabase
