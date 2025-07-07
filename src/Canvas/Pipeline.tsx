@@ -382,15 +382,21 @@ const Pipeline = () => {
             
             // Extract all parent paths that need expansion
             const fieldPath = edge.sourceHandle;
+            console.log(`Analyzing connection to field: ${fieldPath}`);
+            
             const pathParts = fieldPath.split('.');
             let currentPath = '';
             
-            for (let i = 0; i < pathParts.length; i++) {
+            for (let i = 0; i < pathParts.length - 1; i++) { // -1 because we don't need to expand the final field itself
               if (i > 0) currentPath += '.';
               currentPath += pathParts[i];
               
-              // If this part contains array notation, we need to expand it
-              if (currentPath.includes('[') || i < pathParts.length - 1) {
+              // Always add parent paths for expansion
+              sourceFieldsToExpand.get(sourceNodeId)!.add(currentPath);
+              console.log(`Adding path for expansion: ${currentPath}`);
+              
+              // If this part contains array notation, also add the array index path
+              if (currentPath.includes('[') && currentPath.includes(']')) {
                 sourceFieldsToExpand.get(sourceNodeId)!.add(currentPath);
               }
             }
