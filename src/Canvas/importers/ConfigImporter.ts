@@ -41,9 +41,9 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
         nodes.push(importMappingNode(mappingConfig));
       });
       
-      // Import connections
+      // Import connections with source node context for handle mapping
       mappingConfig.connections.forEach(connectionConfig => {
-        edges.push(importEdge(connectionConfig));
+        edges.push(importEdge(connectionConfig, mappingConfig.nodes.sources));
       });
       
       console.log(`Imported ${nodes.length} nodes and ${edges.length} edges from MappingConfiguration`);
