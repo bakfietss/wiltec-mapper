@@ -371,8 +371,50 @@ const Pipeline = () => {
           }
         });
         
-        // Import nodes first, then edges after a small delay to ensure handles are ready
-        setNodes(importedNodes);
+        // Analyze edges to determine which source fields need expansion
+        const sourceFieldsToExpand = new Map<string, Set<string>>();
+        importedEdges.forEach(edge => {
+          if (edge.sourceHandle) {
+            const sourceNodeId = edge.source;
+            if (!sourceFieldsToExpand.has(sourceNodeId)) {
+              sourceFieldsToExpand.set(sourceNodeId, new Set());
+            }
+            
+            // Extract all parent paths that need expansion
+            const fieldPath = edge.sourceHandle;
+            const pathParts = fieldPath.split('.');
+            let currentPath = '';
+            
+            for (let i = 0; i < pathParts.length; i++) {
+              if (i > 0) currentPath += '.';
+              currentPath += pathParts[i];
+              
+              // If this part contains array notation, we need to expand it
+              if (currentPath.includes('[') || i < pathParts.length - 1) {
+                sourceFieldsToExpand.get(sourceNodeId)!.add(currentPath);
+              }
+            }
+          }
+        });
+        
+        // Apply auto-expansion to source nodes based on their connections
+        const enhancedNodes = importedNodes.map(node => {
+          if (node.type === 'source' && sourceFieldsToExpand.has(node.id)) {
+            const fieldsToExpand = sourceFieldsToExpand.get(node.id)!;
+            console.log(`Auto-expanding fields for source ${node.id}:`, Array.from(fieldsToExpand));
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                initialExpandedFields: fieldsToExpand
+              }
+            };
+          }
+          return node;
+        });
+        
+        // Import enhanced nodes first, then edges after a small delay to ensure handles are ready
+        setNodes(enhancedNodes);
         setEdges([]);  // Clear edges first
         
         // Add edges after nodes are rendered and expanded
@@ -380,7 +422,7 @@ const Pipeline = () => {
           console.log('Setting imported edges...');
           setEdges(importedEdges);
           setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 100);
-        }, 300); // Increased delay to ensure expansion happens first
+        }, 300); // Delay to ensure expansion happens first
         
         setCurrentMappingName(config.name || 'Untitled Mapping');
         toast.success('Mapping imported successfully!');
