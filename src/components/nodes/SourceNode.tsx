@@ -336,7 +336,15 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
         }
     }, [data.fields, data.data, data.initialExpandedFields]);
 
+    // Convert initialExpandedFields to stable string representation for dependency tracking
+    const initialExpandedFieldsKey = data.initialExpandedFields ? 
+        Array.from(data.initialExpandedFields).sort().join(',') : '';
+
     useEffect(() => {
+        console.log(`=== EXPANSION EFFECT RUNNING FOR SOURCE ${id} ===`);
+        console.log('InitialExpandedFields:', data.initialExpandedFields ? Array.from(data.initialExpandedFields) : 'none');
+        console.log('AllEdges count:', allEdges?.length || 0);
+        
         const connectedPaths = new Set<string>();
 
         allEdges.forEach((edge) => {
@@ -398,16 +406,16 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             }
         });
 
-        console.log(`Total auto-expanded paths for ${id}:`, Array.from(connectedPaths));
+        console.log(`Connected paths found for ${id}:`, Array.from(connectedPaths));
         
-        // CRITICAL FIX: Preserve initialExpandedFields during merge
-        setExpandedFields(prev => {
-            const preservedInitial = data.initialExpandedFields || new Set();
-            const merged = new Set([...preservedInitial, ...connectedPaths]);
-            console.log(`Merging expansions - Initial: ${Array.from(preservedInitial)}, Connected: ${Array.from(connectedPaths)}, Final: ${Array.from(merged)}`);
-            return merged;
-        });
-    }, [allEdges, id, data.initialExpandedFields]);
+        // Merge with initialExpandedFields
+        const preservedInitial = data.initialExpandedFields || new Set();
+        const merged = new Set([...preservedInitial, ...connectedPaths]);
+        
+        console.log(`FINAL MERGED EXPANDED FIELDS for ${id}:`, Array.from(merged));
+        setExpandedFields(merged);
+        
+    }, [allEdges, id, initialExpandedFieldsKey]);
 
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
 
