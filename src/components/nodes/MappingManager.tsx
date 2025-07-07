@@ -31,7 +31,13 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   const [isSaveMappingOpen, setIsSaveMappingOpen] = useState(false);
   const [newMappingName, setNewMappingName] = useState('');
 
+  // Debug logging
+  console.log('=== MappingManager Render ===');
+  console.log('isSaveMappingOpen:', isSaveMappingOpen);
+  console.log('isExpanded:', isExpanded);
+
   const handleToggle = () => {
+    console.log('=== TOGGLE CLICKED ===');
     if (onToggleExpanded) {
       onToggleExpanded(!isExpanded);
     }
@@ -153,9 +159,18 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                 </Dialog>
 
                 {/* Save Mapping */}
-                <Dialog open={isSaveMappingOpen} onOpenChange={setIsSaveMappingOpen}>
+                <Dialog open={isSaveMappingOpen} onOpenChange={(open) => {
+                  console.log('=== SAVE DIALOG STATE CHANGE ===', open);
+                  setIsSaveMappingOpen(open);
+                }}>
                   <DialogTrigger asChild>
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 rounded border border-purple-200">
+                    <button 
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 rounded border border-purple-200"
+                      onClick={(e) => {
+                        console.log('=== SAVE BUTTON CLICKED ===');
+                        e.stopPropagation();
+                      }}
+                    >
                       <Save className="w-4 h-4" />
                       Save Mapping
                     </button>
