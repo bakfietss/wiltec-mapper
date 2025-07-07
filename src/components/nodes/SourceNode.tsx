@@ -650,8 +650,8 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </NodeEditSheet>
             </div>
 
-            {/* Unified Schema Fields */}
-            {fields.length > 0 && (
+            {/* Unified Field Display - Schema fields take precedence over sample data */}
+            {fields.length > 0 ? (
                 <div className="space-y-1 mb-2">
                     <div className="text-xs font-medium text-gray-500 px-2 py-1">Schema Fields:</div>
                     {fields.map((field) => (
@@ -663,12 +663,9 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                         />
                     ))}
                 </div>
-            )}
-            
-            {/* Sample Data Fields */}
-            {hasData && (
+            ) : hasData ? (
                 <div className="space-y-1 mb-2">
-                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Sample Data Fields:</div>
+                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Available Fields:</div>
                     <div className="space-y-1">
                         <DataField
                             path=""
@@ -681,9 +678,7 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                         />
                     </div>
                 </div>
-            )}
-            
-            {fields.length === 0 && !hasData && (
+            ) : (
                 <div className="text-center py-3 text-gray-500 text-xs">
                     No data available. Click edit to import JSON data or add manual fields.
                 </div>
