@@ -44,41 +44,60 @@ export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[])
 export const importSourceNode = (config: SourceNodeConfig, connections?: any[]): Node => {
   const sampleData = config.sampleData || [];
   
-  // Create a unified field list by merging schema fields with sample data fields
-  const allFieldNames = new Set<string>();
-  const finalFields: any[] = [];
-  
-  // First, add all schema fields and ensure field IDs match names
-  config.schema.fields.forEach(field => {
-    const normalizedField = {
-      ...field,
-      id: field.name // Ensure field ID matches name for consistent handle creation
-    };
-    finalFields.push(normalizedField);
-    allFieldNames.add(field.name);
-  });
-  
-  // Then add any missing fields from sample data
-  if (sampleData.length > 0) {
-    const firstItem = sampleData[0];
-    Object.entries(firstItem).forEach(([key, value]) => {
-      if (!allFieldNames.has(key)) {
-        // Determine field type based on sample value
-        const fieldType = Array.isArray(value) ? 'array' : 
-                         (value && typeof value === 'object') ? 'object' :
-                         typeof value === 'number' ? 'number' : 'string';
-        
-        finalFields.push({
-          id: key, // Use field name as ID for consistency
-          name: key,
-          type: fieldType,
-          exampleValue: Array.isArray(value) ? `[Array with ${value.length} items]` :
-                       (value && typeof value === 'object') ? '[Object]' :
-                       value?.toString() || ''
-        });
-        allFieldNames.add(key);
+  // Generate complete nested schema from sample data
+  const generateFieldsFromSampleData = (obj: any, parentPath = ''): SchemaField[] => {
+    const fields: SchemaField[] = [];
+    
+    Object.entries(obj).forEach(([key, value], index) => {
+      const fieldId = parentPath ? `${parentPath}.${key}` : key;
+      const field: SchemaField = {
+        id: fieldId,
+        name: key,
+        type: getFieldType(value),
+        exampleValue: value
+      };
+      
+      if (field.type === 'object' && value && typeof value === 'object' && !Array.isArray(value)) {
+        field.children = generateFieldsFromSampleData(value, fieldId);
+      } else if (field.type === 'array' && Array.isArray(value) && value.length > 0) {
+        if (typeof value[0] === 'object' && value[0] !== null) {
+          field.children = generateFieldsFromSampleData(value[0], `${fieldId}[0]`);
+        }
+        // Set example value to show array length
+        field.exampleValue = `[Array with ${value.length} items]`;
       }
+      
+      fields.push(field);
     });
+    
+    return fields;
+  };
+  
+  const getFieldType = (value: any): SchemaField['type'] => {
+    if (value === null) return 'string';
+    if (Array.isArray(value)) return 'array';
+    if (typeof value === 'object') return 'object';
+    if (typeof value === 'boolean') return 'boolean';
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'string') {
+      if (value.match(/^\d{4}-\d{2}-\d{2}/) || (value.includes('T') && value.includes('Z'))) {
+        return 'date';
+      }
+      return 'string';
+    }
+    return 'string';
+  };
+  
+  // Generate full nested schema from sample data
+  let finalFields: SchemaField[] = [];
+  if (sampleData.length > 0) {
+    finalFields = generateFieldsFromSampleData(sampleData[0]);
+  } else {
+    // Fallback to schema fields if no sample data
+    finalFields = config.schema.fields.map(field => ({
+      ...field,
+      id: field.name
+    }));
   }
   
   // Calculate initialExpandedFields based on connections
