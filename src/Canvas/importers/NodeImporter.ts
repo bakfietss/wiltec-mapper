@@ -48,9 +48,13 @@ export const importSourceNode = (config: SourceNodeConfig): Node => {
   const allFieldNames = new Set<string>();
   const finalFields: any[] = [];
   
-  // First, add all schema fields
+  // First, add all schema fields and ensure field IDs match names
   config.schema.fields.forEach(field => {
-    finalFields.push(field);
+    const normalizedField = {
+      ...field,
+      id: field.name // Ensure field ID matches name for consistent handle creation
+    };
+    finalFields.push(normalizedField);
     allFieldNames.add(field.name);
   });
   
@@ -65,7 +69,7 @@ export const importSourceNode = (config: SourceNodeConfig): Node => {
                          typeof value === 'number' ? 'number' : 'string';
         
         finalFields.push({
-          id: `field-${Date.now()}-${key}`,
+          id: key, // Use field name as ID for consistency
           name: key,
           type: fieldType,
           exampleValue: Array.isArray(value) ? `[Array with ${value.length} items]` :
