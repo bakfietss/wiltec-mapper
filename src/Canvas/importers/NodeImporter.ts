@@ -136,6 +136,47 @@ export const importTransformNode = (config: TransformNodeConfig): Node => {
     };
   }
 
+  // Handle concat transforms specially
+  if (config.transformType === 'concat') {
+    const rules = config.nodeData?.rules || 
+                 config.config?.parameters?.rules || 
+                 config.config?.rules || 
+                 [];
+    
+    const delimiter = config.nodeData?.delimiter || 
+                     config.config?.parameters?.delimiter || 
+                     config.config?.delimiter || 
+                     ',';
+
+    const inputValues = config.nodeData?.inputValues || {};
+    
+    console.log('Concat import - rules:', rules, 'delimiter:', delimiter, 'inputValues:', inputValues);
+    console.log('Config type:', config.type, 'Transform type:', config.transformType);
+    
+    return {
+      id: config.id,
+      type: 'concatTransform',
+      position: config.position,
+      data: {
+        label: config.label,
+        transformType: 'concat',
+        rules: rules,
+        delimiter: delimiter,
+        outputType: config.nodeData?.outputType || 'value',
+        inputValues: inputValues,
+        config: {
+          rules: rules,
+          delimiter: delimiter,
+          parameters: {
+            rules: rules,
+            delimiter: delimiter,
+            outputType: config.nodeData?.outputType || 'value'
+          }
+        }
+      }
+    };
+  }
+
   // Handle other transform node types
   const nodeData = {
     label: config.label,
