@@ -399,8 +399,15 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
         });
 
         console.log(`Total auto-expanded paths for ${id}:`, Array.from(connectedPaths));
-        setExpandedFields(connectedPaths);
-    }, [allEdges, id]);
+        
+        // CRITICAL FIX: Preserve initialExpandedFields during merge
+        setExpandedFields(prev => {
+            const preservedInitial = data.initialExpandedFields || new Set();
+            const merged = new Set([...preservedInitial, ...connectedPaths]);
+            console.log(`Merging expansions - Initial: ${Array.from(preservedInitial)}, Connected: ${Array.from(connectedPaths)}, Final: ${Array.from(merged)}`);
+            return merged;
+        });
+    }, [allEdges, id, data.initialExpandedFields]);
 
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
 
