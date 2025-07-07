@@ -71,7 +71,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         }
     }, [allEdges, id]);
 
-    // Auto-expand fields that have example values (like TargetNode logic)
+    // Auto-expand fields that have example values (like TargetNode logic) - BUT ONLY ONCE
     useEffect(() => {
         const shouldExpand = (field: SchemaField): boolean => {
             // Check if this field has an example value
@@ -93,6 +93,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         const checkFieldRecursive = (fieldsArray: SchemaField[]) => {
             fieldsArray.forEach(field => {
                 if ((field.type === 'object' || field.type === 'array') && shouldExpand(field)) {
+                    // Only auto-expand if not already manually controlled
                     if (!newExpanded.has(field.id)) {
                         newExpanded.add(field.id);
                         hasChanges = true;
@@ -109,7 +110,8 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         if (hasChanges) {
             setExpandedFields(newExpanded);
         }
-    }, [fields, expandedFields]);
+        // Only run when fields change, NOT when expandedFields changes
+    }, [fields]);
 
     // Use the sync hook for data persistence
     useNodeDataSync(id, { 
@@ -200,13 +202,13 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         });
     };
 
-    const handleFieldExpansionToggle = (path: string) => {
+    const handleFieldExpansionToggle = (fieldId: string) => {
         const newExpanded = new Set(expandedFields);
         
-        if (expandedFields.has(path)) {
-            newExpanded.delete(path);
+        if (expandedFields.has(fieldId)) {
+            newExpanded.delete(fieldId);
         } else {
-            newExpanded.add(path);
+            newExpanded.add(fieldId);
         }
         
         setExpandedFields(newExpanded);

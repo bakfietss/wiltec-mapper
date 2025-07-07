@@ -66,7 +66,8 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
         if (hasChanges) {
             setExpandedFields(newExpanded);
         }
-    }, [fieldValues, fields, expandedFields]);
+        // Only run when fields change OR fieldValues change, NOT when expandedFields changes
+    }, [fieldValues, fields]);
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
