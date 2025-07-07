@@ -342,22 +342,24 @@ const Pipeline = () => {
     toast.success('New mapping created!');
   }, [setNodes, setEdges, fieldStore]);
 
-  const handleSaveMapping = async () => {
+  const handleSaveMapping = async (name: string) => {
     if (!user) {
       toast.error('Please log in to save mappings');
       return;
     }
 
-    const mappingName = prompt('Enter a name for this mapping:');
-    if (!mappingName?.trim()) return;
+    if (!name?.trim()) {
+      toast.error('Mapping name is required');
+      return;
+    }
 
     try {
       // Generate both UI and execution configurations like the export function does
       const { exportUIMappingConfiguration } = await import('./exporters/UIConfigExporter');
       const { exportExecutionMapping } = await import('./exporters/ExecutionConfigExporter');
       
-      const uiConfig = exportUIMappingConfiguration(nodes, edges, mappingName.trim());
-      const rawExecutionConfig = exportExecutionMapping(nodes, edges, mappingName.trim());
+      const uiConfig = exportUIMappingConfiguration(nodes, edges, name.trim());
+      const rawExecutionConfig = exportExecutionMapping(nodes, edges, name.trim());
       
       // Convert to the format expected by MappingService
       const executionConfig = {
@@ -370,7 +372,7 @@ const Pipeline = () => {
       };
 
       const savedMapping = await MappingService.saveMapping(
-        mappingName.trim(),
+        name.trim(),
         nodes,
         edges,
         user.id,
@@ -381,9 +383,9 @@ const Pipeline = () => {
       );
 
       console.log('Mapping saved successfully:', savedMapping);
-      setCurrentMappingName(mappingName.trim());
+      setCurrentMappingName(name.trim());
       setCurrentMappingVersion(savedMapping.version);
-      toast.success(`Mapping "${mappingName}" saved as version ${savedMapping.version}`);
+      toast.success(`Mapping "${name}" saved as version ${savedMapping.version}`);
     } catch (error) {
       console.error('Failed to save mapping:', error);
       toast.error(error instanceof Error ? error.message : "Failed to save mapping");

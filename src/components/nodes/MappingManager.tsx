@@ -30,7 +30,6 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   const [isNewMappingOpen, setIsNewMappingOpen] = useState(false);
   const [isSaveMappingOpen, setIsSaveMappingOpen] = useState(false);
   const [newMappingName, setNewMappingName] = useState('');
-  const [saveMappingName, setSaveMappingName] = useState(currentMappingName);
 
   const handleToggle = () => {
     if (onToggleExpanded) {
@@ -61,12 +60,12 @@ const MappingManager: React.FC<MappingManagerProps> = ({
 
   const handleSaveMapping = () => {
     console.log('=== SAVE BUTTON CLICKED IN UI ===');
-    console.log('Save mapping name:', saveMappingName);
+    console.log('Save mapping name:', currentMappingName);
     console.log('onSaveMapping function exists:', !!onSaveMapping);
     
-    if (saveMappingName.trim() && onSaveMapping) {
-      console.log('Calling onSaveMapping with name:', saveMappingName.trim());
-      onSaveMapping(saveMappingName.trim());
+    if (currentMappingName.trim() && onSaveMapping) {
+      console.log('Calling onSaveMapping with name:', currentMappingName.trim());
+      onSaveMapping(currentMappingName.trim());
       setIsSaveMappingOpen(false);
     } else {
       console.log('Save blocked - name empty or no callback');
@@ -177,13 +176,12 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Mapping Name
                         </label>
-                        <Input
-                          value={saveMappingName}
-                          onChange={(e) => setSaveMappingName(e.target.value)}
-                          placeholder="Enter mapping name..."
-                          onKeyDown={(e) => e.key === 'Enter' && handleSaveMapping()}
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded border">
+                          {currentMappingName}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          To change the mapping name, edit it in the My Mappings page.
+                        </p>
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setIsSaveMappingOpen(false)}>
@@ -195,7 +193,6 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                             e.stopPropagation();
                             handleSaveMapping();
                           }} 
-                          disabled={!saveMappingName.trim()}
                           type="button"
                         >
                           Save
