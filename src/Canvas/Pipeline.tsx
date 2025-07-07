@@ -123,7 +123,13 @@ const Pipeline = () => {
         const uiConfig = mappingToLoad.ui_config;
         if (uiConfig && uiConfig.nodes && uiConfig.edges) {
           setNodes(uiConfig.nodes);
-          setEdges(uiConfig.edges);
+          setEdges([]);  // Clear edges first
+          
+          // Add edges after nodes are rendered to avoid handle errors
+          setTimeout(() => {
+            setEdges(uiConfig.edges);
+          }, 100);
+          
           setCurrentMappingName(mappingToLoad.name);
           setCurrentMappingVersion(mappingToLoad.version);
           
@@ -321,10 +327,18 @@ const Pipeline = () => {
       try {
         const config: MappingConfiguration = JSON.parse(event.target?.result as string);
         const { nodes: importedNodes, edges: importedEdges } = importConfiguration(config);
+        
+        // Import nodes first, then edges after a small delay to ensure handles are ready
         setNodes(importedNodes);
-        setEdges(importedEdges);
+        setEdges([]);  // Clear edges first
+        
+        // Add edges after nodes are rendered
+        setTimeout(() => {
+          setEdges(importedEdges);
+          setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 100);
+        }, 100);
+        
         setCurrentMappingName(config.name || 'Untitled Mapping');
-        setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 100);
         toast.success('Mapping imported successfully!');
       } catch (error) {
         console.error('Failed to import mapping:', error);
