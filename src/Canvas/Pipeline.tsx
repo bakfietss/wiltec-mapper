@@ -394,15 +394,21 @@ const Pipeline = () => {
             const fieldPath = edge.sourceHandle;
             console.log(`🔍 Analyzing path: ${fieldPath}`);
             
-            // Split by dots and also handle array indices
+            // Split by dots and handle array indices - but don't expand indexed paths
             const pathParts = fieldPath.split('.');
             console.log('Path parts:', pathParts);
             
-            // Build all parent paths that need to be expanded
+            // Build parent paths, but strip array indices to avoid duplicates
             for (let i = 0; i < pathParts.length - 1; i++) {
-              const parentPath = pathParts.slice(0, i + 1).join('.');
-              sourceFieldsToExpand.get(sourceNodeId)!.add(parentPath);
-              console.log(`📂 Will expand: ${parentPath}`);
+              let parentPath = pathParts.slice(0, i + 1).join('.');
+              
+              // Remove array indices like [0] to get just the base array name
+              const cleanPath = parentPath.replace(/\[.*?\]/g, '');
+              
+              if (cleanPath) {
+                sourceFieldsToExpand.get(sourceNodeId)!.add(cleanPath);
+                console.log(`📂 Will expand (cleaned): ${cleanPath}`);
+              }
             }
           } else {
             console.log('⚠️ Edge has no sourceHandle - skipping');
