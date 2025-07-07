@@ -111,34 +111,64 @@ const Pipeline = () => {
     }
   }, [setNodes, setEdges]);
 
-  // Check for mapping to load from Control Panel edit button
+      // Check for mapping to load from Control Panel edit button
   useEffect(() => {
     const state = location.state as any;
     if (state?.mappingToLoad) {
       try {
         const { mappingToLoad } = state;
         console.log('Loading mapping from Control Panel:', mappingToLoad);
+        console.log('=== DEBUGGING LOADED MAPPING ===');
+        console.log('UI Config nodes:', mappingToLoad.ui_config?.nodes);
+        console.log('UI Config edges:', mappingToLoad.ui_config?.edges);
         
         // Extract UI config from the saved mapping
         const uiConfig = mappingToLoad.ui_config;
         if (uiConfig && uiConfig.nodes && uiConfig.edges) {
+          console.log('Setting nodes first...');
           setNodes(uiConfig.nodes);
           setEdges([]);  // Clear edges first
           
+          // Debug: Check what handle IDs should exist
+          const sourceNodes = uiConfig.nodes.filter((node: any) => node.type === 'source');
+          sourceNodes.forEach((node: any) => {
+            console.log('Source node data:', node.data);
+            if (node.data?.data && node.data.data.length > 0) {
+              console.log('Sample data structure:', Object.keys(node.data.data[0]));
+            }
+            if (node.data?.fields) {
+              console.log('Manual fields:', node.data.fields.map((f: any) => ({ id: f.id, name: f.name })));
+            }
+          });
+          
+          uiConfig.edges.forEach((edge: any) => {
+            console.log('Edge to be loaded:', {
+              id: edge.id,
+              source: edge.source,
+              target: edge.target,
+              sourceHandle: edge.sourceHandle,
+              targetHandle: edge.targetHandle
+            });
+          });
+          
           // Add edges with longer delay to ensure handles are ready
           setTimeout(() => {
+            console.log('Setting edges...');
             setEdges(uiConfig.edges);
             // Trigger update after edges are loaded to ensure connections are processed
-            setTimeout(() => triggerUpdate('MAPPING_LOADED_FROM_DB'), 100);
-          }, 300);
+            setTimeout(() => {
+              console.log('Triggering update...');
+              triggerUpdate('MAPPING_LOADED_FROM_DB');
+            }, 100);
+          }, 500); // Increased delay even more
           
           setCurrentMappingName(mappingToLoad.name);
           setCurrentMappingVersion(mappingToLoad.version);
           
           // Load sample data if available in source nodes
-          const sourceNodes = uiConfig.nodes.filter((node: any) => node.type === 'source');
-          if (sourceNodes.length > 0 && sourceNodes[0].sampleData) {
-            setSampleData(sourceNodes[0].sampleData);
+          if (sourceNodes.length > 0 && sourceNodes[0].data?.data) {
+            console.log('Loading sample data:', sourceNodes[0].data.data);
+            setSampleData(sourceNodes[0].data.data);
           }
           
           toast.success(`Mapping "${mappingToLoad.name}" loaded for editing`);
