@@ -71,6 +71,46 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         }
     }, [allEdges, id]);
 
+    // Auto-expand fields that have example values (like TargetNode logic)
+    useEffect(() => {
+        const shouldExpand = (field: SchemaField): boolean => {
+            // Check if this field has an example value
+            if (field.exampleValue !== undefined && field.exampleValue !== null && field.exampleValue !== '') {
+                return true;
+            }
+            
+            // Check if any child field has a value (recursive)
+            if (field.children) {
+                return field.children.some(child => shouldExpand(child));
+            }
+            
+            return false;
+        };
+        
+        const newExpanded = new Set(expandedFields);
+        let hasChanges = false;
+        
+        const checkFieldRecursive = (fieldsArray: SchemaField[]) => {
+            fieldsArray.forEach(field => {
+                if ((field.type === 'object' || field.type === 'array') && shouldExpand(field)) {
+                    if (!newExpanded.has(field.id)) {
+                        newExpanded.add(field.id);
+                        hasChanges = true;
+                    }
+                }
+                if (field.children) {
+                    checkFieldRecursive(field.children);
+                }
+            });
+        };
+        
+        checkFieldRecursive(fields);
+        
+        if (hasChanges) {
+            setExpandedFields(newExpanded);
+        }
+    }, [fields, expandedFields]);
+
     // Use the sync hook for data persistence
     useNodeDataSync(id, { 
         label: data.label, 
