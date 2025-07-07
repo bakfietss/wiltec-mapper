@@ -360,15 +360,27 @@ const Pipeline = () => {
         const config: MappingConfiguration = JSON.parse(event.target?.result as string);
         const { nodes: importedNodes, edges: importedEdges } = importConfiguration(config);
         
+        console.log('=== MAPPING IMPORT DEBUG ===');
+        console.log('Imported nodes:', importedNodes.length);
+        console.log('Imported edges:', importedEdges.length);
+        
+        // Log source nodes and their initial expanded fields
+        importedNodes.forEach(node => {
+          if (node.type === 'source') {
+            console.log(`Source node ${node.id} initialExpandedFields:`, node.data?.initialExpandedFields);
+          }
+        });
+        
         // Import nodes first, then edges after a small delay to ensure handles are ready
         setNodes(importedNodes);
         setEdges([]);  // Clear edges first
         
-        // Add edges after nodes are rendered
+        // Add edges after nodes are rendered and expanded
         setTimeout(() => {
+          console.log('Setting imported edges...');
           setEdges(importedEdges);
           setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 100);
-        }, 100);
+        }, 300); // Increased delay to ensure expansion happens first
         
         setCurrentMappingName(config.name || 'Untitled Mapping');
         toast.success('Mapping imported successfully!');

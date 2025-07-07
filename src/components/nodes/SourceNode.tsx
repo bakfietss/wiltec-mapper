@@ -325,10 +325,14 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
             setNodeData(data.data);
         }
         
-        // Auto-expand based on initialExpandedFields from imported mapping
+        // Auto-expand based on initialExpandedFields from imported mapping - apply immediately
         if (data.initialExpandedFields && data.initialExpandedFields.size > 0) {
             console.log('Setting initial expanded fields from import:', Array.from(data.initialExpandedFields));
-            setExpandedFields(data.initialExpandedFields);
+            setExpandedFields(prev => {
+                const combined = new Set([...prev, ...data.initialExpandedFields]);
+                console.log('Combined expanded fields:', Array.from(combined));
+                return combined;
+            });
         }
     }, [data.fields, data.data, data.initialExpandedFields]);
 
