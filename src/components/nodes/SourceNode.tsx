@@ -401,24 +401,25 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
                 >
-                    {/* Always reserve space for chevron to maintain consistent alignment */}
-                    <div className="w-5 flex justify-center">
-                        {canExpand && (
-                            <div
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleFieldExpansionToggle(fieldPath);
-                                }}
-                                className="cursor-pointer p-1 -m-1"
-                            >
-                                {isExpanded ? (
-                                    <ChevronDown className="w-3 h-3 text-gray-400" />
-                                ) : (
-                                    <ChevronRight className="w-3 h-3 text-gray-400" />
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    {/* Consistent chevron spacing like TargetNode */}
+                    {canExpand ? (
+                        <div
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleFieldExpansionToggle(fieldPath);
+                            }}
+                            className="cursor-pointer p-1 -m-1"
+                        >
+                            {isExpanded ? (
+                                <ChevronDown className="w-3 h-3 text-gray-400" />
+                            ) : (
+                                <ChevronRight className="w-3 h-3 text-gray-400" />
+                            )}
+                        </div>
+                    ) : (
+                        <div className="w-3 h-3" />
+                    )}
+                    
                     <span 
                         className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer text-left"
                         onClick={(e) => {
@@ -428,11 +429,22 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     >
                         {field.name}{field.type === 'array' ? '[]' : ''}
                     </span>
-                    {field.exampleValue && (
-                        <span className="text-xs text-gray-500 max-w-24 truncate">
-                            {field.exampleValue}
-                        </span>
-                    )}
+                    
+                    {/* Field value display like TargetNode */}
+                    <div className="text-xs min-w-[80px] text-center">
+                        {field.exampleValue ? (
+                            <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
+                                {String(field.exampleValue).length > 20 ? 
+                                    String(field.exampleValue).substring(0, 20) + '...' : 
+                                    String(field.exampleValue)}
+                            </span>
+                        ) : field.children && field.children.length > 0 ? (
+                            <span className="text-xs text-gray-500">({field.children.length} fields)</span>
+                        ) : (
+                            <span className="text-gray-400 italic text-xs">no data</span>
+                        )}
+                    </div>
+                    
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                         {field.type}
                     </span>
