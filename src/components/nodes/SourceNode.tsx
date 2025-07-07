@@ -279,7 +279,7 @@ const ManualField: React.FC<{
             <Handle
                 type="source"
                 position={Position.Right}
-                id={field.id}
+                id={field.name}
                 className={`w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !right-1 ${
                     isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
                 }`}
