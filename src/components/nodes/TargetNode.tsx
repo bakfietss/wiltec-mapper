@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Handle, Position, NodeResizer } from '@xyflow/react';
-import { FileText, Plus, Trash2, ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import { NodeResizer, Position } from '@xyflow/react';
+import { FileText, Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 import NodeEditSheet from './NodeEditSheet';
 import JsonImportDialog from './JsonImportDialog';
-
-interface SchemaField {
-    id: string;
-    name: string;
-    type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
-    children?: SchemaField[];
-    parent?: string;
-    groupBy?: string; // Add groupBy support
-}
+import { FieldRenderer, SchemaField } from './shared/FieldRenderer';
 
 interface TargetNodeData {
     label: string;
@@ -22,222 +14,7 @@ interface TargetNodeData {
     fieldValues?: Record<string, any>;
 }
 
-const getTypeColor = (type: string) => {
-    switch (type) {
-        case 'string': return 'text-green-600 bg-green-50';
-        case 'number': return 'text-blue-600 bg-blue-50';
-        case 'boolean': return 'text-purple-600 bg-purple-50';
-        case 'date': return 'text-orange-600 bg-orange-50';
-        case 'object': return 'text-gray-600 bg-gray-50';
-        case 'array': return 'text-red-600 bg-red-50';
-        default: return 'text-gray-600 bg-gray-50';
-    }
-};
-
-const TargetField: React.FC<{
-    field: SchemaField;
-    fieldValues: Record<string, any>;
-    allFields: SchemaField[];
-    level?: number;
-    expandedFields: Set<string>;
-    onFieldExpansionToggle: (fieldId: string) => void;
-    onFieldUpdate: (fieldId: string, updates: Partial<SchemaField>) => void;
-}> = ({ field, fieldValues, allFields, level = 0, expandedFields, onFieldExpansionToggle, onFieldUpdate }) => {
-    const fieldValue = fieldValues[field.id];
-    const isExpanded = expandedFields.has(field.id);
-    const hasChildren = field.children && field.children.length > 0;
-    
-    // Get available fields for groupBy dropdown (fields from the same level or source fields)
-    const getGroupByOptions = (): string[] => {
-        const options: string[] = [];
-        
-        // Add child field names if this is an array
-        if (field.type === 'array' && field.children) {
-            field.children.forEach(child => {
-                options.push(child.name);
-            });
-        }
-        
-        return options;
-    };
-
-    if (field.type === 'array') {
-        return (
-            <div>
-                <div 
-                    className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
-                    style={{ paddingLeft: `${8 + level * 12}px` }}
-                    onClick={() => onFieldExpansionToggle(field.id)}
-                >
-                    <div className="cursor-pointer p-1 -m-1">
-                        {isExpanded ? (
-                            <ChevronDown className="w-3 h-3 text-gray-400" />
-                        ) : (
-                            <ChevronRight className="w-3 h-3 text-gray-400" />
-                        )}
-                    </div>
-                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">
-                        {field.name}[]
-                    </span>
-                    {field.groupBy && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                            group by: {field.groupBy}
-                        </span>
-                    )}
-                    {hasChildren && (
-                        <span className="text-xs text-gray-500">({field.children!.length} items)</span>
-                    )}
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('array')}`}>
-                        array
-                    </span>
-                    
-                    <Handle
-                        type="target"
-                        position={Position.Left}
-                        id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
-                        style={{
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            zIndex: 10
-                        }}
-                    />
-                </div>
-                
-                {isExpanded && hasChildren && (
-                    <>
-                        {/* GroupBy configuration row */}
-                        <div 
-                            className="flex items-center gap-2 py-1 px-2 pr-8 bg-blue-50 border-l-2 border-blue-200 text-xs"
-                            style={{ paddingLeft: `${20 + level * 12}px` }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <Settings className="w-3 h-3 text-blue-600" />
-                            <span className="text-blue-700 font-medium">Group by:</span>
-                            <select
-                                value={field.groupBy || ''}
-                                onChange={(e) => onFieldUpdate(field.id, { groupBy: e.target.value || undefined })}
-                                className="text-xs border rounded px-2 py-1 bg-white"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <option value="">Select field...</option>
-                                {getGroupByOptions().map(option => (
-                                    <option key={option} value={option}>{option}</option>
-                                ))}
-                            </select>
-                            <span className="text-blue-600 text-xs italic">
-                                Choose which field to group records by
-                            </span>
-                        </div>
-                        
-                        {field.children!.map((childField) => (
-                            <TargetField
-                                key={childField.id}
-                                field={childField}
-                                fieldValues={fieldValues}
-                                allFields={allFields}
-                                level={level + 1}
-                                expandedFields={expandedFields}
-                                onFieldExpansionToggle={onFieldExpansionToggle}
-                                onFieldUpdate={onFieldUpdate}
-                            />
-                        ))}
-                    </>
-                )}
-            </div>
-        );
-    }
-    
-    if (field.type === 'object') {
-        return (
-            <div>
-                <div 
-                    className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
-                    style={{ paddingLeft: `${8 + level * 12}px` }}
-                    onClick={() => onFieldExpansionToggle(field.id)}
-                >
-                    <div className="cursor-pointer p-1 -m-1">
-                        {isExpanded ? (
-                            <ChevronDown className="w-3 h-3 text-gray-400" />
-                        ) : (
-                            <ChevronRight className="w-3 h-3 text-gray-400" />
-                        )}
-                    </div>
-                    <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">
-                        {field.name}
-                    </span>
-                    {hasChildren && (
-                        <span className="text-xs text-gray-500">
-                            ({field.children!.length} fields)
-                        </span>
-                    )}
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor('object')}`}>
-                        object
-                    </span>
-                    
-                    <Handle
-                        type="target"
-                        position={Position.Left}
-                        id={field.id}
-                        className="w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !left-1"
-                        style={{
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            zIndex: 10
-                        }}
-                    />
-                </div>
-                
-                {isExpanded && hasChildren && field.children!.map((childField) => (
-                    <TargetField
-                        key={childField.id}
-                        field={childField}
-                        fieldValues={fieldValues}
-                        allFields={allFields}
-                        level={level + 1}
-                        expandedFields={expandedFields}
-                        onFieldExpansionToggle={onFieldExpansionToggle}
-                        onFieldUpdate={onFieldUpdate}
-                    />
-                ))}
-            </div>
-        );
-    }
-    
-    // Primitive field
-    return (
-        <div 
-            className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative`}
-            style={{ paddingLeft: `${8 + level * 12}px` }}
-        >
-            <div className="w-3 h-3" />
-            <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">{field.name}</span>
-            <div className="text-xs min-w-[80px] text-center">
-                {fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
-                        {String(fieldValue)}
-                    </span>
-                ) : (
-                    <span className="text-gray-400 italic">no value</span>
-                )}
-            </div>
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
-                {field.type}
-            </span>
-            
-            <Handle
-                type="target"
-                position={Position.Left}
-                id={field.id}
-                className="w-3 h-3 bg-blue-500 border-2 border-white group-hover:bg-blue-600 !absolute !left-1"
-                style={{
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                }}
-            />
-        </div>
-    );
-};
+// Removed TargetField component - now using shared FieldRenderer
 
 const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }) => {
     const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
@@ -555,14 +332,16 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
 
             <div className="p-1">
                 {fields.map((field) => (
-                    <TargetField
+                    <FieldRenderer
                         key={field.id}
                         field={field}
                         fieldValues={fieldValues}
-                        allFields={fields}
                         expandedFields={expandedFields}
                         onFieldExpansionToggle={handleFieldExpansionToggle}
                         onFieldUpdate={updateField}
+                        handleType="target"
+                        handlePosition={Position.Left}
+                        nodeId={id}
                     />
                 ))}
                 
