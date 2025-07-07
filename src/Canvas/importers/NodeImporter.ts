@@ -42,37 +42,35 @@ export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[])
 };
 
 export const importSourceNode = (config: SourceNodeConfig): Node => {
-  // Extract all unique field names from sample data to create complete schema
   const sampleData = config.sampleData || [];
-  const allFieldNames = new Set<string>();
   
-  // Add schema fields
-  config.schema.fields.forEach(field => allFieldNames.add(field.name));
+  // If schema fields exist, use them as the primary source of truth
+  let finalFields = config.schema.fields;
   
-  // Add fields from sample data
-  sampleData.forEach(item => {
-    Object.keys(item).forEach(key => allFieldNames.add(key));
-  });
-  
-  // Create complete field list with proper types and IDs
-  const completeFields = Array.from(allFieldNames).map(fieldName => {
-    // First check if field exists in schema
-    const existingField = config.schema.fields.find(f => f.name === fieldName);
-    if (existingField) {
-      return existingField;
-    }
+  // If no schema fields defined, only extract top-level primitive fields from sample data
+  if (finalFields.length === 0 && sampleData.length > 0) {
+    const topLevelFields: any[] = [];
+    const firstItem = sampleData[0];
     
-    // Otherwise create a new field based on sample data
-    const sampleValue = sampleData.find(item => item[fieldName] !== undefined)?.[fieldName];
-    const fieldType = typeof sampleValue === 'number' ? 'number' : 'string';
+    Object.entries(firstItem).forEach(([key, value]) => {
+      // Only include primitive values and direct object/array references
+      // Don't recursively expand complex nested structures
+      const fieldType = Array.isArray(value) ? 'array' : 
+                       (value && typeof value === 'object') ? 'object' :
+                       typeof value === 'number' ? 'number' : 'string';
+      
+      topLevelFields.push({
+        id: `field-${Date.now()}-${key}`,
+        name: key,
+        type: fieldType,
+        exampleValue: Array.isArray(value) ? `[Array with ${value.length} items]` :
+                     (value && typeof value === 'object') ? '[Object]' :
+                     value?.toString() || ''
+      });
+    });
     
-    return {
-      id: `field-${Date.now()}-${fieldName}`,
-      name: fieldName,
-      type: fieldType,
-      exampleValue: sampleValue?.toString() || ''
-    };
-  });
+    finalFields = topLevelFields;
+  }
   
   return {
     id: config.id,
@@ -80,7 +78,7 @@ export const importSourceNode = (config: SourceNodeConfig): Node => {
     position: config.position,
     data: {
       label: config.label,
-      fields: completeFields,
+      fields: finalFields,
       data: sampleData
     }
   };
