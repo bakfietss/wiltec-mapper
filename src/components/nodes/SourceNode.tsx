@@ -391,6 +391,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         const fieldPath = field.name;
         const isExpanded = expandedFields.has(fieldPath);
         const isSelected = selectedFields.has(fieldPath);
+        const canExpand = (field.children && field.children.length > 0) || (field.type === 'array' || field.type === 'object');
         
         return (
             <div key={field.id}>
@@ -400,21 +401,24 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     }`}
                     style={{ paddingLeft: `${8 + level * 12}px` }}
                 >
-                    {(field.children && field.children.length > 0) || (field.type === 'array' || field.type === 'object') && (
-                        <div
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleFieldExpansionToggle(fieldPath);
-                            }}
-                            className="cursor-pointer p-1 -m-1"
-                        >
-                            {isExpanded ? (
-                                <ChevronDown className="w-3 h-3 text-gray-400" />
-                            ) : (
-                                <ChevronRight className="w-3 h-3 text-gray-400" />
-                            )}
-                        </div>
-                    )}
+                    {/* Always reserve space for chevron to maintain consistent alignment */}
+                    <div className="w-5 flex justify-center">
+                        {canExpand && (
+                            <div
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFieldExpansionToggle(fieldPath);
+                                }}
+                                className="cursor-pointer p-1 -m-1"
+                            >
+                                {isExpanded ? (
+                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                ) : (
+                                    <ChevronRight className="w-3 h-3 text-gray-400" />
+                                )}
+                            </div>
+                        )}
+                    </div>
                     <span 
                         className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer text-left"
                         onClick={(e) => {
@@ -424,8 +428,10 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     >
                         {field.name}{field.type === 'array' ? '[]' : ''}
                     </span>
-                    {field.children && field.children.length > 0 && (
-                        <span className="text-xs text-gray-500">({field.children.length} fields)</span>
+                    {field.exampleValue && (
+                        <span className="text-xs text-gray-500 max-w-24 truncate">
+                            {field.exampleValue}
+                        </span>
                     )}
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
                         {field.type}
@@ -456,7 +462,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                                         className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                                             selectedFields.has(`${fieldPath}[0].${key}`) ? 'bg-blue-50' : ''
                                         }`}
-                                        style={{ paddingLeft: `${8 + (level + 1) * 12}px` }}
+                                         style={{ paddingLeft: `${20 + (level + 1) * 12}px` }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleFieldToggle(`${fieldPath}[0].${key}`);
@@ -497,7 +503,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                                         className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
                                             selectedFields.has(`${fieldPath}.${key}`) ? 'bg-blue-50' : ''
                                         }`}
-                                        style={{ paddingLeft: `${8 + (level + 1) * 12}px` }}
+                                        style={{ paddingLeft: `${20 + (level + 1) * 12}px` }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleFieldToggle(`${fieldPath}.${key}`);
@@ -613,7 +619,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
             </div>
 
             {/* Fields Display - Use manual fields like TargetNode */}
-            <ScrollArea className="max-h-80">
+            <ScrollArea className="max-h-96">
                 <div className="p-2">
                     {hasFields ? (
                         <div className="space-y-1">
