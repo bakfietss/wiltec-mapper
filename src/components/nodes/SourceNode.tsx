@@ -324,7 +324,13 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
         if (data.data && JSON.stringify(data.data) !== JSON.stringify(nodeData)) {
             setNodeData(data.data);
         }
-    }, [data.fields, data.data]);
+        
+        // Auto-expand based on initialExpandedFields from imported mapping
+        if (data.initialExpandedFields && data.initialExpandedFields.size > 0) {
+            console.log('Setting initial expanded fields from import:', Array.from(data.initialExpandedFields));
+            setExpandedFields(data.initialExpandedFields);
+        }
+    }, [data.fields, data.data, data.initialExpandedFields]);
 
     useEffect(() => {
         const connectedPaths = new Set<string>();

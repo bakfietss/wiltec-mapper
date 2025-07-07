@@ -21,9 +21,9 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
       // Import nodes with array configurations if available
       const arrayConfigs = ('arrays' in mappingConfig && Array.isArray(mappingConfig.arrays)) ? mappingConfig.arrays : undefined;
       
-      // Import source nodes
+      // Import source nodes with connections for auto-expansion
       mappingConfig.nodes.sources.forEach(sourceConfig => {
-        nodes.push(importSourceNode(sourceConfig));
+        nodes.push(importSourceNode(sourceConfig, mappingConfig.connections));
       });
       
       // Import target nodes with groupBy information

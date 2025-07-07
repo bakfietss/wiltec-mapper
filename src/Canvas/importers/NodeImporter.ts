@@ -41,7 +41,7 @@ export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[])
   };
 };
 
-export const importSourceNode = (config: SourceNodeConfig): Node => {
+export const importSourceNode = (config: SourceNodeConfig, connections?: any[]): Node => {
   const sampleData = config.sampleData || [];
   
   // Create a unified field list by merging schema fields with sample data fields
@@ -81,6 +81,76 @@ export const importSourceNode = (config: SourceNodeConfig): Node => {
     });
   }
   
+  // Calculate initialExpandedFields based on connections
+  const calculateInitialExpandedFields = (): Set<string> => {
+    const connectedPaths = new Set<string>();
+    
+    if (connections) {
+      connections.forEach(edge => {
+        if (edge.sourceNodeId === config.id && edge.sourceHandle) {
+          console.log(`Found connected handle for import: ${edge.sourceHandle}`);
+          
+          // Handle array notation like containers[0].container_number
+          let pathToParse = edge.sourceHandle;
+          
+          // Split by dots, but also handle array notation
+          const segments = [];
+          let currentSegment = '';
+          
+          for (let i = 0; i < pathToParse.length; i++) {
+            const char = pathToParse[i];
+            
+            if (char === '.') {
+              if (currentSegment) {
+                segments.push(currentSegment);
+                currentSegment = '';
+              }
+            } else if (char === '[') {
+              // If we hit an array bracket, add the current segment and the array part
+              if (currentSegment) {
+                segments.push(currentSegment);
+              }
+              // Find the closing bracket and include the array index
+              const closingBracket = pathToParse.indexOf(']', i);
+              if (closingBracket !== -1) {
+                const arrayPart = pathToParse.substring(i, closingBracket + 1);
+                currentSegment = currentSegment + arrayPart;
+                i = closingBracket; // Skip to after the closing bracket
+              }
+            } else {
+              currentSegment += char;
+            }
+          }
+          
+          // Add the last segment
+          if (currentSegment) {
+            segments.push(currentSegment);
+          }
+          
+          // Now create all the parent paths for auto-expansion
+          for (let i = 1; i <= segments.length; i++) {
+            const path = segments.slice(0, i).join('.');
+            connectedPaths.add(path);
+            console.log(`Auto-expanding path for import: ${path}`);
+            
+            // Also add just the base path without array notation for expansion
+            if (path.includes('[')) {
+              const basePath = path.replace(/\[.*?\]/g, '');
+              if (basePath && basePath !== path) {
+                connectedPaths.add(basePath);
+                console.log(`Auto-expanding base path for import: ${basePath}`);
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    return connectedPaths;
+  };
+  
+  const initialExpandedFields = calculateInitialExpandedFields();
+  
   return {
     id: config.id,
     type: 'source',
@@ -88,7 +158,8 @@ export const importSourceNode = (config: SourceNodeConfig): Node => {
     data: {
       label: config.label,
       fields: finalFields,
-      data: sampleData
+      data: sampleData,
+      initialExpandedFields
     }
   };
 };
