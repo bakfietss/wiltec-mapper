@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Play, Eye, Trash2, Tag, Edit, History } from 'lucide-react';
+import { Play, Eye, Trash2, Tag, Edit, History, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,6 +26,9 @@ const MyMappings = () => {
     mapping: null, 
     versions: [] 
   });
+  const [settingsDialog, setSettingsDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -97,6 +100,26 @@ const MyMappings = () => {
     } catch (error) {
       console.error('Failed to activate version:', error);
       toast.error('Failed to activate version');
+    }
+  };
+
+  const handleMappingSettings = (mapping: SavedMapping) => {
+    setEditName(mapping.name);
+    setEditCategory(mapping.category || 'General');
+    setSettingsDialog({ open: true, mapping });
+  };
+
+  const handleSaveSettings = async () => {
+    if (!settingsDialog.mapping) return;
+    
+    try {
+      // For now, we'll create a basic update approach
+      // This would need a proper updateMapping method in MappingService
+      toast.info('Mapping name and category update feature coming soon!');
+      setSettingsDialog({ open: false, mapping: null });
+    } catch (error) {
+      console.error('Failed to update mapping:', error);
+      toast.error('Failed to update mapping');
     }
   };
 
@@ -266,31 +289,38 @@ const MyMappings = () => {
                     </TableCell>
                      <TableCell>
                        <div className="flex gap-2">
-                         <Button 
-                           size="sm" 
-                           variant="outline" 
-                           onClick={() => handleEditMapping(mapping)}
-                         >
-                           <Edit className="h-4 w-4" />
-                         </Button>
-                         <Button 
-                           size="sm" 
-                           variant="outline"
-                           onClick={() => handleVersionHistory(mapping)}
-                         >
-                           <History className="h-4 w-4" />
-                         </Button>
-                         <Button size="sm" variant="outline">
-                           <Eye className="h-4 w-4" />
-                         </Button>
-                         <Button 
-                           size="sm" 
-                           variant="outline" 
-                           className="text-destructive hover:text-destructive"
-                           onClick={() => handleDeleteMapping(mapping)}
-                         >
-                           <Trash2 className="h-4 w-4" />
-                         </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleEditMapping(mapping)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleVersionHistory(mapping)}
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleMappingSettings(mapping)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteMapping(mapping)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                        </div>
                      </TableCell>
                   </TableRow>
@@ -421,6 +451,86 @@ const MyMappings = () => {
               onClick={() => setVersionDialog({ open: false, mapping: null, versions: [] })}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsDialog.open} onOpenChange={(open) => setSettingsDialog({ open, mapping: null })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mapping Settings</DialogTitle>
+            <DialogDescription>
+              View and edit mapping information
+            </DialogDescription>
+          </DialogHeader>
+          
+          {settingsDialog.mapping && (
+            <div className="space-y-6">
+              {/* Mapping Info Display */}
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Version</span>
+                  <Badge variant="secondary">{settingsDialog.mapping.version}</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Status</span>
+                  {settingsDialog.mapping.is_active ? (
+                    <Badge variant="default" className="bg-emerald-100 text-emerald-800">Active</Badge>
+                  ) : (
+                    <Badge variant="secondary">Inactive</Badge>
+                  )}
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Created</span>
+                  <span className="text-sm">{format(new Date(settingsDialog.mapping.created_at), 'MMM d, yyyy')}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Updated</span>
+                  <span className="text-sm">{format(new Date(settingsDialog.mapping.updated_at), 'MMM d, yyyy')}</span>
+                </div>
+              </div>
+              
+              {/* Editable Fields */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mapping Name
+                  </label>
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Enter mapping name..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <Input
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    placeholder="Enter category..."
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setSettingsDialog({ open: false, mapping: null })}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveSettings}
+              disabled={!editName.trim() || !editCategory.trim()}
+            >
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
