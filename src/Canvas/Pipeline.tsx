@@ -125,10 +125,12 @@ const Pipeline = () => {
           setNodes(uiConfig.nodes);
           setEdges([]);  // Clear edges first
           
-          // Add edges after nodes are rendered to avoid handle errors
+          // Add edges with longer delay to ensure handles are ready
           setTimeout(() => {
             setEdges(uiConfig.edges);
-          }, 100);
+            // Trigger update after edges are loaded to ensure connections are processed
+            setTimeout(() => triggerUpdate('MAPPING_LOADED_FROM_DB'), 100);
+          }, 300);
           
           setCurrentMappingName(mappingToLoad.name);
           setCurrentMappingVersion(mappingToLoad.version);
