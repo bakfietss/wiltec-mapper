@@ -102,24 +102,35 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     const generateFieldsFromData = (sampleObject: any): SchemaField[] => {
         const fields: SchemaField[] = [];
         
-        Object.entries(sampleObject).forEach(([key, value]) => {
-            const field: SchemaField = {
-                id: `field-${Date.now()}-${key}`,
-                name: key,
-                type: getFieldType(value),
-                exampleValue: value
-            };
+        const processObject = (obj: any, parentPath = ''): SchemaField[] => {
+            const processedFields: SchemaField[] = [];
             
-            if (field.type === 'object' && value && typeof value === 'object') {
-                field.children = generateFieldsFromData(value);
-            } else if (field.type === 'array' && Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
-                field.children = generateFieldsFromData(value[0]);
-            }
+            Object.entries(obj).forEach(([key, value], index) => {
+                const fieldId = `field-${Date.now()}-${parentPath || 'root'}-${index}`;
+                const field: SchemaField = {
+                    id: fieldId,
+                    name: key,
+                    type: getFieldType(value),
+                    exampleValue: value
+                };
+                
+                if (field.type === 'object' && value && typeof value === 'object' && !Array.isArray(value)) {
+                    field.children = processObject(value, fieldId);
+                } else if (field.type === 'array' && Array.isArray(value) && value.length > 0) {
+                    if (typeof value[0] === 'object' && value[0] !== null) {
+                        field.children = processObject(value[0], `${fieldId}-item`);
+                    }
+                    // Set example value to show array length
+                    field.exampleValue = `[${value.length} items]`;
+                }
+                
+                processedFields.push(field);
+            });
             
-            fields.push(field);
-        });
+            return processedFields;
+        };
         
-        return fields;
+        return processObject(sampleObject);
     };
 
     const getFieldType = (value: any): SchemaField['type'] => {

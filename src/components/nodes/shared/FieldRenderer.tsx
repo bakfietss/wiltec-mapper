@@ -266,7 +266,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">{field.name}</span>
             
             {/* Value display - blue for target, blue for source (matching target) */}
-            <div className="text-xs min-w-[80px] text-center">
+            <div className="text-xs max-w-[200px] text-center">
                 {handleType === 'target' ? (
                     fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
@@ -278,9 +278,9 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                 ) : (
                     // Source node - show example value if available
                     field.exampleValue !== undefined && field.exampleValue !== null && field.exampleValue !== '' ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-                            {typeof field.exampleValue === 'string' && field.exampleValue.length > 20 
-                                ? `"${field.exampleValue.substring(0, 20)}..."` 
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                            {typeof field.exampleValue === 'string' 
+                                ? `"${field.exampleValue}"` 
                                 : String(field.exampleValue)}
                         </span>
                     ) : (
