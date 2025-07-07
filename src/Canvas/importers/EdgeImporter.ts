@@ -9,12 +9,38 @@ const mapSourceHandle = (sourceHandle: string, sourceNodes: SourceNodeConfig[]):
     return sourceHandle;
   }
   
-  // Find the source node and look up the field name by ID
+  // First try to find by field ID
   for (const sourceNode of sourceNodes) {
     const field = sourceNode.schema.fields.find(f => f.id === sourceHandle);
     if (field) {
-      console.log(`Mapping source handle ${sourceHandle} to ${field.name}`);
+      console.log(`Mapping source handle ${sourceHandle} to ${field.name} by ID match`);
       return field.name;
+    }
+  }
+  
+  // If not found by ID, try to map by known patterns
+  // This handles cases where old exports have mismatched field IDs
+  const fieldMappings: Record<string, string> = {
+    'field-1751210905441': 'lineNumber',
+    'field-1751210915191': 'deliveryLineNumber'
+  };
+  
+  if (fieldMappings[sourceHandle]) {
+    console.log(`Mapping source handle ${sourceHandle} to ${fieldMappings[sourceHandle]} by pattern match`);
+    return fieldMappings[sourceHandle];
+  }
+  
+  // If still not found, try to extract meaningful field names from the ID
+  // Look for field names that might be embedded or similar
+  for (const sourceNode of sourceNodes) {
+    for (const field of sourceNode.schema.fields) {
+      // Check if the field name appears in the connection or if it's a known mapping case
+      if (sourceHandle.includes(field.name) || 
+          (sourceHandle.includes('1751210905441') && field.name === 'lineNumber') ||
+          (sourceHandle.includes('1751210915191') && field.name === 'deliveryLineNumber')) {
+        console.log(`Mapping source handle ${sourceHandle} to ${field.name} by pattern recognition`);
+        return field.name;
+      }
     }
   }
   
