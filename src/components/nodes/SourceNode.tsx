@@ -718,40 +718,31 @@ const SourceNode: React.FC<{ data: SourceNodeData; id: string }> = ({ data, id }
                 </NodeEditSheet>
             </div>
 
-            {/* Unified Field Display - Always use same logic */}
-            {fields.length > 0 ? (
+            {/* Show fields ONLY from sample data when available, no manual fields */}
+            {hasData ? (
                 <div className="space-y-1 mb-2">
-                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Schema Fields:</div>
-                    {fields.map((field) => {
-                        // For complex types (object/array), use DataField with sample data if available
-                        if ((field.type === 'object' || field.type === 'array') && hasData) {
-                            const sampleValue = nodeData[0]?.[field.name];
-                            if (sampleValue !== undefined) {
-                                return (
-                                    <DataField
-                                        key={field.id}
-                                        path={field.name}
-                                        value={sampleValue}
-                                        level={0}
-                                        onFieldToggle={handleDataFieldToggle}
-                                        onFieldExpansionToggle={handleFieldExpansionToggle}
-                                        selectedFields={selectedFields}
-                                        expandedFields={expandedFields}
-                                    />
-                                );
-                            }
-                        }
-                        
-                        // For simple types, use ManualField
-                        return (
-                            <ManualField
-                                key={field.id}
-                                field={field}
-                                onFieldToggle={handleFieldToggle}
-                                selectedFields={selectedFields}
-                            />
-                        );
-                    })}
+                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Sample Data Fields:</div>
+                    <DataField
+                        path=""
+                        value={nodeData[0] || {}}
+                        level={0}
+                        onFieldToggle={handleDataFieldToggle}
+                        onFieldExpansionToggle={handleFieldExpansionToggle}
+                        selectedFields={selectedFields}
+                        expandedFields={expandedFields}
+                    />
+                </div>
+            ) : fields.length > 0 ? (
+                <div className="space-y-1 mb-2">
+                    <div className="text-xs font-medium text-gray-500 px-2 py-1">Manual Schema Fields:</div>
+                    {fields.map((field) => (
+                        <ManualField
+                            key={field.id}
+                            field={field}
+                            onFieldToggle={handleFieldToggle}
+                            selectedFields={selectedFields}
+                        />
+                    ))}
                 </div>
             ) : (
                 <div className="text-center py-3 text-gray-500 text-xs">
