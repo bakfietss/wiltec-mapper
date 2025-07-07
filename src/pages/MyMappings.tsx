@@ -404,7 +404,7 @@ const MyMappings = () => {
                             variant="outline"
                             onClick={() => handleActivateVersion(version)}
                           >
-                            Activate
+                            Restore Version
                           </Button>
                         )}
                       </TableCell>
