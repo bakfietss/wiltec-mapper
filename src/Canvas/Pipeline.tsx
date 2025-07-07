@@ -380,27 +380,21 @@ const Pipeline = () => {
               sourceFieldsToExpand.set(sourceNodeId, new Set());
             }
             
-            // Extract all parent paths that need expansion
+            // Simple approach: expand every part of the path
             const fieldPath = edge.sourceHandle;
-            console.log(`=== IMPORT EXPANSION ANALYSIS ===`);
-            console.log(`Analyzing connection to field: ${fieldPath}`);
+            console.log(`=== EXPANDING PATH: ${fieldPath} ===`);
             
-            // Split the path and build all parent paths
             const pathParts = fieldPath.split('.');
-            let currentPath = '';
+            let buildingPath = '';
             
-            for (let i = 0; i < pathParts.length; i++) {
-              if (i > 0) currentPath += '.';
-              currentPath += pathParts[i];
+            // Add every intermediate path for expansion
+            for (let i = 0; i < pathParts.length - 1; i++) {
+              if (buildingPath) buildingPath += '.';
+              buildingPath += pathParts[i];
               
-              // For all paths except the final field, we need expansion
-              if (i < pathParts.length - 1) {
-                sourceFieldsToExpand.get(sourceNodeId)!.add(currentPath);
-                console.log(`Adding path for expansion: ${currentPath}`);
-              }
+              sourceFieldsToExpand.get(sourceNodeId)!.add(buildingPath);
+              console.log(`Will expand: ${buildingPath}`);
             }
-            
-            console.log(`All paths to expand for ${sourceNodeId}:`, Array.from(sourceFieldsToExpand.get(sourceNodeId)!));
           }
         });
         
