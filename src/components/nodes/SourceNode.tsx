@@ -6,8 +6,17 @@ import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 import NodeEditSheet from './NodeEditSheet';
 import JsonImportDialog from './JsonImportDialog';
 
+interface SchemaField {
+    id: string;
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
+    exampleValue?: any;
+    children?: SchemaField[];
+}
+
 interface SourceNodeData {
     label: string;
+    fields?: SchemaField[];  // Manual fields like TargetNode
     data?: any[];
     initialExpandedFields?: Set<string>;
 }
@@ -256,6 +265,7 @@ const DataField: React.FC<{
 };
 
 const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolean }> = ({ id, data, selected }) => {
+    const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
     const [nodeData, setNodeData] = useState<any[]>(data.data || []);
     const [jsonInput, setJsonInput] = useState('');
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
@@ -265,6 +275,9 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
 
     // Sync data changes
     useEffect(() => {
+        if (data.fields && JSON.stringify(data.fields) !== JSON.stringify(fields)) {
+            setFields(data.fields);
+        }
         if (data.data && JSON.stringify(data.data) !== JSON.stringify(nodeData)) {
             setNodeData(data.data);
         }
@@ -277,7 +290,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 return combined;
             });
         }
-    }, [data.data, data.initialExpandedFields]);
+    }, [data.fields, data.data, data.initialExpandedFields]);
 
     // Auto-expand connected fields
     useEffect(() => {
@@ -311,23 +324,137 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     // Use the sync hook for data persistence
     useNodeDataSync(id, { 
         label: data.label, 
+        fields: fields,
         data: nodeData
     });
 
     const hasData = nodeData && nodeData.length > 0;
+    const hasFields = fields && fields.length > 0;
 
     const handleJsonImport = () => {
         try {
             const importedData = JSON.parse(jsonInput);
-            if (Array.isArray(importedData)) {
-                setNodeData(importedData);
-            } else {
-                setNodeData([importedData]);
+            const dataArray = Array.isArray(importedData) ? importedData : [importedData];
+            setNodeData(dataArray);
+            
+            // Auto-generate fields from data if no manual fields exist
+            if (!hasFields && dataArray.length > 0) {
+                const generatedFields = generateFieldsFromData(dataArray[0]);
+                setFields(generatedFields);
             }
+            
             setJsonInput('');
         } catch (error) {
             console.error('Failed to parse JSON:', error);
         }
+    };
+
+    const generateFieldsFromData = (sampleObject: any): SchemaField[] => {
+        const fields: SchemaField[] = [];
+        
+        Object.entries(sampleObject).forEach(([key, value]) => {
+            const field: SchemaField = {
+                id: `field-${Date.now()}-${key}`,
+                name: key,
+                type: getFieldType(value),
+                exampleValue: value
+            };
+            
+            if (field.type === 'object' && value && typeof value === 'object') {
+                field.children = generateFieldsFromData(value);
+            } else if (field.type === 'array' && Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+                field.children = generateFieldsFromData(value[0]);
+            }
+            
+            fields.push(field);
+        });
+        
+        return fields;
+    };
+
+    const getFieldType = (value: any): SchemaField['type'] => {
+        if (value === null) return 'string';
+        if (Array.isArray(value)) return 'array';
+        if (typeof value === 'object') return 'object';
+        if (typeof value === 'boolean') return 'boolean';
+        if (typeof value === 'number') return 'number';
+        if (typeof value === 'string') {
+            if (value.match(/^\d{4}-\d{2}-\d{2}/) || (value.includes('T') && value.includes('Z'))) {
+                return 'date';
+            }
+            return 'string';
+        }
+        return 'string';
+    };
+
+    const renderSchemaField = (field: SchemaField, level: number): React.ReactNode => {
+        const fieldPath = field.name;
+        const isExpanded = expandedFields.has(fieldPath);
+        const isSelected = selectedFields.has(fieldPath);
+        
+        return (
+            <div key={field.id}>
+                <div 
+                    className={`flex items-center gap-2 py-1 px-2 pr-8 hover:bg-gray-50 rounded text-sm group cursor-pointer relative ${
+                        isSelected ? 'bg-blue-50' : ''
+                    }`}
+                    style={{ paddingLeft: `${8 + level * 12}px` }}
+                >
+                    {field.children && field.children.length > 0 && (
+                        <div
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleFieldExpansionToggle(fieldPath);
+                            }}
+                            className="cursor-pointer p-1 -m-1"
+                        >
+                            {isExpanded ? (
+                                <ChevronDown className="w-3 h-3 text-gray-400" />
+                            ) : (
+                                <ChevronRight className="w-3 h-3 text-gray-400" />
+                            )}
+                        </div>
+                    )}
+                    <span 
+                        className="font-medium text-gray-900 flex-1 min-w-0 truncate cursor-pointer text-left"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleFieldToggle(fieldPath);
+                        }}
+                    >
+                        {field.name}{field.type === 'array' ? '[]' : ''}
+                    </span>
+                    {field.children && field.children.length > 0 && (
+                        <span className="text-xs text-gray-500">({field.children.length} fields)</span>
+                    )}
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(field.type)}`}>
+                        {field.type}
+                    </span>
+                    
+                    <Handle
+                        type="source"
+                        position={Position.Right}
+                        id={fieldPath}
+                        className={`w-3 h-3 bg-blue-500 border-2 border-white hover:bg-blue-600 !absolute !right-1 ${
+                            isSelected ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                        }`}
+                        style={{
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            zIndex: 10
+                        }}
+                    />
+                </div>
+                
+                {/* Render children if expanded */}
+                {isExpanded && field.children && field.children.map((childField) => 
+                    renderSchemaField({
+                        ...childField,
+                        name: `${fieldPath}${field.type === 'array' ? '[0]' : ''}.${childField.name}`
+                    }, level + 1)
+                )}
+            </div>
+        );
     };
 
     const handleFieldToggle = (path: string) => {
@@ -398,12 +525,17 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 </NodeEditSheet>
             </div>
 
-            {/* Fields Display */}
+            {/* Fields Display - Use manual fields like TargetNode */}
             <ScrollArea className="max-h-80">
                 <div className="p-2">
-                    {hasData ? (
+                    {hasFields ? (
                         <div className="space-y-1">
                             <div className="text-xs font-medium text-gray-500 px-2 py-1">Fields:</div>
+                            {fields.map((field) => renderSchemaField(field, 0))}
+                        </div>
+                    ) : hasData ? (
+                        <div className="space-y-1">
+                            <div className="text-xs font-medium text-gray-500 px-2 py-1">Auto-generated Fields:</div>
                             <DataField
                                 path=""
                                 value={nodeData[0] || {}}
