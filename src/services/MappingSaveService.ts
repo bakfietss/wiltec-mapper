@@ -26,6 +26,19 @@ export class MappingSaveService {
     }
 
     try {
+      // Get next version first
+      const { supabase } = await import('../integrations/supabase/client');
+      const { data: nextVersion, error: versionError } = await supabase
+        .rpc('get_next_version', {
+          p_user_id: userId,
+          p_name: name.trim(),
+          p_category: 'General'
+        });
+
+      if (versionError) {
+        throw new Error(`Failed to get next version: ${versionError.message}`);
+      }
+
       // Dynamic imports to avoid circular dependencies
       const [{ exportUIMappingConfiguration }, { exportExecutionMapping }] = await Promise.all([
         import('../Canvas/exporters/UIConfigExporter'),
@@ -36,11 +49,12 @@ export class MappingSaveService {
       const executionConfig = exportExecutionMapping(nodes, edges, name.trim());
       
       console.log('Generated configs:', { uiConfig, executionConfig });
+      console.log('Using version:', nextVersion);
       
-      // Convert executionConfig to match interface
+      // Convert executionConfig to match interface with correct version
       const formattedExecutionConfig = {
         name: name.trim(),
-        version: 'v1.01',
+        version: nextVersion,
         category: 'General',
         mappings: executionConfig.mappings || [],
         arrays: executionConfig.arrays || [],
