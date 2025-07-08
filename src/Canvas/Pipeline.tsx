@@ -30,7 +30,7 @@ import { useManualUpdateTrigger } from '../hooks/useManualUpdateTrigger';
 import { toast } from 'sonner';
 import AiChatAssistant from '../components/AiChatAssistant';
 import CanvasMiniMap from './components/CanvasMiniMap';
-import { MappingService } from '../services/MappingService';
+import { MappingSaveService } from '../services/MappingSaveService';
 import { useAuth } from '../contexts/AuthContext';
 
 const initialNodes: Node[] = [
@@ -466,64 +466,11 @@ const Pipeline = () => {
   }, [setNodes, setEdges, fieldStore]);
 
   const handleSaveMapping = async (name: string) => {
-    console.log('🚨 PIPELINE SAVE FUNCTION CALLED 🚨');
-    console.log('Name:', name);
-    console.log('User:', user);
-    console.log('Nodes count:', nodes.length);
-    console.log('Edges count:', edges.length);
+    const result = await MappingSaveService.saveMapping(name, nodes, edges, user?.id || '');
     
-    if (!user) {
-      console.log('❌ No user - showing error');
-      toast.error('Please log in to save mappings');
-      return;
-    }
-
-    if (!name?.trim()) {
-      console.log('❌ No name - showing error');
-      toast.error('Mapping name is required');
-      return;
-    }
-
-    console.log('✅ Starting save process...');
-    try {
-      // Generate the UI and execution configs using the same exporters as the export button
-      const { exportUIMappingConfiguration } = await import('./exporters/UIConfigExporter');
-      const { exportExecutionMapping } = await import('./exporters/ExecutionConfigExporter');
-      
-      const uiConfig = exportUIMappingConfiguration(nodes, edges, name.trim());
-      const executionConfig = exportExecutionMapping(nodes, edges, name.trim());
-      
-      console.log('Generated configs:', { uiConfig, executionConfig });
-      
-      // Convert executionConfig to match interface
-      const formattedExecutionConfig = {
-        name: name.trim(),
-        version: 'v1.01',
-        category: 'General',
-        mappings: executionConfig.mappings || [],
-        arrays: executionConfig.arrays || [],
-        metadata: executionConfig.metadata
-      };
-      
-      // Save to database using MappingService
-      const savedMapping = await MappingService.saveMapping(
-        name.trim(),
-        nodes,
-        edges,
-        user.id,
-        'General', // default category
-        undefined, // description
-        undefined, // tags
-        formattedExecutionConfig // execution config
-      );
-
-      console.log('✅ Mapping saved successfully:', savedMapping);
+    if (result.success && result.version) {
       setCurrentMappingName(name.trim());
-      setCurrentMappingVersion(savedMapping.version);
-      toast.success(`Mapping "${name}" saved as version ${savedMapping.version}`);
-    } catch (error) {
-      console.error('❌ Failed to save mapping:', error);
-      toast.error(error instanceof Error ? error.message : "Failed to save mapping");
+      setCurrentMappingVersion(result.version);
     }
   };
 
