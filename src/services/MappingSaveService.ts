@@ -61,7 +61,7 @@ export class MappingSaveService {
         metadata: executionConfig.metadata
       };
       
-      // Save to database using MappingService
+      // Save to database using MappingService with the version we got
       const savedMapping = await MappingService.saveMapping(
         name.trim(),
         nodes,
@@ -70,7 +70,8 @@ export class MappingSaveService {
         'General', // default category
         undefined, // description
         undefined, // tags
-        formattedExecutionConfig // execution config
+        formattedExecutionConfig, // execution config
+        nextVersion // pass the version we already retrieved
       );
 
       console.log('✅ Mapping saved successfully:', savedMapping);

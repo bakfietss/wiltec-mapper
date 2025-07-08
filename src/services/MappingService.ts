@@ -51,22 +51,27 @@ export class MappingService {
     category: string = 'General',
     description?: string,
     tags?: string[],
-    executionConfig?: ExecutionMappingConfig
+    executionConfig?: ExecutionMappingConfig,
+    providedVersion?: string
   ): Promise<SavedMapping> {
     if (!userId) {
       throw new Error('User authentication is required to save mappings');
     }
 
-    // Get next version using user ID and category
-    const { data: version, error: versionError } = await supabase
-      .rpc('get_next_version', {
-        p_user_id: userId,
-        p_name: name,
-        p_category: category
-      });
+    // Use provided version or get next version using user ID and category
+    let version = providedVersion;
+    if (!version) {
+      const { data: nextVersion, error: versionError } = await supabase
+        .rpc('get_next_version', {
+          p_user_id: userId,
+          p_name: name,
+          p_category: category
+        });
 
-    if (versionError) {
-      throw new Error(`Failed to get next version: ${versionError.message}`);
+      if (versionError) {
+        throw new Error(`Failed to get next version: ${versionError.message}`);
+      }
+      version = nextVersion;
     }
 
     // Create UI configuration that matches the SavedMappingConfig interface
