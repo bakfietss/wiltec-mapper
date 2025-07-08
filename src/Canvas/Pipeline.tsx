@@ -32,6 +32,9 @@ import AiChatAssistant from '../components/AiChatAssistant';
 import CanvasMiniMap from './components/CanvasMiniMap';
 import { MappingSaveService } from '../services/MappingSaveService';
 import { useAuth } from '../contexts/AuthContext';
+import { useMappingLoaders } from './hooks/useMappingLoaders';
+import { useCanvasEventHandlers } from './hooks/useCanvasEventHandlers';
+import { useClickOutsideHandler } from './hooks/useClickOutsideHandler';
 
 const initialNodes: Node[] = [
   {
@@ -75,155 +78,29 @@ const Pipeline = () => {
   const { updateTrigger, triggerUpdate } = useManualUpdateTrigger();
   const { enhancedNodes } = useNodeValueUpdates(updateTrigger, nodes, edges);
 
-  // Check for AI-generated mapping on component mount
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const fromAI = urlParams.get('from');
-    
-    if (fromAI === 'ai-generated') {
-      const aiMapping = localStorage.getItem('ai-generated-mapping');
-      if (aiMapping) {
-        try {
-          const { nodes: aiNodes, edges: aiEdges, sourceData } = JSON.parse(aiMapping);
-          setNodes(aiNodes);
-          setEdges(aiEdges);
-          setSampleData(sourceData || []);
-          setCurrentMappingName('AI Generated Mapping');
-          localStorage.removeItem('ai-generated-mapping');
-          toast.success('AI-generated mapping loaded successfully!');
-        } catch (error) {
-          console.error('Failed to load AI-generated mapping:', error);
-          toast.error('Failed to load AI-generated mapping');
-        }
-      }
-    } else if (fromAI === 'ai-suggestions') {
-      const aiSuggestions = localStorage.getItem('ai-suggestions');
-      if (aiSuggestions) {
-        try {
-          const { sourceData } = JSON.parse(aiSuggestions);
-          setSampleData(sourceData || []);
-          localStorage.removeItem('ai-suggestions');
-          toast.success('AI suggestions available for manual refinement');
-        } catch (error) {
-          console.error('Failed to load AI suggestions:', error);
-        }
-      }
-    }
-  }, [setNodes, setEdges]);
+  // Use custom hooks for different loading scenarios
+  useMappingLoaders({
+    setNodes,
+    setEdges,
+    setSampleData,
+    setCurrentMappingName,
+    setCurrentMappingVersion,
+    triggerUpdate
+  });
 
-      // Check for mapping to load from Control Panel edit button
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.mappingToLoad) {
-      try {
-        const { mappingToLoad } = state;
-        console.log('Loading mapping from My Mappings:', mappingToLoad);
-        
-        // Extract UI config from the saved mapping and use proper import logic
-        const uiConfig = mappingToLoad.ui_config;
-        if (uiConfig && uiConfig.nodes && uiConfig.edges) {
-          // Use the ConfigImporter to properly import with auto-expansion logic
-          const { nodes, edges } = importConfiguration(uiConfig);
-          
-          console.log('Imported nodes with proper expansion:', nodes);
-          console.log('Imported edges:', edges);
-          
-          setNodes(nodes);
-          setEdges(edges);
-          
-          setCurrentMappingName(mappingToLoad.name);
-          setCurrentMappingVersion(mappingToLoad.version);
-          
-          // Load sample data if available in source nodes
-          const sourceNodes = nodes.filter((node: any) => node.type === 'source');
-          if (sourceNodes.length > 0 && sourceNodes[0].data?.data) {
-            console.log('Loading sample data:', sourceNodes[0].data.data);
-            setSampleData(Array.isArray(sourceNodes[0].data.data) ? sourceNodes[0].data.data : []);
-          }
-          
-          // Trigger update to ensure everything is processed
-          setTimeout(() => {
-            triggerUpdate('MAPPING_LOADED_FROM_DB');
-          }, 100);
-          
-          toast.success(`Mapping "${mappingToLoad.name}" loaded for editing`);
-        } else {
-          toast.error('Invalid mapping configuration');
-        }
-      } catch (error) {
-        console.error('Failed to load mapping from My Mappings:', error);
-        toast.error('Failed to load mapping');
-      }
-      
-      // Clear the state to prevent re-loading on subsequent renders
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, setNodes, setEdges]);
+  useCanvasEventHandlers({
+    addTransformNode,
+    addMappingNode,
+    setNodes,
+    setEdges,
+    setSampleData
+  });
 
-  // Listen for custom events from Index page
-  useEffect(() => {
-    const handleAddTransformNode = (event: CustomEvent) => {
-      const { type } = event.detail;
-      addTransformNode(type);
-    };
-
-    const handleAddMappingNode = () => {
-      addMappingNode();
-    };
-
-    const handleLoadTemplateConversion = (event: CustomEvent) => {
-      const { nodes: templateNodes, edges: templateEdges, sourceData } = event.detail;
-      
-      console.log('Loading template conversion:', { templateNodes, templateEdges, sourceData });
-      
-      // Replace current nodes and edges with the converted ones
-      setNodes(templateNodes);
-      setEdges(templateEdges);
-      
-      // Update sample data if provided
-      if (sourceData && sourceData.length > 0) {
-        setSampleData(sourceData);
-      }
-      
-      toast.success('Visual mapping loaded from template!');
-    };
-
-    window.addEventListener('addTransformNode', handleAddTransformNode as EventListener);
-    window.addEventListener('addMappingNode', handleAddMappingNode);
-    window.addEventListener('loadTemplateConversion', handleLoadTemplateConversion as EventListener);
-
-    return () => {
-      window.removeEventListener('addTransformNode', handleAddTransformNode as EventListener);
-      window.removeEventListener('addMappingNode', handleAddMappingNode);
-      window.removeEventListener('loadTemplateConversion', handleLoadTemplateConversion as EventListener);
-    };
-  }, [addTransformNode, addMappingNode]);
-
-  // Click outside to close functionality
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      const reactFlowElement = reactFlowWrapper.current?.querySelector('.react-flow');
-      const isCanvasClick = reactFlowElement && reactFlowElement.contains(target);
-      
-      const toolbarElement = document.querySelector('[data-toolbar="mapping-toolbar"]');
-      const isToolbarClick = toolbarElement && toolbarElement.contains(target);
-      
-      const managerElement = document.querySelector('[data-toolbar="mapping-manager"]');
-      const isManagerClick = managerElement && managerElement.contains(target);
-      
-      if (isCanvasClick || (!isToolbarClick && !isManagerClick)) {
-        setIsToolbarExpanded(false);
-        setIsManagerExpanded(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+  useClickOutsideHandler({
+    reactFlowWrapper,
+    setIsToolbarExpanded,
+    setIsManagerExpanded
+  });
 
   const onConnect = useCallback((params: Connection) => {
     console.log('=== NEW CONNECTION CREATED ===');
