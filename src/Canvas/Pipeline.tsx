@@ -109,6 +109,7 @@ const Pipeline = () => {
     setNodes,
     setEdges,
     currentMappingName,
+    currentMappingVersion,
     setCurrentMappingName,
     setCurrentMappingVersion,
     triggerUpdate,

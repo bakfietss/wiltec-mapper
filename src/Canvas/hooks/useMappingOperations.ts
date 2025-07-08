@@ -14,6 +14,7 @@ interface UseMappingOperationsProps {
   setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   currentMappingName: string;
+  currentMappingVersion: string;
   setCurrentMappingName: (name: string) => void;
   setCurrentMappingVersion: (version: string) => void;
   triggerUpdate: (reason: string) => void;
@@ -37,6 +38,7 @@ export const useMappingOperations = ({
   setNodes,
   setEdges,
   currentMappingName,
+  currentMappingVersion,
   setCurrentMappingName,
   setCurrentMappingVersion,
   triggerUpdate,
@@ -91,6 +93,14 @@ export const useMappingOperations = ({
 
   const handleSaveMapping = useCallback(async (name: string) => {
     try {
+      // Generate next version locally
+      let nextVersion = 'v1.01';
+      if (currentMappingVersion) {
+        const currentNum = parseFloat(currentMappingVersion.substring(1));
+        const nextNum = currentNum + 0.01;
+        nextVersion = `v${nextNum.toFixed(2)}`;
+      }
+
       // Dynamic imports to avoid circular dependencies
       const [{ exportUIMappingConfiguration }, { exportExecutionMapping }] = await Promise.all([
         import('../exporters/UIConfigExporter'),
@@ -103,7 +113,7 @@ export const useMappingOperations = ({
       // Convert executionConfig to match interface format
       const formattedExecutionConfig = {
         name: name.trim(),
-        version: '', // Will be set by MappingService
+        version: nextVersion,
         category: 'General',
         mappings: executionConfig.mappings || [],
         arrays: executionConfig.arrays || [],
@@ -118,7 +128,8 @@ export const useMappingOperations = ({
         'General',
         undefined,
         undefined,
-        formattedExecutionConfig
+        formattedExecutionConfig,
+        nextVersion // Pass the version we calculated
       );
 
       setCurrentMappingName(name.trim());
@@ -128,7 +139,7 @@ export const useMappingOperations = ({
       console.error('Failed to save mapping:', error);
       toast.error(error instanceof Error ? error.message : "Failed to save mapping");
     }
-  }, [nodes, edges, userId, setCurrentMappingName, setCurrentMappingVersion]);
+  }, [nodes, edges, userId, currentMappingVersion, setCurrentMappingName, setCurrentMappingVersion]);
 
   const handleExportDocumentation = useCallback(() => {
     try {
