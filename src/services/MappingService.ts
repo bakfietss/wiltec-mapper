@@ -69,7 +69,7 @@ export class MappingService {
       throw new Error(`Failed to get next version: ${versionError.message}`);
     }
 
-    // Create UI configuration
+    // Create UI configuration that matches the SavedMappingConfig interface
     const uiConfig: SavedMappingConfig = {
       name,
       version,

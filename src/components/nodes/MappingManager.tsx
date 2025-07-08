@@ -31,13 +31,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   const [isSaveMappingOpen, setIsSaveMappingOpen] = useState(false);
   const [newMappingName, setNewMappingName] = useState('');
 
-  // Debug logging
-  console.log('=== MappingManager Render ===');
-  console.log('isSaveMappingOpen:', isSaveMappingOpen);
-  console.log('isExpanded:', isExpanded);
-
   const handleToggle = () => {
-    console.log('=== TOGGLE CLICKED ===');
     if (onToggleExpanded) {
       onToggleExpanded(!isExpanded);
     }
@@ -65,18 +59,10 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   };
 
   const handleSaveMapping = () => {
-    console.log('=== SAVE BUTTON CLICKED IN UI ===');
-    console.log('Save mapping name:', currentMappingName);
-    console.log('onSaveMapping function exists:', !!onSaveMapping);
-    
-    // Just save it - don't overthink the validation
     if (onSaveMapping) {
       const nameToSave = currentMappingName || 'Untitled Mapping';
-      console.log('Calling onSaveMapping with name:', nameToSave);
       onSaveMapping(nameToSave);
       setIsSaveMappingOpen(false);
-    } else {
-      console.log('Save blocked - no callback function');
     }
   };
 

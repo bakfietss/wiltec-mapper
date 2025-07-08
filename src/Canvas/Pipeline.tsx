@@ -486,13 +486,35 @@ const Pipeline = () => {
 
     console.log('✅ Starting save process...');
     try {
-      // Use MappingService.saveMapping like the API key service pattern
+      // Generate the UI and execution configs using the same exporters as the export button
+      const { exportUIMappingConfiguration } = await import('./exporters/UIConfigExporter');
+      const { exportExecutionMapping } = await import('./exporters/ExecutionConfigExporter');
+      
+      const uiConfig = exportUIMappingConfiguration(nodes, edges, name.trim());
+      const executionConfig = exportExecutionMapping(nodes, edges, name.trim());
+      
+      console.log('Generated configs:', { uiConfig, executionConfig });
+      
+      // Convert executionConfig to match interface
+      const formattedExecutionConfig = {
+        name: name.trim(),
+        version: 'v1.01',
+        category: 'General',
+        mappings: executionConfig.mappings || [],
+        arrays: executionConfig.arrays || [],
+        metadata: executionConfig.metadata
+      };
+      
+      // Save to database using MappingService
       const savedMapping = await MappingService.saveMapping(
         name.trim(),
         nodes,
         edges,
         user.id,
-        'General' // default category
+        'General', // default category
+        undefined, // description
+        undefined, // tags
+        formattedExecutionConfig // execution config
       );
 
       console.log('✅ Mapping saved successfully:', savedMapping);
