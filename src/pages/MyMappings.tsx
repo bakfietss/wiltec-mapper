@@ -112,14 +112,33 @@ const MyMappings = () => {
   const handleSaveSettings = async () => {
     if (!settingsDialog.mapping) return;
     
+    if (!editName.trim() || !editCategory.trim()) {
+      toast.error('Name and category are required');
+      return;
+    }
+    
     try {
-      // For now, we'll create a basic update approach
-      // This would need a proper updateMapping method in MappingService
-      toast.info('Mapping name and category update feature coming soon!');
+      await MappingService.updateMapping(
+        settingsDialog.mapping.id,
+        user!.id,
+        editName.trim(),
+        editCategory.trim()
+      );
+      
+      // Update local state
+      setMappings(prev => 
+        prev.map(mapping => 
+          mapping.id === settingsDialog.mapping!.id 
+            ? { ...mapping, name: editName.trim(), category: editCategory.trim() }
+            : mapping
+        )
+      );
+      
+      toast.success('Mapping settings updated successfully');
       setSettingsDialog({ open: false, mapping: null });
     } catch (error) {
       console.error('Failed to update mapping:', error);
-      toast.error('Failed to update mapping');
+      toast.error('Failed to update mapping settings');
     }
   };
 

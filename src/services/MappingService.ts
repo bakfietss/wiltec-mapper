@@ -328,4 +328,23 @@ export class MappingService {
       execution_config: item.execution_config as unknown as ExecutionMappingConfig
     }));
   }
+
+  static async updateMapping(id: string, userId: string, name: string, category: string): Promise<void> {
+    if (!userId) {
+      throw new Error('User authentication is required to update mappings');
+    }
+
+    const { error } = await supabase
+      .from('mappings')
+      .update({ 
+        name: name.trim(),
+        category: category.trim()
+      })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(`Failed to update mapping: ${error.message}`);
+    }
+  }
 }
