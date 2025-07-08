@@ -140,7 +140,7 @@ const MyMappings = () => {
       setSettingsDialog({ open: false, mapping: null });
     } catch (error) {
       console.error('Failed to update mapping:', error);
-      toast.error('Failed to update mapping settings');
+      toast.error(error instanceof Error ? error.message : 'Failed to update mapping settings');
     }
   };
 
