@@ -318,17 +318,25 @@ export class MappingService {
       throw new Error(`Failed to fetch mappings: ${error.message}`);
     }
 
-    // Group by name+category and get only the latest version of each
-    const latestMappings = new Map<string, any>();
+    // Group by mapping_group_id and get the active version or latest if no active
+    const groupMap = new Map<string, any>();
     
     (data || []).forEach(item => {
-      const key = `${item.name}-${item.category}`;
-      if (!latestMappings.has(key)) {
-        latestMappings.set(key, item);
+      const groupId = item.mapping_group_id;
+      const existing = groupMap.get(groupId);
+      
+      if (!existing) {
+        groupMap.set(groupId, item);
+      } else {
+        // If current item is active, prioritize it
+        if (item.is_active && !existing.is_active) {
+          groupMap.set(groupId, item);
+        }
+        // If both have same active status, keep the latest version (already sorted)
       }
     });
 
-    return Array.from(latestMappings.values()).map(item => ({
+    return Array.from(groupMap.values()).map(item => ({
       ...item,
       ui_config: item.ui_config as unknown as SavedMappingConfig,
       execution_config: item.execution_config as unknown as ExecutionMappingConfig

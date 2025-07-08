@@ -19,6 +19,7 @@ const MyMappings = () => {
   const [mappings, setMappings] = useState<SavedMapping[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
   const [deleteConfirmationName, setDeleteConfirmationName] = useState('');
   const [versionDialog, setVersionDialog] = useState<{ open: boolean; mapping: SavedMapping | null; versions: SavedMapping[] }>({ 
@@ -192,9 +193,20 @@ const MyMappings = () => {
   const isDeleteNameValid = deleteDialog.mapping?.name === deleteConfirmationName;
 
   const categories = Array.from(new Set(mappings.map(m => m.category).filter(Boolean)));
-  const filteredMappings = selectedCategory === 'all' 
-    ? mappings 
-    : mappings.filter(m => m.category === selectedCategory);
+  
+  let filteredMappings = mappings;
+  
+  // Apply category filter
+  if (selectedCategory !== 'all') {
+    filteredMappings = filteredMappings.filter(m => m.category === selectedCategory);
+  }
+  
+  // Apply status filter
+  if (selectedStatus !== 'all') {
+    filteredMappings = filteredMappings.filter(m => 
+      selectedStatus === 'active' ? m.is_active : !m.is_active
+    );
+  }
 
   const activeMappings = mappings.filter(m => m.is_active);
   const totalMappings = mappings.length;
@@ -256,7 +268,7 @@ const MyMappings = () => {
       </div>
 
       {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-4">
         <Button 
           variant={selectedCategory === 'all' ? 'default' : 'outline'}
           size="sm"
@@ -276,6 +288,31 @@ const MyMappings = () => {
         ))}
       </div>
 
+      {/* Status Filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Button 
+          variant={selectedStatus === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelectedStatus('all')}
+        >
+          All Status
+        </Button>
+        <Button 
+          variant={selectedStatus === 'active' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelectedStatus('active')}
+        >
+          Active Only
+        </Button>
+        <Button 
+          variant={selectedStatus === 'inactive' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelectedStatus('inactive')}
+        >
+          Inactive Only
+        </Button>
+      </div>
+
       {/* Mappings Table */}
       {filteredMappings.length === 0 ? (
         <Card>
@@ -283,9 +320,11 @@ const MyMappings = () => {
             <Tag className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No mappings found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {selectedCategory === 'all' 
-                ? "You haven't created any mappings yet. Start by using one of the builder tools."
-                : `No mappings found in the "${selectedCategory}" category.`
+              {selectedStatus !== 'all' 
+                ? `No ${selectedStatus} mappings found${selectedCategory !== 'all' ? ` in the "${selectedCategory}" category` : ''}.`
+                : selectedCategory === 'all' 
+                  ? "You haven't created any mappings yet. Start by using one of the builder tools."
+                  : `No mappings found in the "${selectedCategory}" category.`
               }
             </p>
             <Button onClick={() => navigate('/template-mapper')}>
