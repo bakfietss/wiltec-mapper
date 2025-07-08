@@ -466,7 +466,7 @@ const Pipeline = () => {
   }, [setNodes, setEdges, fieldStore]);
 
   const handleSaveMapping = async (name: string) => {
-    console.log('=== SAVE MAPPING CALLED ===');
+    console.log('🚨 PIPELINE SAVE FUNCTION CALLED 🚨');
     console.log('Name:', name);
     console.log('User:', user);
     console.log('Nodes count:', nodes.length);
