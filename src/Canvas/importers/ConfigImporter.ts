@@ -5,12 +5,66 @@ import { importSourceNode, importTargetNode, importTransformNode, importMappingN
 import { importEdge } from './EdgeImporter';
 import { convertExecutionConfigToNodes } from './ExecutionConfigConverter';
 
-export const importConfiguration = (config: MappingConfiguration | ExecutionMappingConfig): { nodes: Node[], edges: Edge[] } => {
+export const importConfiguration = (config: MappingConfiguration | ExecutionMappingConfig | any): { nodes: Node[], edges: Edge[] } => {
   console.log('=== IMPORTING CONFIGURATION ===');
-  console.log('Config type:', 'nodes' in config ? 'MappingConfiguration' : 'ExecutionMappingConfig');
+  console.log('Config input:', config);
+  console.log('Config keys:', Object.keys(config || {}));
   
   try {
-    if ('nodes' in config) {
+    // Handle direct ReactFlow format (from database ui_config)
+    if (Array.isArray(config?.nodes) && Array.isArray(config?.edges)) {
+      console.log('Importing direct ReactFlow format from database');
+      
+      const nodes = config.nodes;
+      const edges = config.edges;
+      
+      // Auto-expansion logic for source nodes based on their connections
+      const sourceFieldsToExpand = new Map<string, Set<string>>();
+      
+      // Analyze edges to determine which source fields need expansion
+      edges.forEach((edge: any) => {
+        if (edge.sourceHandle) {
+          const sourceNodeId = edge.source;
+          if (!sourceFieldsToExpand.has(sourceNodeId)) {
+            sourceFieldsToExpand.set(sourceNodeId, new Set());
+          }
+          
+          const fieldPath = edge.sourceHandle;
+          const pathParts = fieldPath.split('.');
+          
+          // Build parent paths for expansion
+          for (let i = 0; i < pathParts.length - 1; i++) {
+            let parentPath = pathParts.slice(0, i + 1).join('.');
+            // Remove array indices to get clean field names
+            const cleanPath = parentPath.replace(/\[.*?\]/g, '');
+            if (cleanPath) {
+              sourceFieldsToExpand.get(sourceNodeId)!.add(cleanPath);
+            }
+          }
+        }
+      });
+      
+      // Apply auto-expansion to source nodes
+      const enhancedNodes = nodes.map((node: any) => {
+        if (node.type === 'source' && sourceFieldsToExpand.has(node.id)) {
+          const fieldsToExpand = sourceFieldsToExpand.get(node.id)!;
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              initialExpandedFields: fieldsToExpand
+            }
+          };
+        }
+        return node;
+      });
+      
+      console.log(`Imported ${enhancedNodes.length} nodes and ${edges.length} edges from ReactFlow format`);
+      return { nodes: enhancedNodes, edges };
+    }
+    
+    // Handle MappingConfiguration format (from files)
+    else if (config?.nodes && typeof config.nodes === 'object' && !Array.isArray(config.nodes)) {
       // Handle MappingConfiguration format
       const mappingConfig = config as MappingConfiguration;
       console.log('Importing MappingConfiguration with nodes structure');

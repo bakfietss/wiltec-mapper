@@ -349,15 +349,15 @@ const TemplateMapper = () => {
   }, [outputTemplate, sourceData, navigate, toast]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-6 py-8">
+    <div className="h-full bg-gray-50">
+      <div className="h-full px-6 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Template Mapper</h1>
           <p className="text-lg text-gray-600">Transform your data using custom templates with our Weavo-style interface</p>
         </div>
 
         {/* 3-Panel Weavo Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-240px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
           
           {/* Panel 1: Source Data Input */}
           <Card className="flex flex-col h-full">
