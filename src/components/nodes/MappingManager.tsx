@@ -158,10 +158,6 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                   <DialogTrigger asChild>
                     <button 
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 rounded border border-purple-200"
-                      onClick={(e) => {
-                        console.log('=== SAVE BUTTON CLICKED ===');
-                        e.stopPropagation();
-                      }}
                     >
                       <Save className="w-4 h-4" />
                       Save Mapping
