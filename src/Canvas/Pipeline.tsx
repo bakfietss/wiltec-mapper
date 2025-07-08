@@ -466,16 +466,25 @@ const Pipeline = () => {
   }, [setNodes, setEdges, fieldStore]);
 
   const handleSaveMapping = async (name: string) => {
+    console.log('=== SAVE MAPPING CALLED ===');
+    console.log('Name:', name);
+    console.log('User:', user);
+    console.log('Nodes count:', nodes.length);
+    console.log('Edges count:', edges.length);
+    
     if (!user) {
+      console.log('❌ No user - showing error');
       toast.error('Please log in to save mappings');
       return;
     }
 
     if (!name?.trim()) {
+      console.log('❌ No name - showing error');
       toast.error('Mapping name is required');
       return;
     }
 
+    console.log('✅ Starting save process...');
     try {
       // Generate both UI and execution configurations like the export function does
       const { exportUIMappingConfiguration } = await import('./exporters/UIConfigExporter');
