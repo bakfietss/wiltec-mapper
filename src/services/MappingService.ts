@@ -350,13 +350,26 @@ export class MappingService {
       throw new Error('User authentication is required to update mappings');
     }
 
+    // First get the mapping_group_id of the mapping being updated
+    const { data: mapping, error: fetchError } = await supabase
+      .from('mappings')
+      .select('mapping_group_id')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !mapping) {
+      throw new Error(`Failed to find mapping: ${fetchError?.message || 'Mapping not found'}`);
+    }
+
+    // Update ALL mappings in the same group (all versions)
     const { error } = await supabase
       .from('mappings')
       .update({ 
         name: name.trim(),
         category: category.trim()
       })
-      .eq('id', id)
+      .eq('mapping_group_id', mapping.mapping_group_id)
       .eq('user_id', userId);
 
     if (error) {
