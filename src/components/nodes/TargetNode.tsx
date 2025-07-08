@@ -40,6 +40,16 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
         }
     }, [data.initialExpandedFields]);
     
+    // Also ensure fields and nodeData are synced from props
+    useEffect(() => {
+        if (data.fields && JSON.stringify(data.fields) !== JSON.stringify(fields)) {
+            setFields(data.fields);
+        }
+        if (data.data && JSON.stringify(data.data) !== JSON.stringify(nodeData)) {
+            setNodeData(data.data);
+        }
+    }, [data.fields, data.data]);
+    
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
     console.log('Field values from centralized system:', fieldValues);

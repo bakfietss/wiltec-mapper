@@ -22,8 +22,18 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
     const updatedNodes = nodes.map(node => {
         // Handle source nodes - preserve their data and ensure no loss during centralized processing
         if (node.type === 'source') {
-            // Just return the source node as-is to preserve its data
-            return node;
+            // Ensure source nodes keep their original data and fields intact
+            // This is critical for maintaining data after database loads
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    // Preserve all original source node data
+                    fields: node.data?.fields || [],
+                    data: node.data?.data || [],
+                    label: node.data?.label || node.data?.name || 'Source'
+                }
+            };
         }
         
         // Handle target nodes (editable schema with target type)
