@@ -5,7 +5,7 @@ import { downloadBothMappingFiles } from '../utils/FileDownloader';
 import { importConfiguration } from '../importers/ConfigImporter';
 import { exportMappingDocumentation } from '../DocumentationExporter';
 import { MappingConfiguration } from '../types/MappingTypes';
-import { MappingSaveService } from '../../services/MappingSaveService';
+import { MappingService } from '../../services/MappingService';
 import { useFieldStore } from '../../store/fieldStore';
 
 interface UseMappingOperationsProps {
@@ -90,11 +90,43 @@ export const useMappingOperations = ({
   }, [setNodes, setEdges, fieldStore, setCurrentMappingName]);
 
   const handleSaveMapping = useCallback(async (name: string) => {
-    const result = await MappingSaveService.saveMapping(name, nodes, edges, userId);
-    
-    if (result.success && result.version) {
+    try {
+      // Dynamic imports to avoid circular dependencies
+      const [{ exportUIMappingConfiguration }, { exportExecutionMapping }] = await Promise.all([
+        import('../exporters/UIConfigExporter'),
+        import('../exporters/ExecutionConfigExporter')
+      ]);
+      
+      const uiConfig = exportUIMappingConfiguration(nodes, edges, name.trim());
+      const executionConfig = exportExecutionMapping(nodes, edges, name.trim());
+      
+      // Convert executionConfig to match interface format
+      const formattedExecutionConfig = {
+        name: name.trim(),
+        version: '', // Will be set by MappingService
+        category: 'General',
+        mappings: executionConfig.mappings || [],
+        arrays: executionConfig.arrays || [],
+        metadata: executionConfig.metadata
+      };
+      
+      const savedMapping = await MappingService.saveMapping(
+        name.trim(),
+        nodes,
+        edges,
+        userId,
+        'General',
+        undefined,
+        undefined,
+        formattedExecutionConfig
+      );
+
       setCurrentMappingName(name.trim());
-      setCurrentMappingVersion(result.version);
+      setCurrentMappingVersion(savedMapping.version);
+      toast.success(`Mapping "${name}" saved as version ${savedMapping.version}`);
+    } catch (error) {
+      console.error('Failed to save mapping:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to save mapping");
     }
   }, [nodes, edges, userId, setCurrentMappingName, setCurrentMappingVersion]);
 
