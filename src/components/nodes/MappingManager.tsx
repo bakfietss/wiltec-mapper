@@ -59,10 +59,17 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   };
 
   const handleSaveMapping = () => {
+    console.log('🔥 MAPPING MANAGER SAVE CALLED 🔥');
+    console.log('onSaveMapping exists:', !!onSaveMapping);
+    console.log('currentMappingName:', currentMappingName);
+    
     if (onSaveMapping) {
       const nameToSave = currentMappingName || 'Untitled Mapping';
+      console.log('Calling onSaveMapping with:', nameToSave);
       onSaveMapping(nameToSave);
       setIsSaveMappingOpen(false);
+    } else {
+      console.log('❌ No onSaveMapping function provided');
     }
   };
 
