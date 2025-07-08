@@ -20,6 +20,12 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
     console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
     
     const updatedNodes = nodes.map(node => {
+        // Handle source nodes - preserve their data and ensure no loss during centralized processing
+        if (node.type === 'source') {
+            // Just return the source node as-is to preserve its data
+            return node;
+        }
+        
         // Handle target nodes (editable schema with target type)
         if (node.type === 'target' && node.data?.fields) {
             return calculateTargetNodeValues(node, nodes, edges);

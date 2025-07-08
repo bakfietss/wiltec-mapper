@@ -29,7 +29,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
     
-    // Initialize expanded fields from import data
+    // Initialize expanded fields from import data (same pattern as SourceNode)
     useEffect(() => {
         if (data.initialExpandedFields && data.initialExpandedFields.size > 0) {
             console.log('Setting initial expanded fields for target from import:', Array.from(data.initialExpandedFields));
