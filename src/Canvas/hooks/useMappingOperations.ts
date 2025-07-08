@@ -120,9 +120,26 @@ export const useMappingOperations = ({
         metadata: executionConfig.metadata
       };
       
+      // Preserve original source node data when saving
+      const nodesToSave = nodes.map(node => {
+        if (node.type === 'source') {
+          // Ensure source nodes retain their original fields and data when saving
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              // These should already be preserved, but make sure they exist
+              fields: node.data?.fields || [],
+              data: node.data?.data || []
+            }
+          };
+        }
+        return node;
+      });
+      
       const savedMapping = await MappingService.saveMapping(
         name.trim(),
-        nodes,
+        nodesToSave,  // Use preserved nodes instead of processed ones
         edges,
         userId,
         'General',
