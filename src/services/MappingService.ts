@@ -58,14 +58,29 @@ export class MappingService {
       throw new Error('User authentication is required to save mappings');
     }
 
-    // Use provided version or get next version using user ID and category
+    // First, check if there's an existing active mapping to inherit from
+    const { data: existingMapping } = await supabase
+      .from('mappings')
+      .select('mapping_group_id, category, description, tags')
+      .eq('user_id', userId)
+      .eq('name', name)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    // Inherit metadata from existing mapping or use provided values
+    const finalCategory = category !== 'General' ? category : (existingMapping?.category || 'General');
+    const finalDescription = description || existingMapping?.description;
+    const finalTags = tags || existingMapping?.tags || [];
+    const mappingGroupId = existingMapping?.mapping_group_id || crypto.randomUUID();
+
+    // Use provided version or get next version
     let version = providedVersion;
     if (!version) {
       const { data: nextVersion, error: versionError } = await supabase
         .rpc('get_next_version', {
           p_user_id: userId,
           p_name: name,
-          p_category: category
+          p_category: finalCategory
         });
 
       if (versionError) {
@@ -78,9 +93,9 @@ export class MappingService {
     const uiConfig: SavedMappingConfig = {
       name,
       version,
-      category,
-      description,
-      tags,
+      category: finalCategory,
+      description: finalDescription,
+      tags: finalTags,
       nodes,
       edges,
       metadata: {
@@ -90,35 +105,31 @@ export class MappingService {
       }
     };
 
-    // Deactivate all previous versions of this mapping (handle null category properly)
-    let deactivateQuery = supabase
-      .from('mappings')
-      .update({ is_active: false })
-      .eq('user_id', userId)
-      .eq('name', name);
-    
-    if (category) {
-      deactivateQuery = deactivateQuery.eq('category', category);
-    } else {
-      deactivateQuery = deactivateQuery.is('category', null);
-    }
-    
-    const { error: deactivateError } = await deactivateQuery;
-    if (deactivateError) {
-      console.error('Failed to deactivate previous versions:', deactivateError);
-      throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
+    // Deactivate all previous versions of this mapping group
+    if (existingMapping) {
+      const { error: deactivateError } = await supabase
+        .from('mappings')
+        .update({ is_active: false })
+        .eq('user_id', userId)
+        .eq('mapping_group_id', mappingGroupId);
+      
+      if (deactivateError) {
+        console.error('Failed to deactivate previous versions:', deactivateError);
+        throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
+      }
     }
 
-    // Save new mapping with user ID - keep config for now until schema updated
+    // Save new mapping with inherited metadata and group ID
     const { data, error } = await supabase
       .from('mappings')
       .insert({
         user_id: userId,
         name,
         version,
-        category,
-        description,
-        tags,
+        category: finalCategory,
+        description: finalDescription,
+        tags: finalTags,
+        mapping_group_id: mappingGroupId,
         config: uiConfig as any, // Keep for now - remove after schema update
         ui_config: uiConfig as any,
         execution_config: executionConfig as any,

@@ -102,6 +102,7 @@ export type Database = {
           execution_config: Json | null
           id: string
           is_active: boolean | null
+          mapping_group_id: string
           name: string
           tags: string[] | null
           ui_config: Json | null
@@ -118,6 +119,7 @@ export type Database = {
           execution_config?: Json | null
           id?: string
           is_active?: boolean | null
+          mapping_group_id?: string
           name: string
           tags?: string[] | null
           ui_config?: Json | null
@@ -134,6 +136,7 @@ export type Database = {
           execution_config?: Json | null
           id?: string
           is_active?: boolean | null
+          mapping_group_id?: string
           name?: string
           tags?: string[] | null
           ui_config?: Json | null
@@ -188,6 +191,7 @@ export type Database = {
           execution_config: Json | null
           id: string
           is_active: boolean | null
+          mapping_group_id: string
           name: string
           tags: string[] | null
           ui_config: Json | null
