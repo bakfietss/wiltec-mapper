@@ -183,14 +183,17 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                           To change the mapping name, edit it in the My Mappings page.
                         </p>
                       </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setIsSaveMappingOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handleSaveMapping}>
-                          Save
-                        </Button>
-                      </div>
+                       <div className="flex justify-end gap-2">
+                         <Button variant="outline" onClick={() => setIsSaveMappingOpen(false)}>
+                           Cancel
+                         </Button>
+                         <button 
+                           onClick={handleSaveMapping}
+                           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                         >
+                           Save
+                         </button>
+                       </div>
                     </div>
                   </DialogContent>
                 </Dialog>
