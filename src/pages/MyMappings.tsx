@@ -267,29 +267,8 @@ const MyMappings = () => {
         </Card>
       </div>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Button 
-          variant={selectedCategory === 'all' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setSelectedCategory('all')}
-        >
-          All Categories
-        </Button>
-        {categories.map(category => (
-          <Button 
-            key={category}
-            variant={selectedCategory === category ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedCategory(category)}
-          >
-            {category}
-          </Button>
-        ))}
-      </div>
-
       {/* Status Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-4">
         <Button 
           variant={selectedStatus === 'all' ? 'default' : 'outline'}
           size="sm"
@@ -311,6 +290,27 @@ const MyMappings = () => {
         >
           Inactive Only
         </Button>
+      </div>
+
+      {/* Category Filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Button 
+          variant={selectedCategory === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelectedCategory('all')}
+        >
+          All Categories
+        </Button>
+        {categories.map(category => (
+          <Button 
+            key={category}
+            variant={selectedCategory === category ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedCategory(category)}
+          >
+            {category}
+          </Button>
+        ))}
       </div>
 
       {/* Mappings Table */}
