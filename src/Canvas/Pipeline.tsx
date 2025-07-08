@@ -21,20 +21,14 @@ import { useFieldStore } from '../store/fieldStore';
 import DataSidebar from '../components/nodes/DataSidebar';
 import MappingToolbar from '../components/nodes/MappingToolbar';
 import MappingManager from '../components/nodes/MappingManager';
-import { downloadBothMappingFiles } from './utils/FileDownloader';
-import { importConfiguration } from './importers/ConfigImporter';
-import { MappingConfiguration } from './types/MappingTypes';
-import { exportMappingDocumentation } from './DocumentationExporter';
 import { useNodeValueUpdates } from '../hooks/useNodeValueUpdates';
 import { useManualUpdateTrigger } from '../hooks/useManualUpdateTrigger';
-import { toast } from 'sonner';
 import AiChatAssistant from '../components/AiChatAssistant';
-import CanvasMiniMap from './components/CanvasMiniMap';
-import { MappingSaveService } from '../services/MappingSaveService';
 import { useAuth } from '../contexts/AuthContext';
 import { useMappingLoaders } from './hooks/useMappingLoaders';
 import { useCanvasEventHandlers } from './hooks/useCanvasEventHandlers';
 import { useClickOutsideHandler } from './hooks/useClickOutsideHandler';
+import { useMappingOperations } from './hooks/useMappingOperations';
 
 const initialNodes: Node[] = [
   {
@@ -100,6 +94,25 @@ const Pipeline = () => {
     reactFlowWrapper,
     setIsToolbarExpanded,
     setIsManagerExpanded
+  });
+
+  // Use mapping operations hook for save/export functionality
+  const {
+    handleExportMapping,
+    handleImportMapping,
+    handleNewMapping,
+    handleSaveMapping,
+    handleExportDocumentation
+  } = useMappingOperations({
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    currentMappingName,
+    setCurrentMappingName,
+    setCurrentMappingVersion,
+    triggerUpdate,
+    userId: user?.id || ''
   });
 
   const onConnect = useCallback((params: Connection) => {
@@ -195,147 +208,6 @@ const Pipeline = () => {
     setReactFlowInstance(instance);
   }, []);
 
-  const handleExportMapping = useCallback(() => {
-    try {
-      downloadBothMappingFiles(nodes, edges, currentMappingName);
-      toast.success('Mapping exported successfully!');
-    } catch (error) {
-      console.error('Failed to export mapping:', error);
-      toast.error('Failed to export mapping');
-    }
-  }, [nodes, edges, currentMappingName]);
-
-  const handleImportMapping = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const config: MappingConfiguration = JSON.parse(event.target?.result as string);
-        const { nodes: importedNodes, edges: importedEdges } = importConfiguration(config);
-        
-        console.log('=== MAPPING IMPORT DEBUG ===');
-        console.log('Imported nodes:', importedNodes.length);
-        console.log('Imported edges:', importedEdges.length);
-        
-        // Log source nodes and their initial expanded fields
-        importedNodes.forEach(node => {
-          if (node.type === 'source') {
-            console.log(`Source node ${node.id} initialExpandedFields:`, node.data?.initialExpandedFields);
-          }
-        });
-        
-        // AUDIT TRAIL: Analyze edges to determine which source fields need expansion
-        console.log('=== IMPORT EXPANSION AUDIT TRAIL ===');
-        console.log('Total imported edges:', importedEdges.length);
-        
-        const sourceFieldsToExpand = new Map<string, Set<string>>();
-        importedEdges.forEach((edge, index) => {
-          console.log(`Edge ${index + 1}:`, {
-            id: edge.id,
-            source: edge.source,
-            target: edge.target,
-            sourceHandle: edge.sourceHandle,
-            targetHandle: edge.targetHandle
-          });
-          
-          if (edge.sourceHandle) {
-            const sourceNodeId = edge.source;
-            if (!sourceFieldsToExpand.has(sourceNodeId)) {
-              sourceFieldsToExpand.set(sourceNodeId, new Set());
-            }
-            
-            const fieldPath = edge.sourceHandle;
-            console.log(`🔍 Analyzing path: ${fieldPath}`);
-            
-            // Split by dots and handle array indices - but don't expand indexed paths
-            const pathParts = fieldPath.split('.');
-            console.log('Path parts:', pathParts);
-            
-            // Build parent paths, but strip array indices to avoid duplicates
-            for (let i = 0; i < pathParts.length - 1; i++) {
-              let parentPath = pathParts.slice(0, i + 1).join('.');
-              
-              // Remove array indices like [0] to get just the base array name
-              const cleanPath = parentPath.replace(/\[.*?\]/g, '');
-              
-              if (cleanPath) {
-                sourceFieldsToExpand.get(sourceNodeId)!.add(cleanPath);
-                console.log(`📂 Will expand (cleaned): ${cleanPath}`);
-              }
-            }
-          } else {
-            console.log('⚠️ Edge has no sourceHandle - skipping');
-          }
-        });
-        
-        // Summary of what will be expanded
-        sourceFieldsToExpand.forEach((fieldsSet, nodeId) => {
-          console.log(`📋 Node ${nodeId} will expand:`, Array.from(fieldsSet));
-        });
-        
-        // Apply auto-expansion to source nodes based on their connections
-        const enhancedNodes = importedNodes.map(node => {
-          if (node.type === 'source' && sourceFieldsToExpand.has(node.id)) {
-            const fieldsToExpand = sourceFieldsToExpand.get(node.id)!;
-            console.log(`Auto-expanding fields for source ${node.id}:`, Array.from(fieldsToExpand));
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                initialExpandedFields: fieldsToExpand
-              }
-            };
-          }
-          return node;
-        });
-        
-        // Import enhanced nodes first, then edges after a small delay to ensure handles are ready
-        setNodes(enhancedNodes);
-        setEdges([]);  // Clear edges first
-        
-        // Add edges after nodes are rendered and expanded
-        setTimeout(() => {
-          console.log('Setting imported edges...');
-          setEdges(importedEdges);
-          setTimeout(() => triggerUpdate('MAPPING_IMPORTED'), 100);
-        }, 300); // Delay to ensure expansion happens first
-        
-        setCurrentMappingName(config.name || 'Untitled Mapping');
-        toast.success('Mapping imported successfully!');
-      } catch (error) {
-        console.error('Failed to import mapping:', error);
-        toast.error('Failed to import mapping');
-      }
-    };
-    reader.readAsText(file);
-  }, [setNodes, setEdges, triggerUpdate]);
-
-  const handleNewMapping = useCallback((name: string) => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-    setCurrentMappingName(name);
-    fieldStore.resetAll();
-    toast.success('New mapping created!');
-  }, [setNodes, setEdges, fieldStore]);
-
-  const handleSaveMapping = async (name: string) => {
-    const result = await MappingSaveService.saveMapping(name, nodes, edges, user?.id || '');
-    
-    if (result.success && result.version) {
-      setCurrentMappingName(name.trim());
-      setCurrentMappingVersion(result.version);
-    }
-  };
-
-  const handleExportDocumentation = useCallback(() => {
-    try {
-      exportMappingDocumentation(nodes, edges, currentMappingName);
-      toast.success('Documentation exported successfully!');
-    } catch (error) {
-      console.error('Failed to export documentation:', error);
-      toast.error('Failed to export documentation');
-    }
-  }, [nodes, edges, currentMappingName]);
-
   return (
     <ReactFlowProvider>
       <div className={`h-screen w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : 'flex bg-background'}`}>
@@ -394,9 +266,6 @@ const Pipeline = () => {
                   }}
                 />
               </div>
-              
-              {/* Custom minimap component */}
-              <CanvasMiniMap />
             </div>
           </ReactFlow>
           
