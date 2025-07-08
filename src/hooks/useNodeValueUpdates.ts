@@ -418,8 +418,16 @@ const getConversionMappingValue = (conversionNode: any, nodes: any[], edges: any
     
     for (const inputEdge of inputEdges) {
         const sourceNode = nodes.find(n => n.id === inputEdge.source);
+        let sourceValue: any = null;
+        
+        // Handle different source node types
         if (sourceNode?.type === 'source') {
-            let sourceValue = getSourceNodeValue(sourceNode, inputEdge.sourceHandle);
+            sourceValue = getSourceNodeValue(sourceNode, inputEdge.sourceHandle);
+        } else if (sourceNode?.type === 'transform') {
+            sourceValue = getTransformNodeValue(sourceNode, nodes, edges);
+        }
+        
+        if (sourceValue !== null) {
             const mappings = conversionNode.data?.mappings || [];
             
             if (mappings.length > 0) {
