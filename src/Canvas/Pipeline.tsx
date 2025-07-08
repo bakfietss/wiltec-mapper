@@ -486,40 +486,21 @@ const Pipeline = () => {
 
     console.log('✅ Starting save process...');
     try {
-      // Generate both UI and execution configurations like the export function does
-      const { exportUIMappingConfiguration } = await import('./exporters/UIConfigExporter');
-      const { exportExecutionMapping } = await import('./exporters/ExecutionConfigExporter');
-      
-      const uiConfig = exportUIMappingConfiguration(nodes, edges, name.trim());
-      const rawExecutionConfig = exportExecutionMapping(nodes, edges, name.trim());
-      
-      // Convert to the format expected by MappingService
-      const executionConfig = {
-        name: rawExecutionConfig.name,
-        version: rawExecutionConfig.version,
-        category: 'General',
-        mappings: rawExecutionConfig.mappings,
-        arrays: rawExecutionConfig.arrays,
-        metadata: rawExecutionConfig.metadata
-      };
-
+      // Use MappingService.saveMapping like the API key service pattern
       const savedMapping = await MappingService.saveMapping(
         name.trim(),
         nodes,
         edges,
         user.id,
-        'General', // default category
-        undefined, // description
-        undefined, // tags
-        executionConfig // pass the converted execution config
+        'General' // default category
       );
 
-      console.log('Mapping saved successfully:', savedMapping);
+      console.log('✅ Mapping saved successfully:', savedMapping);
       setCurrentMappingName(name.trim());
       setCurrentMappingVersion(savedMapping.version);
       toast.success(`Mapping "${name}" saved as version ${savedMapping.version}`);
     } catch (error) {
-      console.error('Failed to save mapping:', error);
+      console.error('❌ Failed to save mapping:', error);
       toast.error(error instanceof Error ? error.message : "Failed to save mapping");
     }
   };

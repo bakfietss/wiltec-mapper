@@ -104,7 +104,7 @@ export class MappingService {
       throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
     }
 
-    // Save new mapping with user ID
+    // Save new mapping with user ID - keep config for now until schema updated
     const { data, error } = await supabase
       .from('mappings')
       .insert({
@@ -114,7 +114,7 @@ export class MappingService {
         category,
         description,
         tags,
-        config: uiConfig as any, // Keep for backward compatibility
+        config: uiConfig as any, // Keep for now - remove after schema update
         ui_config: uiConfig as any,
         execution_config: executionConfig as any,
         is_active: true
