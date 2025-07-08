@@ -24,45 +24,9 @@ const reconstructSchemaFields = (fields: SchemaField[], arrayConfigs?: any[]): S
   });
 };
 
-export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[], connections?: any[]): Node => {
+export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[]): Node => {
   // Reconstruct fields with groupBy information from array configurations
   const fieldsWithGroupBy = reconstructSchemaFields(config.schema.fields, arrayConfigs);
-  
-  // Calculate initial expanded fields for target node based on connections
-  const calculateTargetExpandedFields = (): Set<string> => {
-    const connectedPaths = new Set<string>();
-    
-    if (connections) {
-      connections.forEach(edge => {
-        if (edge.targetNodeId === config.id && edge.targetHandle) {
-          console.log(`Found target connected handle for import: ${edge.targetHandle}`);
-          
-          // Split by dots to create parent paths for expansion
-          const segments = edge.targetHandle.split('.');
-          
-          // Add all parent paths for expansion
-          for (let i = 1; i <= segments.length; i++) {
-            const path = segments.slice(0, i).join('.');
-            connectedPaths.add(path);
-            console.log(`Auto-expanding target path for import: ${path}`);
-            
-            // Also add base path without array notation
-            if (path.includes('[')) {
-              const basePath = path.replace(/\[.*?\]/g, '');
-              if (basePath && basePath !== path) {
-                connectedPaths.add(basePath);
-                console.log(`Auto-expanding target base path for import: ${basePath}`);
-              }
-            }
-          }
-        }
-      });
-    }
-    
-    return connectedPaths;
-  };
-  
-  const initialExpandedFields = calculateTargetExpandedFields();
   
   return {
     id: config.id,
@@ -72,8 +36,7 @@ export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[],
       label: config.label,
       fields: fieldsWithGroupBy,
       data: config.outputData || [],
-      fieldValues: {}, // This will be populated by the centralized system
-      initialExpandedFields
+      fieldValues: {} // This will be populated by the centralized system
     }
   };
 };

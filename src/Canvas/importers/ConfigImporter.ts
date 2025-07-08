@@ -44,7 +44,7 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
         }
       });
       
-      // Apply auto-expansion to both source and target nodes
+      // Apply auto-expansion to source nodes
       const enhancedNodes = nodes.map((node: any) => {
         if (node.type === 'source' && sourceFieldsToExpand.has(node.id)) {
           const fieldsToExpand = sourceFieldsToExpand.get(node.id)!;
@@ -56,40 +56,6 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
             }
           };
         }
-        
-        // Also handle target node expansion
-        if (node.type === 'target') {
-          const targetFieldsToExpand = new Set<string>();
-          
-          // Find edges targeting this node to determine expansion
-          edges.forEach((edge: any) => {
-            if (edge.target === node.id && edge.targetHandle) {
-              const fieldPath = edge.targetHandle;
-              const pathParts = fieldPath.split('.');
-              
-              // Build parent paths for expansion
-              for (let i = 0; i < pathParts.length - 1; i++) {
-                let parentPath = pathParts.slice(0, i + 1).join('.');
-                // Remove array indices to get clean field names
-                const cleanPath = parentPath.replace(/\[.*?\]/g, '');
-                if (cleanPath) {
-                  targetFieldsToExpand.add(cleanPath);
-                }
-              }
-            }
-          });
-          
-          if (targetFieldsToExpand.size > 0) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                initialExpandedFields: targetFieldsToExpand
-              }
-            };
-          }
-        }
-        
         return node;
       });
       
@@ -114,9 +80,9 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
         nodes.push(importSourceNode(sourceConfig, mappingConfig.connections));
       });
       
-      // Import target nodes with groupBy information and connections for auto-expansion
+      // Import target nodes with groupBy information
       mappingConfig.nodes.targets.forEach(targetConfig => {
-        nodes.push(importTargetNode(targetConfig, arrayConfigs, mappingConfig.connections));
+        nodes.push(importTargetNode(targetConfig, arrayConfigs));
       });
       
       // Import transform nodes

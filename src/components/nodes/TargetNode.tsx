@@ -12,7 +12,6 @@ interface TargetNodeData {
     fields: SchemaField[];
     data?: any[];
     fieldValues?: Record<string, any>;
-    initialExpandedFields?: Set<string>;
 }
 
 // Removed TargetField component - now using shared FieldRenderer
@@ -29,26 +28,7 @@ const TargetNode: React.FC<{ data: TargetNodeData; id: string }> = ({ data, id }
     // Sync local state changes back to React Flow
     useNodeDataSync(id, { fields, data: nodeData }, [fields, nodeData]);
     
-    // Initialize expanded fields from import data (same pattern as SourceNode)
-    useEffect(() => {
-        if (data.initialExpandedFields && data.initialExpandedFields.size > 0) {
-            console.log('Setting initial expanded fields for target from import:', Array.from(data.initialExpandedFields));
-            setExpandedFields(prev => {
-                const combined = new Set([...prev, ...data.initialExpandedFields]);
-                return combined;
-            });
-        }
-    }, [data.initialExpandedFields]);
-    
-    // Also ensure fields and nodeData are synced from props
-    useEffect(() => {
-        if (data.fields && JSON.stringify(data.fields) !== JSON.stringify(fields)) {
-            setFields(data.fields);
-        }
-        if (data.data && JSON.stringify(data.data) !== JSON.stringify(nodeData)) {
-            setNodeData(data.data);
-        }
-    }, [data.fields, data.data]);
+    // Initialize expanded fields from import data (no auto-expand during rendering)
     
     console.log('=== TARGET NODE RENDER ===');
     console.log('Node ID:', id);
