@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Play, Eye, Trash2, Tag, Edit, History, Settings } from 'lucide-react';
+import { Play, Eye, Trash2, Tag, Edit, History, Settings, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,8 +27,10 @@ const MyMappings = () => {
     versions: [] 
   });
   const [settingsDialog, setSettingsDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
+  const [copyDialog, setCopyDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
   const [editName, setEditName] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [copyName, setCopyName] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -139,6 +141,37 @@ const MyMappings = () => {
     } catch (error) {
       console.error('Failed to update mapping:', error);
       toast.error('Failed to update mapping settings');
+    }
+  };
+
+  const handleCopyMapping = (mapping: SavedMapping) => {
+    setCopyName('');
+    setCopyDialog({ open: true, mapping });
+  };
+
+  const handleConfirmCopy = async () => {
+    if (!copyDialog.mapping) return;
+    
+    if (!copyName.trim()) {
+      toast.error('Mapping name is required');
+      return;
+    }
+    
+    try {
+      await MappingService.copyMapping(
+        copyDialog.mapping.id,
+        user!.id,
+        copyName.trim()
+      );
+      
+      // Refresh mappings and close dialog
+      await fetchMappings();
+      setCopyDialog({ open: false, mapping: null });
+      
+      toast.success(`Mapping copied as "${copyName.trim()}"`);
+    } catch (error) {
+      console.error('Failed to copy mapping:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to copy mapping');
     }
   };
 
@@ -322,16 +355,23 @@ const MyMappings = () => {
                           >
                             <History className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleMappingSettings(mapping)}
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                           <Button 
+                             size="sm" 
+                             variant="outline"
+                             onClick={() => handleMappingSettings(mapping)}
+                           >
+                             <Settings className="h-4 w-4" />
+                           </Button>
+                           <Button 
+                             size="sm" 
+                             variant="outline"
+                             onClick={() => handleCopyMapping(mapping)}
+                           >
+                             <Copy className="h-4 w-4" />
+                           </Button>
+                           <Button size="sm" variant="outline">
+                             <Eye className="h-4 w-4" />
+                           </Button>
                           <Button 
                             size="sm" 
                             variant="outline" 
@@ -470,6 +510,56 @@ const MyMappings = () => {
               onClick={() => setVersionDialog({ open: false, mapping: null, versions: [] })}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy Dialog */}
+      <Dialog open={copyDialog.open} onOpenChange={(open) => setCopyDialog({ open, mapping: null })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Copy Mapping</DialogTitle>
+            <DialogDescription>
+              Create a copy of this mapping with a new name
+            </DialogDescription>
+          </DialogHeader>
+          
+          {copyDialog.mapping && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="font-medium">Original: {copyDialog.mapping.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Version: {copyDialog.mapping.version} • Category: {copyDialog.mapping.category}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  New Mapping Name
+                </label>
+                <Input
+                  value={copyName}
+                  onChange={(e) => setCopyName(e.target.value)}
+                  placeholder="Enter new mapping name..."
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setCopyDialog({ open: false, mapping: null })}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmCopy}
+              disabled={!copyName.trim()}
+            >
+              Copy Mapping
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -67,6 +67,20 @@ export class MappingService {
       .eq('is_active', true)
       .maybeSingle();
 
+    // If this is a new mapping (no existing mapping group), check for name conflicts
+    if (!existingMapping) {
+      const { data: nameConflict } = await supabase
+        .from('mappings')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('name', name.trim())
+        .limit(1);
+
+      if (nameConflict && nameConflict.length > 0) {
+        throw new Error(`A mapping with the name "${name.trim()}" already exists. Please choose a different name.`);
+      }
+    }
+
     // Inherit metadata from existing mapping or use provided values
     const finalCategory = category !== 'General' ? category : (existingMapping?.category || 'General');
     const finalDescription = description || existingMapping?.description;
@@ -350,16 +364,29 @@ export class MappingService {
       throw new Error('User authentication is required to update mappings');
     }
 
-    // First get the mapping_group_id of the mapping being updated
-    const { data: mapping, error: fetchError } = await supabase
+    // Check if the new name already exists for this user (excluding current mapping group)
+    const { data: existingMapping, error: existingError } = await supabase
       .from('mappings')
       .select('mapping_group_id')
       .eq('id', id)
       .eq('user_id', userId)
       .single();
 
-    if (fetchError || !mapping) {
-      throw new Error(`Failed to find mapping: ${fetchError?.message || 'Mapping not found'}`);
+    if (existingError || !existingMapping) {
+      throw new Error(`Failed to find mapping: ${existingError?.message || 'Mapping not found'}`);
+    }
+
+    // Check for name conflicts with other mapping groups
+    const { data: nameConflict } = await supabase
+      .from('mappings')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('name', name.trim())
+      .neq('mapping_group_id', existingMapping.mapping_group_id)
+      .limit(1);
+
+    if (nameConflict && nameConflict.length > 0) {
+      throw new Error(`A mapping with the name "${name.trim()}" already exists. Please choose a different name.`);
     }
 
     // Update ALL mappings in the same group (all versions)
@@ -369,11 +396,95 @@ export class MappingService {
         name: name.trim(),
         category: category.trim()
       })
-      .eq('mapping_group_id', mapping.mapping_group_id)
+      .eq('mapping_group_id', existingMapping.mapping_group_id)
       .eq('user_id', userId);
 
     if (error) {
       throw new Error(`Failed to update mapping: ${error.message}`);
     }
+  }
+
+  static async copyMapping(mappingId: string, userId: string, newName: string): Promise<SavedMapping> {
+    if (!userId) {
+      throw new Error('User authentication is required to copy mappings');
+    }
+
+    // Check if the new name already exists
+    const { data: existingMapping } = await supabase
+      .from('mappings')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('name', newName.trim())
+      .limit(1);
+
+    if (existingMapping && existingMapping.length > 0) {
+      throw new Error(`A mapping with the name "${newName.trim()}" already exists. Please choose a different name.`);
+    }
+
+    // Get the original mapping
+    const { data: originalMapping, error: fetchError } = await supabase
+      .from('mappings')
+      .select('*')
+      .eq('id', mappingId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !originalMapping) {
+      throw new Error(`Failed to find original mapping: ${fetchError?.message || 'Mapping not found'}`);
+    }
+
+    // Generate new mapping group ID and version
+    const newMappingGroupId = crypto.randomUUID();
+    const newVersion = 'v1.01';
+
+    // Create the copy with new group ID and metadata
+    const originalUiConfig = originalMapping.ui_config as any;
+    const originalExecutionConfig = originalMapping.execution_config as any;
+    
+    const copyConfig = {
+      ...originalUiConfig,
+      name: newName.trim(),
+      version: newVersion,
+      metadata: {
+        ...(originalUiConfig?.metadata || {}),
+        created_at: new Date().toISOString(),
+        created_by: userId
+      }
+    };
+
+    const copyExecutionConfig = originalExecutionConfig ? {
+      ...originalExecutionConfig,
+      name: newName.trim(),
+      version: newVersion
+    } : undefined;
+
+    // Insert the copy
+    const { data: newMapping, error: insertError } = await supabase
+      .from('mappings')
+      .insert({
+        user_id: userId,
+        name: newName.trim(),
+        version: newVersion,
+        category: originalMapping.category,
+        description: originalMapping.description,
+        tags: originalMapping.tags,
+        mapping_group_id: newMappingGroupId,
+        config: copyConfig,
+        ui_config: copyConfig,
+        execution_config: copyExecutionConfig,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      throw new Error(`Failed to copy mapping: ${insertError.message}`);
+    }
+
+    return {
+      ...newMapping,
+      ui_config: newMapping.ui_config as unknown as SavedMappingConfig,
+      execution_config: newMapping.execution_config as unknown as ExecutionMappingConfig
+    };
   }
 }
