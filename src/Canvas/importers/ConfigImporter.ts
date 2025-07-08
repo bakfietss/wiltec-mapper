@@ -80,9 +80,9 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
         nodes.push(importSourceNode(sourceConfig, mappingConfig.connections));
       });
       
-      // Import target nodes with groupBy information
+      // Import target nodes with groupBy information and connections for auto-expansion
       mappingConfig.nodes.targets.forEach(targetConfig => {
-        nodes.push(importTargetNode(targetConfig, arrayConfigs));
+        nodes.push(importTargetNode(targetConfig, arrayConfigs, mappingConfig.connections));
       });
       
       // Import transform nodes
