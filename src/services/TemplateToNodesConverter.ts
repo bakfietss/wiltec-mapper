@@ -51,8 +51,7 @@ export class TemplateToNodesConverter {
             const field: any = {
               id: fieldId,
               name: key,
-              type: 'array',
-              exampleValue: value
+              type: 'array'
             };
             
             // If array contains objects, add children
@@ -66,7 +65,6 @@ export class TemplateToNodesConverter {
               id: fieldId,
               name: key,
               type: 'object',
-              exampleValue: value,
               children: generateSchemaFields(value, fieldId)
             };
             fields.push(field);
@@ -76,8 +74,7 @@ export class TemplateToNodesConverter {
               name: key,
               type: typeof value === 'number' ? 'number' : 
                     typeof value === 'boolean' ? 'boolean' : 
-                    value instanceof Date ? 'date' : 'string',
-              exampleValue: value
+                    value instanceof Date ? 'date' : 'string'
             };
             fields.push(field);
           }

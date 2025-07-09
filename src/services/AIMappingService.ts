@@ -546,8 +546,7 @@ export class AIMappingService {
         fields: sourceFields.map(field => ({ 
           id: field,
           name: field, 
-          type: this.inferFieldType(field),
-          exampleValue: this.generateExampleValue(field)
+          type: this.inferFieldType(field)
         })),
         data: []
       }
