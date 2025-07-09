@@ -288,23 +288,27 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                             return <span className="text-gray-400 italic">no value</span>;
                         }
                         
-                        // Get value using field path, handling arrays properly
+                        // Get value using field path, handling arrays and objects properly
                         const getNestedValue = (obj: any, path: string[]): any => {
                             let current = obj;
                             for (let i = 0; i < path.length; i++) {
                                 const key = path[i];
                                 
-                                if (current && typeof current === 'object' && !Array.isArray(current)) {
-                                    current = current[key];
-                                } else if (Array.isArray(current)) {
-                                    // For arrays, we want to show value from first item if it exists
-                                    if (current.length > 0 && i < path.length - 1) {
-                                        // Continue with first array item and remaining path
-                                        const remainingPath = path.slice(i + 1);
-                                        return getNestedValue(current[0], remainingPath);
+                                if (current === null || current === undefined) {
+                                    return undefined;
+                                }
+                                
+                                if (Array.isArray(current)) {
+                                    // For arrays, take the first item and continue with remaining path
+                                    if (current.length > 0 && typeof current[0] === 'object') {
+                                        current = current[0];
+                                        // Don't increment i, try the same key on the array item
+                                        continue;
                                     } else {
                                         return current; // Return the array itself
                                     }
+                                } else if (typeof current === 'object') {
+                                    current = current[key];
                                 } else {
                                     return undefined;
                                 }
