@@ -281,55 +281,44 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         <span className="text-gray-400 italic">no value</span>
                     )
                 ) : (
-                    // Source node - get value from sampleData using proper path traversal
+                    // Source node - get value from sampleData using field ID path
                     (() => {
                         const dataRecord = sampleData?.[0];
                         if (!dataRecord) {
                             return <span className="text-gray-400 italic">no value</span>;
                         }
                         
-                        // Get value using field path, handling arrays and objects properly
-                        const getNestedValue = (obj: any, path: string[]): any => {
-                            console.log('🔍 getNestedValue called with path:', path, 'obj:', obj);
+                        // Get value using field ID as dot-separated path
+                        const getNestedValue = (obj: any, fieldId: string): any => {
+                            if (!fieldId || !obj) return undefined;
+                            
+                            const pathParts = fieldId.split('.');
                             let current = obj;
-                            for (let i = 0; i < path.length; i++) {
-                                const key = path[i];
-                                console.log(`  Step ${i}: key='${key}', current type:`, typeof current, 'isArray:', Array.isArray(current));
-                                
+                            
+                            for (const part of pathParts) {
                                 if (current === null || current === undefined) {
-                                    console.log('  -> Current is null/undefined, returning undefined');
                                     return undefined;
                                 }
                                 
-                                if (Array.isArray(current)) {
-                                    // For arrays, take the first item and continue with remaining path
-                                    if (current.length > 0 && typeof current[0] === 'object') {
-                                        console.log('  -> Array with objects, taking first item');
-                                        current = current[0];
-                                        // Don't increment i, try the same key on the array item
-                                        continue;
+                                // Handle array notation like containers[0]
+                                if (part.includes('[') && part.includes(']')) {
+                                    const [arrayKey, indexPart] = part.split('[');
+                                    const index = parseInt(indexPart.replace(']', ''));
+                                    
+                                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index]) {
+                                        current = current[arrayKey][index];
                                     } else {
-                                        console.log('  -> Array without objects, returning array');
-                                        return current; // Return the array itself
+                                        return undefined;
                                     }
-                                } else if (typeof current === 'object') {
-                                    console.log('  -> Object, accessing key:', key);
-                                    current = current[key];
-                                    console.log('  -> New current:', current);
                                 } else {
-                                    console.log('  -> Not object/array, returning undefined');
-                                    return undefined;
+                                    current = current[part];
                                 }
                             }
-                            console.log('  -> Final result:', current);
+                            
                             return current;
                         };
                         
-                        // Use field.path if available, otherwise just the field name
-                        const fieldPath = field.path || [field.name];
-                        console.log('🏷️ Field:', field.name, 'Path:', fieldPath, 'SampleData:', sampleData);
-                        const sourceFieldValue = getNestedValue(dataRecord, fieldPath);
-                        console.log('✅ Final value for field', field.name, ':', sourceFieldValue);
+                        const sourceFieldValue = getNestedValue(dataRecord, field.id);
                         
                         if (sourceFieldValue !== undefined && sourceFieldValue !== null && sourceFieldValue !== '') {
                             // Handle array/object display
