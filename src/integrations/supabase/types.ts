@@ -66,6 +66,7 @@ export type Database = {
           output_payload: Json | null
           run_at: string | null
           status: string | null
+          transform_type: string | null
         }
         Insert: {
           id?: string
@@ -74,6 +75,7 @@ export type Database = {
           output_payload?: Json | null
           run_at?: string | null
           status?: string | null
+          transform_type?: string | null
         }
         Update: {
           id?: string
@@ -82,6 +84,7 @@ export type Database = {
           output_payload?: Json | null
           run_at?: string | null
           status?: string | null
+          transform_type?: string | null
         }
         Relationships: [
           {
@@ -105,6 +108,7 @@ export type Database = {
           mapping_group_id: string
           name: string
           tags: string[] | null
+          transform_type: string | null
           ui_config: Json | null
           updated_at: string | null
           user_email: string | null
@@ -122,6 +126,7 @@ export type Database = {
           mapping_group_id?: string
           name: string
           tags?: string[] | null
+          transform_type?: string | null
           ui_config?: Json | null
           updated_at?: string | null
           user_email?: string | null
@@ -139,6 +144,7 @@ export type Database = {
           mapping_group_id?: string
           name?: string
           tags?: string[] | null
+          transform_type?: string | null
           ui_config?: Json | null
           updated_at?: string | null
           user_email?: string | null
@@ -194,6 +200,7 @@ export type Database = {
           mapping_group_id: string
           name: string
           tags: string[] | null
+          transform_type: string | null
           ui_config: Json | null
           updated_at: string | null
           user_email: string | null
