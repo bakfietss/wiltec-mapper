@@ -42,6 +42,7 @@ const initialNodes: Node[] = [
 const initialEdges: Edge[] = [];
 
 const Pipeline = () => {
+  console.log('🚀 Pipeline component mounting');
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
