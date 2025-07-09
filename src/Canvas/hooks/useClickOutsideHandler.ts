@@ -24,7 +24,12 @@ export const useClickOutsideHandler = ({
       const managerElement = document.querySelector('[data-toolbar="mapping-manager"]');
       const isManagerClick = managerElement && managerElement.contains(target);
       
-      if (isCanvasClick || (!isToolbarClick && !isManagerClick)) {
+      // Check if click is inside any dialog
+      const isDialogClick = target.closest('[role="dialog"]') || 
+                           target.closest('[data-radix-popper-content-wrapper]') ||
+                           target.closest('.select-content');
+      
+      if (isCanvasClick || (!isToolbarClick && !isManagerClick && !isDialogClick)) {
         setIsToolbarExpanded(false);
         setIsManagerExpanded(false);
       }

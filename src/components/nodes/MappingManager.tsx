@@ -177,20 +177,14 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                 Mapping Actions:
               </label>
               <div className="space-y-2">
-                <Dialog open={isNewMappingOpen} onOpenChange={() => {
-                  // Prevent dialog from closing except via buttons
-                }}>
+                <Dialog open={isNewMappingOpen} onOpenChange={setIsNewMappingOpen}>
                   <DialogTrigger asChild>
                     <button className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200">
                       <Plus className="w-4 h-4" />
                       New Mapping
                     </button>
                   </DialogTrigger>
-                  <DialogContent 
-                    onInteractOutside={(e) => e.preventDefault()}
-                    onEscapeKeyDown={(e) => e.preventDefault()}
-                    onPointerDownOutside={(e) => e.preventDefault()}
-                  >
+                  <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Create New Mapping</DialogTitle>
                     </DialogHeader>
