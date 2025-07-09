@@ -184,11 +184,14 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                       New Mapping
                     </button>
                   </DialogTrigger>
-                  <DialogContent onClick={(e) => e.stopPropagation()}>
+                  <DialogContent onInteractOutside={(e) => {
+                    // Prevent closing when clicking on select dropdowns
+                    e.preventDefault();
+                  }}>
                     <DialogHeader>
                       <DialogTitle>Create New Mapping</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="space-y-4">
                       <div>
                         <Label htmlFor="mapping-name" className="text-sm font-medium">
                           Mapping Name
