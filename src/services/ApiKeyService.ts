@@ -136,4 +136,42 @@ export class ApiKeyService {
     if (!expiresAt) return false;
     return new Date(expiresAt) < new Date();
   }
+
+  static async validateApiKey(apiKey: string): Promise<{
+    valid: boolean;
+    userId?: string;
+    error?: string;
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('key', apiKey)
+        .eq('status', 'active')
+        .eq('revoked', false)
+        .single();
+
+      if (error) {
+        return { valid: false, error: 'API key not found' };
+      }
+
+      // Check if expired
+      if (this.isExpired(data.expires_at)) {
+        return { valid: false, error: 'API key expired' };
+      }
+
+      // Update last_used_at
+      await supabase
+        .from('api_keys')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('id', data.id);
+
+      return { 
+        valid: true, 
+        userId: data.user_id 
+      };
+    } catch (error) {
+      return { valid: false, error: 'Validation failed' };
+    }
+  }
 }
