@@ -111,7 +111,6 @@ serve(async (req) => {
       });
 
     if (mappingError || !mapping) {
-      console.log('Mapping error:', mappingError);
       return new Response(JSON.stringify({
         success: false,
         error: `Mapping '${mappingName}' not found or not active`,
@@ -121,15 +120,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // Log mapping data for debugging
-    console.log('Fetched mapping:', {
-      id: mapping.id,
-      name: mapping.name,
-      category: mapping.category,
-      version: mapping.version,
-      transform_type: mapping.transform_type
-    });
 
     // Execute transformation based on execution_config
     const executionConfig = mapping.execution_config;
@@ -172,19 +162,15 @@ serve(async (req) => {
     const endTime = new Date();
     const endTimeGmt1 = new Date(endTime.getTime() + (60 * 60 * 1000)); // GMT+1
 
-    // Log execution
+    // Log execution - fields like version, category, transform_type, mapping_name are auto-populated by trigger
     await supabase
       .from('mapping_logs')
       .insert({
         mapping_id: mapping.id,
-        mapping_name: mapping.name,
         input_payload: input,
         output_payload: output,
         record_count: recordCount,
         status: 'success',
-        transform_type: mapping.transform_type,
-        category: mapping.category,
-        version: mapping.version,
         start_date: formatDate(gmt1Date),
         start_time_formatted: formatTime(gmt1Date),
         end_date: formatDate(endTimeGmt1),
