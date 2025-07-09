@@ -65,9 +65,10 @@ export type Database = {
           id: string
           input_payload: Json | null
           mapping_id: string | null
+          mapping_name: string | null
           output_payload: Json | null
           record_count: number | null
-          run_at: string | null
+          start_time: string | null
           status: string | null
           transform_type: string | null
           version: string | null
@@ -78,9 +79,10 @@ export type Database = {
           id?: string
           input_payload?: Json | null
           mapping_id?: string | null
+          mapping_name?: string | null
           output_payload?: Json | null
           record_count?: number | null
-          run_at?: string | null
+          start_time?: string | null
           status?: string | null
           transform_type?: string | null
           version?: string | null
@@ -91,9 +93,10 @@ export type Database = {
           id?: string
           input_payload?: Json | null
           mapping_id?: string | null
+          mapping_name?: string | null
           output_payload?: Json | null
           record_count?: number | null
-          run_at?: string | null
+          start_time?: string | null
           status?: string | null
           transform_type?: string | null
           version?: string | null

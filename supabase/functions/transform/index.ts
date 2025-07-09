@@ -145,6 +145,7 @@ serve(async (req) => {
       .from('mapping_logs')
       .insert({
         mapping_id: mapping.id,
+        mapping_name: mapping.name,
         input_payload: input,
         output_payload: output,
         status: 'success',
