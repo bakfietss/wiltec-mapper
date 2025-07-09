@@ -70,6 +70,7 @@ export type Database = {
           run_at: string | null
           status: string | null
           transform_type: string | null
+          version: string | null
         }
         Insert: {
           category?: string | null
@@ -82,6 +83,7 @@ export type Database = {
           run_at?: string | null
           status?: string | null
           transform_type?: string | null
+          version?: string | null
         }
         Update: {
           category?: string | null
@@ -94,6 +96,7 @@ export type Database = {
           run_at?: string | null
           status?: string | null
           transform_type?: string | null
+          version?: string | null
         }
         Relationships: [
           {

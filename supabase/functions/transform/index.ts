@@ -149,7 +149,9 @@ serve(async (req) => {
         input_payload: input,
         output_payload: output,
         status: 'success',
+        transform_type: mapping.transform_type,
         category: mapping.category,
+        version: mapping.version,
         end_time: endTime,
         record_count: recordCount
       });
