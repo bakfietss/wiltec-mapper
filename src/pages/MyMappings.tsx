@@ -8,18 +8,31 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Play, Eye, Trash2, Tag, Edit, History, Settings, Copy } from 'lucide-react';
+import { Play, Eye, Trash2, Tag, Edit, History, Settings, Copy, ArrowRightLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+
+interface TransformType {
+  name: string;
+  display_name: string;
+  description?: string;
+  input_format: string;
+  output_format: string;
+  category: string;
+}
 
 const MyMappings = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [mappings, setMappings] = useState<SavedMapping[]>([]);
+  const [transformTypes, setTransformTypes] = useState<TransformType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedTransformType, setSelectedTransformType] = useState<string>('all');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
   const [deleteConfirmationName, setDeleteConfirmationName] = useState('');
   const [versionDialog, setVersionDialog] = useState<{ open: boolean; mapping: SavedMapping | null; versions: SavedMapping[] }>({ 
@@ -31,11 +44,14 @@ const MyMappings = () => {
   const [copyDialog, setCopyDialog] = useState<{ open: boolean; mapping: SavedMapping | null }>({ open: false, mapping: null });
   const [editName, setEditName] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [editTransformType, setEditTransformType] = useState('');
   const [copyName, setCopyName] = useState('');
+  const [copyTransformType, setCopyTransformType] = useState('');
 
   useEffect(() => {
     if (user?.id) {
       fetchMappings();
+      fetchTransformTypes();
     }
   }, [user?.id]);
 
@@ -49,6 +65,23 @@ const MyMappings = () => {
       toast.error('Failed to load mappings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTransformTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transform_types')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true })
+        .order('display_name', { ascending: true });
+
+      if (error) throw error;
+      setTransformTypes(data || []);
+    } catch (error) {
+      console.error('Failed to fetch transform types:', error);
+      toast.error('Failed to load transform types');
     }
   };
 
@@ -109,14 +142,15 @@ const MyMappings = () => {
   const handleMappingSettings = (mapping: SavedMapping) => {
     setEditName(mapping.name);
     setEditCategory(mapping.category || 'General');
+    setEditTransformType(mapping.transform_type || 'JsonToJson');
     setSettingsDialog({ open: true, mapping });
   };
 
   const handleSaveSettings = async () => {
     if (!settingsDialog.mapping) return;
     
-    if (!editName.trim() || !editCategory.trim()) {
-      toast.error('Name and category are required');
+    if (!editName.trim() || !editCategory.trim() || !editTransformType.trim()) {
+      toast.error('Name, category, and transform type are required');
       return;
     }
     
@@ -125,14 +159,20 @@ const MyMappings = () => {
         settingsDialog.mapping.id,
         user!.id,
         editName.trim(),
-        editCategory.trim()
+        editCategory.trim(),
+        editTransformType.trim()
       );
       
       // Update local state
       setMappings(prev => 
         prev.map(mapping => 
           mapping.id === settingsDialog.mapping!.id 
-            ? { ...mapping, name: editName.trim(), category: editCategory.trim() }
+            ? { 
+                ...mapping, 
+                name: editName.trim(), 
+                category: editCategory.trim(),
+                transform_type: editTransformType.trim()
+              }
             : mapping
         )
       );
@@ -147,14 +187,15 @@ const MyMappings = () => {
 
   const handleCopyMapping = (mapping: SavedMapping) => {
     setCopyName('');
+    setCopyTransformType(mapping.transform_type || 'JsonToJson');
     setCopyDialog({ open: true, mapping });
   };
 
   const handleConfirmCopy = async () => {
     if (!copyDialog.mapping) return;
     
-    if (!copyName.trim()) {
-      toast.error('Mapping name is required');
+    if (!copyName.trim() || !copyTransformType.trim()) {
+      toast.error('Mapping name and transform type are required');
       return;
     }
     
@@ -162,7 +203,8 @@ const MyMappings = () => {
       await MappingService.copyMapping(
         copyDialog.mapping.id,
         user!.id,
-        copyName.trim()
+        copyName.trim(),
+        copyTransformType.trim()
       );
       
       // Refresh mappings and close dialog
@@ -193,6 +235,7 @@ const MyMappings = () => {
   const isDeleteNameValid = deleteDialog.mapping?.name === deleteConfirmationName;
 
   const categories = Array.from(new Set(mappings.map(m => m.category).filter(Boolean)));
+  const availableTransformTypes = Array.from(new Set(mappings.map(m => m.transform_type).filter(Boolean)));
   
   let filteredMappings = mappings;
   
@@ -206,6 +249,11 @@ const MyMappings = () => {
     filteredMappings = filteredMappings.filter(m => 
       selectedStatus === 'active' ? m.is_active : !m.is_active
     );
+  }
+
+  // Apply transform type filter
+  if (selectedTransformType !== 'all') {
+    filteredMappings = filteredMappings.filter(m => m.transform_type === selectedTransformType);
   }
 
   const activeMappings = mappings.filter(m => m.is_active);
@@ -293,7 +341,7 @@ const MyMappings = () => {
       </div>
 
       {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-4">
         <Button 
           variant={selectedCategory === 'all' ? 'default' : 'outline'}
           size="sm"
@@ -311,6 +359,31 @@ const MyMappings = () => {
             {category}
           </Button>
         ))}
+      </div>
+
+      {/* Transform Type Filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Button 
+          variant={selectedTransformType === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelectedTransformType('all')}
+        >
+          <ArrowRightLeft className="h-4 w-4 mr-1" />
+          All Types
+        </Button>
+        {availableTransformTypes.map(transformType => {
+          const typeInfo = transformTypes.find(t => t.name === transformType);
+          return (
+            <Button 
+              key={transformType}
+              variant={selectedTransformType === transformType ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedTransformType(transformType)}
+            >
+              {typeInfo?.display_name || transformType}
+            </Button>
+          );
+        })}
       </div>
 
       {/* Mappings Table */}
@@ -345,6 +418,7 @@ const MyMappings = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Transform Type</TableHead>
                   <TableHead>Version</TableHead>
                   <TableHead>Updated</TableHead>
                   <TableHead>Actions</TableHead>
@@ -371,6 +445,11 @@ const MyMappings = () => {
                     <TableCell className="font-medium">{mapping.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{mapping.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {transformTypes.find(t => t.name === mapping.transform_type)?.display_name || mapping.transform_type}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{mapping.version}</Badge>
@@ -573,16 +652,41 @@ const MyMappings = () => {
                 </p>
               </div>
               
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  New Mapping Name
-                </label>
-                <Input
-                  value={copyName}
-                  onChange={(e) => setCopyName(e.target.value)}
-                  placeholder="Enter new mapping name..."
-                  autoFocus
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    New Mapping Name
+                  </label>
+                  <Input
+                    value={copyName}
+                    onChange={(e) => setCopyName(e.target.value)}
+                    placeholder="Enter new mapping name..."
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Transform Type
+                  </label>
+                  <Select value={copyTransformType} onValueChange={setCopyTransformType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select transform type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {transformTypes.map((type) => (
+                        <SelectItem key={type.name} value={type.name}>
+                          <div className="flex flex-col">
+                            <span>{type.display_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {type.input_format} → {type.output_format}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}
@@ -596,7 +700,7 @@ const MyMappings = () => {
             </Button>
             <Button 
               onClick={handleConfirmCopy}
-              disabled={!copyName.trim()}
+              disabled={!copyName.trim() || !copyTransformType.trim()}
             >
               Copy Mapping
             </Button>
@@ -663,6 +767,29 @@ const MyMappings = () => {
                     placeholder="Enter category..."
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Transform Type
+                  </label>
+                  <Select value={editTransformType} onValueChange={setEditTransformType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select transform type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {transformTypes.map((type) => (
+                        <SelectItem key={type.name} value={type.name}>
+                          <div className="flex flex-col">
+                            <span>{type.display_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {type.input_format} → {type.output_format}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}
@@ -676,7 +803,7 @@ const MyMappings = () => {
             </Button>
             <Button 
               onClick={handleSaveSettings}
-              disabled={!editName.trim() || !editCategory.trim()}
+              disabled={!editName.trim() || !editCategory.trim() || !editTransformType.trim()}
             >
               Save Changes
             </Button>

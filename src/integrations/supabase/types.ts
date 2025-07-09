@@ -153,6 +153,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_mappings_transform_type"
+            columns: ["transform_type"]
+            isOneToOne: false
+            referencedRelation: "transform_types"
+            referencedColumns: ["name"]
+          },
+          {
             foreignKeyName: "mappings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -160,6 +167,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      transform_types: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          input_format: string
+          is_active: boolean
+          name: string
+          output_format: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          input_format: string
+          is_active?: boolean
+          name: string
+          output_format: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          input_format?: string
+          is_active?: boolean
+          name?: string
+          output_format?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       users: {
         Row: {

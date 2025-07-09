@@ -35,6 +35,7 @@ export interface SavedMapping {
   category: string;
   description?: string;
   tags?: string[];
+  transform_type?: string;
   ui_config: SavedMappingConfig;
   execution_config?: ExecutionMappingConfig;
   is_active: boolean;
@@ -52,7 +53,8 @@ export class MappingService {
     description?: string,
     tags?: string[],
     executionConfig?: ExecutionMappingConfig,
-    providedVersion?: string
+    providedVersion?: string,
+    transformType: string = 'JsonToJson'
   ): Promise<SavedMapping> {
     if (!userId) {
       throw new Error('User authentication is required to save mappings');
@@ -61,7 +63,7 @@ export class MappingService {
     // First, check if there's an existing active mapping to inherit from
     const { data: existingMapping } = await supabase
       .from('mappings')
-      .select('mapping_group_id, category, description, tags')
+      .select('mapping_group_id, category, description, tags, transform_type')
       .eq('user_id', userId)
       .eq('name', name)
       .eq('is_active', true)
@@ -85,6 +87,7 @@ export class MappingService {
     const finalCategory = category !== 'General' ? category : (existingMapping?.category || 'General');
     const finalDescription = description || existingMapping?.description;
     const finalTags = tags || existingMapping?.tags || [];
+    const finalTransformType = transformType !== 'JsonToJson' ? transformType : (existingMapping?.transform_type || 'JsonToJson');
     const mappingGroupId = existingMapping?.mapping_group_id || crypto.randomUUID();
 
     // Use provided version or get next version
@@ -143,6 +146,7 @@ export class MappingService {
         category: finalCategory,
         description: finalDescription,
         tags: finalTags,
+        transform_type: finalTransformType,
         mapping_group_id: mappingGroupId,
         config: uiConfig as any, // Keep for now - remove after schema update
         ui_config: uiConfig as any,
@@ -367,7 +371,7 @@ export class MappingService {
     }));
   }
 
-  static async updateMapping(id: string, userId: string, name: string, category: string): Promise<void> {
+  static async updateMapping(id: string, userId: string, name: string, category: string, transformType?: string): Promise<void> {
     if (!userId) {
       throw new Error('User authentication is required to update mappings');
     }
@@ -398,12 +402,18 @@ export class MappingService {
     }
 
     // Update ALL mappings in the same group (all versions)
+    const updateData: any = { 
+      name: name.trim(),
+      category: category.trim()
+    };
+    
+    if (transformType) {
+      updateData.transform_type = transformType.trim();
+    }
+
     const { error } = await supabase
       .from('mappings')
-      .update({ 
-        name: name.trim(),
-        category: category.trim()
-      })
+      .update(updateData)
       .eq('mapping_group_id', existingMapping.mapping_group_id)
       .eq('user_id', userId);
 
@@ -412,7 +422,7 @@ export class MappingService {
     }
   }
 
-  static async copyMapping(mappingId: string, userId: string, newName: string): Promise<SavedMapping> {
+  static async copyMapping(mappingId: string, userId: string, newName: string, transformType?: string): Promise<SavedMapping> {
     if (!userId) {
       throw new Error('User authentication is required to copy mappings');
     }
@@ -476,6 +486,7 @@ export class MappingService {
         category: originalMapping.category,
         description: originalMapping.description,
         tags: originalMapping.tags,
+        transform_type: transformType || originalMapping.transform_type || 'JsonToJson',
         mapping_group_id: newMappingGroupId,
         config: copyConfig,
         ui_config: copyConfig,
