@@ -53,8 +53,8 @@ export const importSourceNode = (config: SourceNodeConfig, connections?: any[]):
       const field: SchemaField = {
         id: fieldId,
         name: key,
-        type: getFieldType(value),
-        exampleValue: value
+        type: getFieldType(value)
+        // NOTE: No exampleValue - actual data is in sampleData
       };
       
       if (field.type === 'object' && value && typeof value === 'object' && !Array.isArray(value)) {
@@ -63,8 +63,7 @@ export const importSourceNode = (config: SourceNodeConfig, connections?: any[]):
         if (typeof value[0] === 'object' && value[0] !== null) {
           field.children = generateFieldsFromSampleData(value[0], `${fieldId}[0]`);
         }
-        // Set example value to show array length
-        field.exampleValue = `[Array with ${value.length} items]`;
+        // NOTE: No exampleValue needed - actual array data is in sampleData
       }
       
       fields.push(field);

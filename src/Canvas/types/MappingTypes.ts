@@ -203,7 +203,7 @@ export interface SchemaField {
   id: string;
   name: string;
   type: string;
-  exampleValue?: any;
+  // NOTE: Removed exampleValue - using sampleData as single source of truth
   children?: SchemaField[];
   // Add groupBy support for array fields
   groupBy?: string;

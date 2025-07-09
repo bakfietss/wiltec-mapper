@@ -50,16 +50,28 @@ export const exportUIMappingConfiguration = (
     }
   };
 
-  // Extract source nodes
+  // Extract source nodes - USING ONLY SAMPLEDATA AS SINGLE SOURCE OF TRUTH
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
+      // Clean fields structure - remove exampleValue since we use sampleData only
+      const cleanFields = Array.isArray(node.data?.fields) ? 
+        node.data.fields.map((field: any) => ({
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          ...(field.children && { children: field.children }),
+          ...(field.parent && { parent: field.parent }),
+          ...(field.groupBy && { groupBy: field.groupBy })
+          // NOTE: No exampleValue - using sampleData only
+        })) : [];
+
       config.nodes.sources.push({
         id: node.id,
         type: 'source',
         label: String(node.data?.label || 'Source Node'),
         position: node.position,
         schema: {
-          fields: Array.isArray(node.data?.fields) ? node.data.fields : []
+          fields: cleanFields
         },
         sampleData: Array.isArray(node.data?.data) ? node.data.data : []
       });
