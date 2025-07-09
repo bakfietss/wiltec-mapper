@@ -140,6 +140,24 @@ serve(async (req) => {
     const recordCount = transformResult.recordCount;
     const executionTime = Date.now() - startTime;
 
+    // Format timestamps for logging
+    const now = new Date();
+    const gmt1Date = new Date(now.getTime() + (60 * 60 * 1000)); // GMT+1
+    
+    const formatDate = (date: Date) => {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
+    
+    const formatTime = (date: Date) => {
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${hours}-${minutes}-${seconds}`;
+    };
+
     // Log execution
     await supabase
       .from('mapping_logs')
@@ -151,7 +169,9 @@ serve(async (req) => {
         status: 'success',
         transform_type: mapping.transform_type,
         category: mapping.category,
-        version: mapping.version
+        version: mapping.version,
+        start_date: formatDate(gmt1Date),
+        start_time_formatted: formatTime(gmt1Date)
       });
 
     const response: TransformResponse = {
