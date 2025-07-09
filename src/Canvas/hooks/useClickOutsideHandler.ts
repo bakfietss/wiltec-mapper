@@ -12,7 +12,10 @@ export const useClickOutsideHandler = ({
   setIsManagerExpanded
 }: UseClickOutsideHandlerProps) => {
   useEffect(() => {
+    console.log('🚀 useClickOutsideHandler: Setting up event listener');
+    
     const handleClickOutside = (event: MouseEvent) => {
+      console.log('🔥 CLICK ANYWHERE - Event fired!', event);
       const target = event.target as HTMLElement;
       console.log('🔍 Click detected:', target);
       
