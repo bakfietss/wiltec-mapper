@@ -27,8 +27,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', { event, hasSession: !!session });
-        
         if (session?.user) {
           const authUser = {
             id: session.user.id,
@@ -37,10 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             loginTime: new Date().toISOString()
           };
           setUser(authUser);
-          console.log('User authenticated:', authUser.email);
         } else {
           setUser(null);
-          console.log('User signed out');
         }
         
         setLoading(false);
@@ -57,7 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           loginTime: new Date().toISOString()
         };
         setUser(authUser);
-        console.log('Existing session found:', authUser.email);
       }
       setLoading(false);
     });

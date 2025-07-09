@@ -25,14 +25,11 @@ export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
         
         // Handle transform nodes
         if (node.type === 'transform' && node.data?.transformType === 'coalesce') {
-            console.log('Processing coalesce node:', node.id);
-            console.log('Coalesce node data:', node.data);
             return calculateCoalesceNodeValues(node, nodes, edges);
         }
         
         // Handle concat transform nodes
         if (node.type === 'concatTransform' || (node.type === 'transform' && node.data?.transformType === 'concat')) {
-            console.log('Processing concat node:', node.id);
             return calculateConcatNodeValues(node, nodes, edges);
         }
         
@@ -132,17 +129,10 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
     const valueMap: Record<string, any> = {};
     const newTargetData: any = {};
     
-    console.log('=== CALCULATING TARGET NODE VALUES ===');
-    console.log('Target node ID:', targetNode.id);
-    console.log('Available edges:', edges.length);
-    console.log('All edges:', edges);
-    
     // Find incoming edges to this target node
     const incomingEdges = edges.filter(edge => edge.target === targetNode.id);
-    console.log('Incoming edges to target:', incomingEdges);
     
     if (incomingEdges.length === 0) {
-        console.log('No incoming edges found for target node');
         return {
             ...targetNode,
             data: {
@@ -158,17 +148,12 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
         // Use recursive field finder to handle nested fields
         const targetField = findFieldById(fields, edge.targetHandle);
         
-        console.log('Processing edge:', edge);
-        console.log('Source node:', sourceNode?.id, sourceNode?.type);
-        console.log('Target field:', targetField?.name, 'Field ID:', edge.targetHandle);
-        
         if (sourceNode && targetField) {
             let value: any = undefined;
             
             // Handle different source node types
             if (sourceNode.type === 'source') {
                 value = getSourceNodeValue(sourceNode, edge.sourceHandle);
-                console.log('Got source value:', value);
             } else if (sourceNode.type === 'staticValue') {
                 value = getStaticNodeValue(sourceNode, edge.sourceHandle);
             } else if (sourceNode.type === 'transform') {
@@ -186,18 +171,9 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
                 
                 // Set value in the target data object (handles nested paths)
                 setNestedValue(newTargetData, targetField, value, fields);
-                
-                console.log('Set value for field:', targetField.name, '=', value);
-                console.log('Target data structure after setting:', JSON.stringify(newTargetData, null, 2));
             }
-        } else {
-            console.log('Could not find source node or target field for edge:', edge);
         }
     });
-    
-    console.log('Final value map:', valueMap);
-    console.log('Final target data:', newTargetData);
-    
     return {
         ...targetNode,
         data: {
@@ -210,22 +186,14 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
 
 // Calculate coalesce node input values
 const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any[]) => {
-    console.log('=== CALCULATING COALESCE NODE VALUES ===');
-    console.log('Coalesce node ID:', coalesceNode.id);
-    console.log('Coalesce rules:', coalesceNode.data?.rules);
-    console.log('Coalesce config rules:', coalesceNode.data?.config?.rules);
-    
     const inputEdges = edges.filter(e => e.target === coalesceNode.id);
     let inputValues: Record<string, any> = {};
-    
-    console.log('Input edges to coalesce:', inputEdges);
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
         if (inputSourceNode?.type === 'source') {
             const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
             inputValues[inputEdge.targetHandle] = sourceValue;
-            console.log('Set coalesce input:', inputEdge.targetHandle, '=', sourceValue);
         }
     });
     
@@ -240,21 +208,14 @@ const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any
 
 // Calculate concat node input values
 const calculateConcatNodeValues = (concatNode: any, nodes: any[], edges: any[]) => {
-    console.log('=== CALCULATING CONCAT NODE VALUES ===');
-    console.log('Concat node ID:', concatNode.id);
-    console.log('Concat rules:', concatNode.data?.rules);
-    
     const inputEdges = edges.filter(e => e.target === concatNode.id);
     let inputValues: Record<string, any> = {};
-    
-    console.log('Input edges to concat:', inputEdges);
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
         if (inputSourceNode?.type === 'source') {
             const sourceValue = getSourceNodeValue(inputSourceNode, inputEdge.sourceHandle);
             inputValues[inputEdge.targetHandle] = sourceValue;
-            console.log('Set concat input:', inputEdge.targetHandle, '=', sourceValue);
         }
     });
     
@@ -290,13 +251,7 @@ const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) 
 
 // Get value from source node
 const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
-    console.log('=== GETTING SOURCE VALUE ===');
-    console.log('Source node data:', sourceNode.data);
-    console.log('Looking for handle:', handleId);
-    
     const sourceData = sourceNode.data?.data || [];
-    
-    console.log('Source data:', sourceData);
     
     // Always try to get from actual data first (this should be the primary source)
     if (sourceData.length > 0) {
@@ -320,7 +275,6 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         };
         
         const dataValue = getValue(dataObject, handleId);
-        console.log('Data value found:', dataValue, '(type:', typeof dataValue, ')');
         
         // Return any value from sampleData, including null, empty strings, etc.
         if (dataValue !== undefined) {
@@ -333,7 +287,6 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
     const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
     // NOTE: No exampleValue fallback - using sampleData as single source of truth
     const fallbackValue = null;
-    console.log('No fallback value available - sampleData is the single source of truth');
     return fallbackValue;
 };
 
@@ -554,7 +507,7 @@ export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[], ba
         getNodes = reactFlow.getNodes;
         getEdges = reactFlow.getEdges;
     } catch (error) {
-        console.log('ReactFlow not available, using baseNodes/baseEdges');
+        // ReactFlow not available, using baseNodes/baseEdges
     }
     
     const enhancedNodes = useMemo(() => {
@@ -566,7 +519,6 @@ export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[], ba
         }
         
         const enhanced = calculateNodeFieldValues(nodes, currentEdges);
-        console.log('Enhanced nodes calculated:', enhanced.length);
         
         return enhanced;
     }, [updateTrigger, baseNodes, baseEdges]);
