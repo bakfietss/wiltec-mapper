@@ -9,6 +9,7 @@ export interface SchemaField {
     children?: SchemaField[];
     parent?: string;
     groupBy?: string;
+    path?: string[]; // Add path for nested field value retrieval
     // NOTE: Removed exampleValue - using sampleData as single source of truth
 }
 
@@ -280,21 +281,67 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         <span className="text-gray-400 italic">no value</span>
                     )
                 ) : (
-                    // Source node - get value from sampleData instead of exampleValue
+                    // Source node - get value from sampleData using proper path traversal
                     (() => {
-                        // Get value from node's sampleData
                         const dataRecord = sampleData?.[0];
-                        const sourceFieldValue = dataRecord?.[field.name];
+                        if (!dataRecord) {
+                            return <span className="text-gray-400 italic">no value</span>;
+                        }
                         
-                        return sourceFieldValue !== undefined && sourceFieldValue !== null && sourceFieldValue !== '' ? (
-                            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
-                                {typeof sourceFieldValue === 'string' 
-                                    ? `"${sourceFieldValue}"` 
-                                    : String(sourceFieldValue)}
-                            </span>
-                        ) : (
-                            <span className="text-gray-400 italic">no value</span>
-                        );
+                        // Get value using field path, handling arrays properly
+                        const getNestedValue = (obj: any, path: string[]): any => {
+                            let current = obj;
+                            for (let i = 0; i < path.length; i++) {
+                                const key = path[i];
+                                
+                                if (current && typeof current === 'object' && !Array.isArray(current)) {
+                                    current = current[key];
+                                } else if (Array.isArray(current)) {
+                                    // For arrays, we want to show value from first item if it exists
+                                    if (current.length > 0 && i < path.length - 1) {
+                                        // Continue with first array item and remaining path
+                                        const remainingPath = path.slice(i + 1);
+                                        return getNestedValue(current[0], remainingPath);
+                                    } else {
+                                        return current; // Return the array itself
+                                    }
+                                } else {
+                                    return undefined;
+                                }
+                            }
+                            return current;
+                        };
+                        
+                        // Use field.path if available, otherwise just the field name
+                        const fieldPath = field.path || [field.name];
+                        const sourceFieldValue = getNestedValue(dataRecord, fieldPath);
+                        
+                        if (sourceFieldValue !== undefined && sourceFieldValue !== null && sourceFieldValue !== '') {
+                            // Handle array/object display
+                            if (Array.isArray(sourceFieldValue)) {
+                                return (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                                        [Array with {sourceFieldValue.length} items]
+                                    </span>
+                                );
+                            } else if (typeof sourceFieldValue === 'object') {
+                                return (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                                        [Object]
+                                    </span>
+                                );
+                            } else {
+                                return (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                                        {typeof sourceFieldValue === 'string' 
+                                            ? `"${sourceFieldValue}"` 
+                                            : String(sourceFieldValue)}
+                                    </span>
+                                );
+                            }
+                        } else {
+                            return <span className="text-gray-400 italic">no value</span>;
+                        }
                     })()
                 )}
             </div>

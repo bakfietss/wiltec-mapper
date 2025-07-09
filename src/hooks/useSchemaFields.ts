@@ -8,6 +8,7 @@ export interface SchemaField {
     // NOTE: Removed exampleValue - using sampleData as single source of truth
     children?: SchemaField[];
     parent?: string;
+    path?: string[]; // Add path for nested field value retrieval
 }
 
 export const useSchemaFields = (initialFields: SchemaField[] = []) => {
@@ -83,18 +84,20 @@ export const useSchemaFields = (initialFields: SchemaField[] = []) => {
         setFields(deleteFieldRecursive(fields));
     }, [fields]);
 
-    const generateFieldsFromObject = useCallback((obj: any, parentPath = ''): SchemaField[] => {
+    const generateFieldsFromObject = useCallback((obj: any, pathArray: string[] = []): SchemaField[] => {
         return Object.keys(obj).map((key, index) => {
             const value = obj[key];
-            const fieldId = `field-${Date.now()}-${parentPath}-${index}`;
+            const fieldId = `field-${Date.now()}-${pathArray.join('-') || 'root'}-${index}`;
+            const currentPath = [...pathArray, key];
             
             if (Array.isArray(value)) {
                 return {
                     id: fieldId,
                     name: key,
                     type: 'array',
+                    path: currentPath,
                     children: value.length > 0 && typeof value[0] === 'object' 
-                        ? generateFieldsFromObject(value[0], `${fieldId}-item`)
+                        ? generateFieldsFromObject(value[0], currentPath)
                         : []
                 };
             } else if (value && typeof value === 'object') {
@@ -102,14 +105,16 @@ export const useSchemaFields = (initialFields: SchemaField[] = []) => {
                     id: fieldId,
                     name: key,
                     type: 'object',
-                    children: generateFieldsFromObject(value, fieldId)
+                    path: currentPath,
+                    children: generateFieldsFromObject(value, currentPath)
                 };
             } else {
                 return {
                     id: fieldId,
                     name: key,
                     type: typeof value === 'number' ? 'number' : 
-                          typeof value === 'boolean' ? 'boolean' : 'string'
+                          typeof value === 'boolean' ? 'boolean' : 'string',
+                    path: currentPath
                 };
             }
         });

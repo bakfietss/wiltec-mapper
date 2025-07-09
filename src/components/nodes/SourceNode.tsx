@@ -77,23 +77,27 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     const generateFieldsFromData = (sampleObject: any): SchemaField[] => {
         const fields: SchemaField[] = [];
         
-        const processObject = (obj: any, parentPath = ''): SchemaField[] => {
+        const processObject = (obj: any, parentPath: string[] = []): SchemaField[] => {
             const processedFields: SchemaField[] = [];
             
             Object.entries(obj).forEach(([key, value], index) => {
-                const fieldId = `field-${Date.now()}-${parentPath || 'root'}-${index}`;
+                const fieldId = `field-${Date.now()}-${parentPath.join('-') || 'root'}-${index}`;
+                const currentPath = [...parentPath, key];
+                
                 const field: SchemaField = {
                     id: fieldId,
                     name: key,
-                    type: getFieldType(value)
+                    type: getFieldType(value),
+                    path: currentPath
                     // NOTE: No exampleValue - actual data is in sampleData
                 };
                 
                 if (field.type === 'object' && value && typeof value === 'object' && !Array.isArray(value)) {
-                    field.children = processObject(value, fieldId);
+                    field.children = processObject(value, currentPath);
                 } else if (field.type === 'array' && Array.isArray(value) && value.length > 0) {
                     if (typeof value[0] === 'object' && value[0] !== null) {
-                        field.children = processObject(value[0], `${fieldId}-item`);
+                        // For array items, we assume index 0 for schema but don't include index in path for field structure
+                        field.children = processObject(value[0], currentPath);
                     }
                     // NOTE: No exampleValue needed - actual array data is in sampleData
                 }
