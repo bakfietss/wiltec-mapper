@@ -148,7 +148,6 @@ export class MappingService {
         tags: finalTags,
         transform_type: finalTransformType,
         mapping_group_id: mappingGroupId,
-        config: uiConfig as any, // Keep for now - remove after schema update
         ui_config: uiConfig as any,
         execution_config: executionConfig as any,
         is_active: true
@@ -522,7 +521,6 @@ export class MappingService {
         tags: originalMapping.tags,
         transform_type: transformType || originalMapping.transform_type || 'JsonToJson',
         mapping_group_id: newMappingGroupId,
-        config: copyConfig,
         ui_config: copyConfig,
         execution_config: copyExecutionConfig,
         is_active: true
