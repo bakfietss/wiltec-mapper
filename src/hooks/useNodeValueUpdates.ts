@@ -183,7 +183,7 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
                 value = getConversionMappingValue(sourceNode, nodes, edges, edge);
             }
             
-            if (value !== undefined && value !== null && value !== '') {
+            if (value !== undefined && value !== null) {
                 valueMap[targetField.id] = value;
                 
                 // Set value in the target data object (handles nested paths)
@@ -325,7 +325,7 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         
         const dataValue = getValue(dataObject, handleId);
         console.log('Data value found:', dataValue);
-        if (dataValue !== undefined && dataValue !== null && dataValue !== '') {
+        if (dataValue !== undefined && dataValue !== null) {
             return dataValue;
         }
     }
@@ -385,7 +385,7 @@ const getConcatTransformValue = (concatNode: any, nodes: any[], edges: any[]): a
     const sortedRules = rules.sort((a: any, b: any) => a.priority - b.priority);
     const values = sortedRules
         .map((rule: any) => inputValues[rule.id])
-        .filter((val: any) => val !== undefined && val !== null && val !== '');
+        .filter((val: any) => val !== undefined && val !== null);
     
     return values.length > 0 ? values.join(delimiter) : '';
 };
@@ -463,7 +463,7 @@ const applyCoalesceTransform = (coalesceNode: any, nodes: any[], edges: any[]): 
     // Try each rule in priority order
     for (const rule of rules.sort((a: any, b: any) => a.priority - b.priority)) {
         const inputValue = inputValues[rule.id];
-        if (inputValue !== undefined && inputValue !== null && inputValue !== '') {
+        if (inputValue !== undefined && inputValue !== null) {
             return rule.outputValue || inputValue;
         }
     }
