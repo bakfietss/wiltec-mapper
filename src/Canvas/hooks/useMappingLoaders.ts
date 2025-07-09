@@ -5,6 +5,101 @@ import { toast } from 'sonner';
 import { importConfiguration } from '../importers/ConfigImporter';
 import { calculateNodeFieldValues } from '../../hooks/useNodeValueUpdates';
 
+// Unified function for loading any UI config (from file or database)
+export const loadUIConfigUnified = (
+  uiConfig: any, 
+  mappingName: string | undefined,
+  fromSource: string,
+  setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void,
+  setEdges: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void,
+  setCurrentMappingName: (name: string) => void,
+  triggerUpdate: (reason: string) => void
+) => {
+  console.log(`=== LOADING UI CONFIG FROM ${fromSource} ===`);
+  console.log('UI Config:', uiConfig);
+  
+  const { nodes: importedNodes, edges: importedEdges } = importConfiguration(uiConfig);
+  console.log('Imported nodes:', importedNodes);
+  console.log('Imported edges:', importedEdges);
+  
+  // Set nodes first
+  setNodes(importedNodes);
+  setEdges([]);  // Clear edges first
+  
+  // Add edges and directly calculate values with auto-expansion
+  setTimeout(() => {
+    console.log('=== SETTING EDGES AND CALCULATING VALUES ===');
+    setEdges(importedEdges);
+    
+    // Directly calculate field values and auto-expand
+    setTimeout(() => {
+      console.log('=== DIRECTLY CALCULATING FIELD VALUES ===');
+      const enhancedNodes = calculateNodeFieldValues(importedNodes, importedEdges);
+      
+      // Auto-expand target node fields that have connections to nested fields
+      const finalNodes = enhancedNodes.map(node => {
+        if (node.type === 'target' && node.data?.fields) {
+          const fieldsToExpand = new Set<string>();
+          
+          // Check which target fields have incoming connections
+          const targetConnections = importedEdges.filter(edge => edge.target === node.id);
+          console.log(`Target node ${node.id} has ${targetConnections.length} connections`);
+          
+          targetConnections.forEach(edge => {
+            const targetFieldId = edge.targetHandle;
+            
+            // Find the field and check if it's nested
+            const findFieldAndParents = (fields: any[], fieldId: string, path: string[] = []): string[] => {
+              for (const field of fields) {
+                if (field.id === fieldId) {
+                  return path;
+                }
+                if (field.children) {
+                  const childPath = findFieldAndParents(field.children, fieldId, [...path, field.id]);
+                  if (childPath.length > 0) {
+                    return childPath;
+                  }
+                }
+              }
+              return [];
+            };
+            
+            const parentPath = findFieldAndParents(node.data.fields, targetFieldId);
+            parentPath.forEach(parentId => fieldsToExpand.add(parentId));
+          });
+          
+          console.log(`Auto-expanding fields for target ${node.id}:`, Array.from(fieldsToExpand));
+          
+          // Add initialExpandedFields to node data
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              initialExpandedFields: fieldsToExpand
+            }
+          };
+        }
+        return node;
+      });
+      
+      console.log(`Final nodes with auto-expansion from ${fromSource}:`, finalNodes.filter(n => n.type === 'target').map(n => ({
+        id: n.id,
+        fieldValues: n.data?.fieldValues,
+        initialExpandedFields: n.data?.initialExpandedFields,
+        hasFieldValues: !!n.data?.fieldValues && Object.keys(n.data.fieldValues).length > 0
+      })));
+      
+      // Update nodes with calculated values and expansion info
+      setNodes(finalNodes);
+      triggerUpdate(fromSource === 'FILE' ? 'MAPPING_IMPORTED' : 'MAPPING_LOADED_FROM_DB');
+    }, 100);
+  }, 300);
+  
+  if (mappingName) {
+    setCurrentMappingName(mappingName);
+  }
+};
+
 interface UseMappingLoadersProps {
   setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
@@ -74,97 +169,21 @@ export const useMappingLoaders = ({
         console.log('UI Config from database:', uiConfig);
         
         if (uiConfig && uiConfig.nodes && uiConfig.edges) {
-          // Use the ConfigImporter to properly import with auto-expansion logic
-          const { nodes, edges } = importConfiguration(uiConfig);
+          // Use unified loading function
+          loadUIConfigUnified(
+            uiConfig, 
+            mappingToLoad.name, 
+            'DATABASE',
+            setNodes,
+            setEdges,
+            setCurrentMappingName,
+            triggerUpdate
+          );
           
-          console.log('=== AFTER IMPORT CONFIGURATION ===');
-          console.log('Imported nodes:', nodes);
-          console.log('Target nodes with fieldValues:', nodes.filter(n => n.type === 'target').map(n => ({
-            id: n.id,
-            fieldValues: n.data?.fieldValues,
-            hasFieldValues: !!n.data?.fieldValues && Object.keys(n.data.fieldValues).length > 0
-          })));
-          console.log('Imported edges:', edges);
-          
-          // Set nodes first
-          setNodes(nodes);
-          setEdges([]);  // Clear edges first
-          
-          // Add edges and directly calculate values
-          setTimeout(() => {
-            console.log('=== SETTING EDGES AND CALCULATING VALUES ===');
-            setEdges(edges);
-            
-            // Directly calculate field values instead of relying on trigger system
-            setTimeout(() => {
-              console.log('=== DIRECTLY CALCULATING FIELD VALUES ===');
-              const enhancedNodes = calculateNodeFieldValues(nodes, edges);
-              console.log('Enhanced nodes with calculated values:', enhancedNodes);
-              
-              // Auto-expand target node fields that have connections to nested fields
-              const finalNodes = enhancedNodes.map(node => {
-                if (node.type === 'target' && node.data?.fields) {
-                  const fieldsToExpand = new Set<string>();
-                  
-                  // Check which target fields have incoming connections
-                  const targetConnections = edges.filter(edge => edge.target === node.id);
-                  console.log(`Target node ${node.id} has ${targetConnections.length} connections`);
-                  
-                  targetConnections.forEach(edge => {
-                    const targetFieldId = edge.targetHandle;
-                    
-                    // Find the field and check if it's nested
-                    const findFieldAndParents = (fields: any[], fieldId: string, path: string[] = []): string[] => {
-                      for (const field of fields) {
-                        if (field.id === fieldId) {
-                          // Found the field - return all parent paths that should be expanded
-                          return path;
-                        }
-                        if (field.children) {
-                          const childPath = findFieldAndParents(field.children, fieldId, [...path, field.id]);
-                          if (childPath.length > 0) {
-                            return childPath;
-                          }
-                        }
-                      }
-                      return [];
-                    };
-                    
-                    const parentPath = findFieldAndParents(node.data.fields, targetFieldId);
-                    parentPath.forEach(parentId => fieldsToExpand.add(parentId));
-                  });
-                  
-                  console.log(`Auto-expanding fields for target ${node.id}:`, Array.from(fieldsToExpand));
-                  
-                  // Add initialExpandedFields to node data
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      initialExpandedFields: fieldsToExpand
-                    }
-                  };
-                }
-                return node;
-              });
-              
-              console.log('Final nodes with auto-expansion:', finalNodes.filter(n => n.type === 'target').map(n => ({
-                id: n.id,
-                fieldValues: n.data?.fieldValues,
-                initialExpandedFields: n.data?.initialExpandedFields,
-                hasFieldValues: !!n.data?.fieldValues && Object.keys(n.data.fieldValues).length > 0
-              })));
-              
-              // Update nodes with calculated values and expansion info
-              setNodes(finalNodes);
-              triggerUpdate('MAPPING_LOADED_FROM_DB');
-            }, 100);
-          }, 300);
-          
-          setCurrentMappingName(mappingToLoad.name);
           setCurrentMappingVersion(mappingToLoad.version);
           
           // Load sample data if available in source nodes
+          const { nodes } = importConfiguration(uiConfig);
           const sourceNodes = nodes.filter((node: any) => node.type === 'source');
           if (sourceNodes.length > 0 && sourceNodes[0].data?.data) {
             console.log('Loading sample data:', sourceNodes[0].data.data);
