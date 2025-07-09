@@ -104,12 +104,7 @@ export const exportExecutionMapping = (
   const rootMappings: ExecutionMapping[] = [];
   const arrayStructures: Map<string, ArrayMappingStructure> = new Map();
   
-  console.log('=== GENERATING ENHANCED EXECUTION MAPPINGS WITH CONCAT SUPPORT ===');
-  console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
-
   const targetNodes = nodes.filter(node => node.type === 'target');
-  
-  console.log('Target nodes:', targetNodes.length);
 
   // Helper function to find source field by handle (supports nested field names)
   const findSourceFieldByHandle = (sourceFields: any[], handleId: string): any => {
@@ -231,9 +226,6 @@ export const exportExecutionMapping = (
             
           } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'coalesce') {
             // Coalesce transform mapping
-            console.log('=== PROCESSING COALESCE TRANSFORM NODE ===');
-            console.log('Coalesce node ID:', sourceNode.id);
-            console.log('Coalesce node data:', sourceNode.data);
             
             const sourceData = sourceNode.data as any;
             
@@ -296,14 +288,9 @@ export const exportExecutionMapping = (
               }
             };
             
-            console.log('=== FINAL COALESCE MAPPING ===');
-            console.log('Created coalesce execution mapping:', mapping);
             
           } else if (sourceNode.type === 'concatTransform') {
             // CONCAT TRANSFORM MAPPING - USING NEW CONCAT NODE
-            console.log('=== PROCESSING CONCAT TRANSFORM NODE ===');
-            console.log('Concat node ID:', sourceNode.id);
-            console.log('Concat node data:', sourceNode.data);
             
             const sourceData = sourceNode.data as any;
             const rules = sourceData?.rules || [];
@@ -358,14 +345,9 @@ export const exportExecutionMapping = (
               }
             };
             
-            console.log('=== FINAL CONCAT MAPPING ===');
-            console.log('Created concat execution mapping:', mapping);
             
           } else if (sourceNode.type === 'transform' && sourceNode.data?.transformType === 'String Transform') {
             // String transform mapping (substring, etc.)
-            console.log('=== PROCESSING STRING TRANSFORM NODE ===');
-            console.log('String transform node ID:', sourceNode.id);
-            console.log('String transform node data:', sourceNode.data);
             
             const sourceData = sourceNode.data as any;
             const config = sourceData?.config || {};

@@ -42,7 +42,6 @@ const initialNodes: Node[] = [
 const initialEdges: Edge[] = [];
 
 const Pipeline = () => {
-  console.log('🚀 Pipeline component mounting');
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -130,9 +129,6 @@ const Pipeline = () => {
   });
 
   const onConnect = useCallback((params: Connection) => {
-    console.log('=== NEW CONNECTION CREATED ===');
-    console.log('Connection params:', params);
-    
     const newEdge = {
       ...params,
       type: 'smoothstep',
@@ -150,9 +146,6 @@ const Pipeline = () => {
   }, [setEdges, triggerUpdate]);
 
   const handleEdgesChange = useCallback((changes: any[]) => {
-    console.log('=== EDGE CHANGES ===');
-    console.log('Edge changes:', changes);
-    
     onEdgesChange(changes);
     
     const hasRemovals = changes.some(change => change.type === 'remove');
@@ -164,9 +157,6 @@ const Pipeline = () => {
   }, [onEdgesChange, triggerUpdate]);
 
   const handleNodesChange = useCallback((changes: any[]) => {
-    console.log('=== NODE CHANGES ===');
-    console.log('Node changes:', changes);
-    
     onNodesChange(changes);
     
     const hasDataUpdates = changes.some(change => 

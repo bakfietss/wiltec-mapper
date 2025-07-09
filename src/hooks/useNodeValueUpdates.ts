@@ -16,8 +16,6 @@ interface CoalesceRule {
 
 // Enhanced centralized function to calculate all node field values
 export const calculateNodeFieldValues = (nodes: any[], edges: any[]) => {
-    console.log('=== CENTRALIZED VALUE CALCULATION ===');
-    console.log('Processing nodes:', nodes.length, 'edges:', edges.length);
     
     const updatedNodes = nodes.map(node => {
         // Handle target nodes (editable schema with target type)
@@ -560,14 +558,8 @@ export const useNodeValueUpdates = (updateTrigger: number, baseNodes?: any[], ba
     }
     
     const enhancedNodes = useMemo(() => {
-        console.log('=== CENTRALIZED RECALCULATION ===');
-        console.log('Update trigger:', updateTrigger);
-        
         const nodes = getNodes();
         const currentEdges = getEdges();
-        
-        console.log('Available nodes:', nodes.length);
-        console.log('Available edges:', currentEdges.length);
         
         if (nodes.length === 0) {
             return [];
