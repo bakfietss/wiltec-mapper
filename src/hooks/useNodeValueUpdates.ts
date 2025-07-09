@@ -296,13 +296,11 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
     console.log('Source node data:', sourceNode.data);
     console.log('Looking for handle:', handleId);
     
-    const sourceFields = sourceNode.data?.fields || [];
     const sourceData = sourceNode.data?.data || [];
     
-    console.log('Source fields:', sourceFields);
     console.log('Source data:', sourceData);
     
-    // Try to get from actual data first
+    // Always try to get from actual data first (this should be the primary source)
     if (sourceData.length > 0) {
         const dataObject = sourceData[0];
         const getValue = (obj: any, path: string) => {
@@ -324,16 +322,19 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         };
         
         const dataValue = getValue(dataObject, handleId);
-        console.log('Data value found:', dataValue);
-        if (dataValue !== undefined && dataValue !== null) {
+        console.log('Data value found:', dataValue, '(type:', typeof dataValue, ')');
+        
+        // Return any value from sampleData, including null, empty strings, etc.
+        if (dataValue !== undefined) {
             return dataValue;
         }
     }
     
-    // Fallback to schema fields
+    // Only fallback to schema exampleValue if no sampleData exists or field not found in data
+    const sourceFields = sourceNode.data?.fields || [];
     const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
-    const fallbackValue = sourceField ? (sourceField.exampleValue || 'No data') : null;
-    console.log('Fallback value:', fallbackValue);
+    const fallbackValue = sourceField ? (sourceField.exampleValue || null) : null;
+    console.log('Fallback to schema exampleValue:', fallbackValue);
     return fallbackValue;
 };
 
