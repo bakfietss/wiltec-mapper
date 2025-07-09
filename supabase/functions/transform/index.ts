@@ -139,7 +139,6 @@ serve(async (req) => {
     const output = transformResult.output;
     const recordCount = transformResult.recordCount;
     const executionTime = Date.now() - startTime;
-    const endTime = new Date().toISOString();
 
     // Log execution
     await supabase
@@ -151,9 +150,7 @@ serve(async (req) => {
         status: 'success',
         transform_type: mapping.transform_type,
         category: mapping.category,
-        version: mapping.version,
-        end_time: endTime,
-        record_count: recordCount
+        version: mapping.version
       });
 
     const response: TransformResponse = {
