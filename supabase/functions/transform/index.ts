@@ -111,6 +111,7 @@ serve(async (req) => {
       });
 
     if (mappingError || !mapping) {
+      console.log('Mapping error:', mappingError);
       return new Response(JSON.stringify({
         success: false,
         error: `Mapping '${mappingName}' not found or not active`,
@@ -120,6 +121,15 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Log mapping data for debugging
+    console.log('Fetched mapping:', {
+      id: mapping.id,
+      name: mapping.name,
+      category: mapping.category,
+      version: mapping.version,
+      transform_type: mapping.transform_type
+    });
 
     // Execute transformation based on execution_config
     const executionConfig = mapping.execution_config;
