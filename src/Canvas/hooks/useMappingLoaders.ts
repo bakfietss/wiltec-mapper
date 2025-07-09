@@ -100,14 +100,63 @@ export const useMappingLoaders = ({
               console.log('=== DIRECTLY CALCULATING FIELD VALUES ===');
               const enhancedNodes = calculateNodeFieldValues(nodes, edges);
               console.log('Enhanced nodes with calculated values:', enhancedNodes);
-              console.log('Target nodes after calculation:', enhancedNodes.filter(n => n.type === 'target').map(n => ({
+              
+              // Auto-expand target node fields that have connections to nested fields
+              const finalNodes = enhancedNodes.map(node => {
+                if (node.type === 'target' && node.data?.fields) {
+                  const fieldsToExpand = new Set<string>();
+                  
+                  // Check which target fields have incoming connections
+                  const targetConnections = edges.filter(edge => edge.target === node.id);
+                  console.log(`Target node ${node.id} has ${targetConnections.length} connections`);
+                  
+                  targetConnections.forEach(edge => {
+                    const targetFieldId = edge.targetHandle;
+                    
+                    // Find the field and check if it's nested
+                    const findFieldAndParents = (fields: any[], fieldId: string, path: string[] = []): string[] => {
+                      for (const field of fields) {
+                        if (field.id === fieldId) {
+                          // Found the field - return all parent paths that should be expanded
+                          return path;
+                        }
+                        if (field.children) {
+                          const childPath = findFieldAndParents(field.children, fieldId, [...path, field.id]);
+                          if (childPath.length > 0) {
+                            return childPath;
+                          }
+                        }
+                      }
+                      return [];
+                    };
+                    
+                    const parentPath = findFieldAndParents(node.data.fields, targetFieldId);
+                    parentPath.forEach(parentId => fieldsToExpand.add(parentId));
+                  });
+                  
+                  console.log(`Auto-expanding fields for target ${node.id}:`, Array.from(fieldsToExpand));
+                  
+                  // Add initialExpandedFields to node data
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      initialExpandedFields: fieldsToExpand
+                    }
+                  };
+                }
+                return node;
+              });
+              
+              console.log('Final nodes with auto-expansion:', finalNodes.filter(n => n.type === 'target').map(n => ({
                 id: n.id,
                 fieldValues: n.data?.fieldValues,
+                initialExpandedFields: n.data?.initialExpandedFields,
                 hasFieldValues: !!n.data?.fieldValues && Object.keys(n.data.fieldValues).length > 0
               })));
               
-              // Update nodes with calculated values
-              setNodes(enhancedNodes);
+              // Update nodes with calculated values and expansion info
+              setNodes(finalNodes);
               triggerUpdate('MAPPING_LOADED_FROM_DB');
             }, 100);
           }, 300);
