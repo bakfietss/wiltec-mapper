@@ -65,15 +65,24 @@ export const useMappingLoaders = ({
     if (state?.mappingToLoad) {
       try {
         const { mappingToLoad } = state;
-        console.log('Loading mapping from My Mappings:', mappingToLoad);
+        console.log('=== LOADING FROM MY MAPPINGS ===');
+        console.log('Raw mapping from database:', mappingToLoad);
         
         // Extract UI config from the saved mapping and use proper import logic
         const uiConfig = mappingToLoad.ui_config;
+        console.log('UI Config from database:', uiConfig);
+        
         if (uiConfig && uiConfig.nodes && uiConfig.edges) {
           // Use the ConfigImporter to properly import with auto-expansion logic
           const { nodes, edges } = importConfiguration(uiConfig);
           
-          console.log('Imported nodes with proper expansion:', nodes);
+          console.log('=== AFTER IMPORT CONFIGURATION ===');
+          console.log('Imported nodes:', nodes);
+          console.log('Target nodes with fieldValues:', nodes.filter(n => n.type === 'target').map(n => ({
+            id: n.id,
+            fieldValues: n.data?.fieldValues,
+            hasFieldValues: !!n.data?.fieldValues && Object.keys(n.data.fieldValues).length > 0
+          })));
           console.log('Imported edges:', edges);
           
           setNodes(nodes);
@@ -81,8 +90,12 @@ export const useMappingLoaders = ({
           
           // Add edges after nodes are rendered and expanded
           setTimeout(() => {
+            console.log('=== SETTING EDGES AND TRIGGERING UPDATE ===');
             setEdges(edges);
-            setTimeout(() => triggerUpdate('MAPPING_LOADED_FROM_DB'), 100);
+            setTimeout(() => {
+              console.log('=== FINAL TRIGGER UPDATE ===');
+              triggerUpdate('MAPPING_LOADED_FROM_DB');
+            }, 100);
           }, 300);
           
           setCurrentMappingName(mappingToLoad.name);
@@ -95,13 +108,9 @@ export const useMappingLoaders = ({
             setSampleData(Array.isArray(sourceNodes[0].data.data) ? sourceNodes[0].data.data : []);
           }
           
-          // Trigger update to ensure everything is processed
-          setTimeout(() => {
-            triggerUpdate('MAPPING_LOADED_FROM_DB');
-          }, 100);
-          
           toast.success(`Mapping "${mappingToLoad.name}" loaded for editing`);
         } else {
+          console.error('Invalid UI config structure:', uiConfig);
           toast.error('Invalid mapping configuration');
         }
       } catch (error) {
