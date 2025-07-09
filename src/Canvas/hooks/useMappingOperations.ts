@@ -159,16 +159,31 @@ export const useMappingOperations = ({
     reader.readAsText(file);
   }, [loadUIConfig]);
 
-  const handleNewMapping = useCallback((name: string) => {
+  const handleNewMapping = useCallback((data: { name: string; category: string; transformType: string }) => {
     setNodes(initialNodes);
     setEdges(initialEdges);
-    setCurrentMappingName(name);
+    setCurrentMappingName(data.name);
     fieldStore.resetAll();
-    toast.success('New mapping created!');
+    
+    // Store session data for the new mapping
+    sessionStorage.setItem('currentMappingSession', JSON.stringify({
+      name: data.name,
+      category: data.category,
+      transformType: data.transformType,
+      isNew: true,
+      created: new Date().toISOString()
+    }));
+    
+    toast.success(`New ${data.transformType.replace(/([A-Z])/g, ' $1').trim()} mapping created: "${data.name}"`);
   }, [setNodes, setEdges, fieldStore, setCurrentMappingName]);
 
   const handleSaveMapping = useCallback(async (name: string) => {
     try {
+      // Get session data for transform type and category
+      const sessionData = JSON.parse(sessionStorage.getItem('currentMappingSession') || '{}');
+      const category = sessionData.category || 'General';
+      const transformType = sessionData.transformType || 'JsonToJson';
+      
       // Generate next version locally
       let nextVersion = 'v1.01';
       if (currentMappingVersion) {
@@ -190,7 +205,7 @@ export const useMappingOperations = ({
       const formattedExecutionConfig = {
         name: name.trim(),
         version: nextVersion,
-        category: 'General',
+        category,
         mappings: executionConfig.mappings || [],
         arrays: executionConfig.arrays || [],
         metadata: executionConfig.metadata
@@ -201,16 +216,25 @@ export const useMappingOperations = ({
         nodes,
         edges,
         userId,
-        'General',
-        undefined,
+        category,
+        transformType,
         undefined,
         formattedExecutionConfig,
-        nextVersion // Pass the version we calculated
+        nextVersion
       );
 
       setCurrentMappingName(name.trim());
       setCurrentMappingVersion(savedMapping.version);
-      toast.success(`Mapping "${name}" saved as version ${savedMapping.version}`);
+      
+      // Update session data to mark as saved
+      sessionStorage.setItem('currentMappingSession', JSON.stringify({
+        ...sessionData,
+        isNew: false,
+        saved: true,
+        savedAt: new Date().toISOString()
+      }));
+      
+      toast.success(`${transformType.replace(/([A-Z])/g, ' $1').trim()} mapping "${name}" saved as version ${savedMapping.version}`);
     } catch (error) {
       console.error('Failed to save mapping:', error);
       toast.error(error instanceof Error ? error.message : "Failed to save mapping");

@@ -48,6 +48,18 @@ const Pipeline = () => {
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [currentMappingName, setCurrentMappingName] = useState<string>('Untitled Mapping');
   const [currentMappingVersion, setCurrentMappingVersion] = useState<string>('');
+  const [currentCategory, setCurrentCategory] = useState<string>('General');
+  const [currentTransformType, setCurrentTransformType] = useState<string>('JsonToJson');
+
+  // Load session data on component mount
+  useEffect(() => {
+    const sessionData = JSON.parse(sessionStorage.getItem('currentMappingSession') || '{}');
+    if (sessionData.name) {
+      setCurrentMappingName(sessionData.name);
+      setCurrentCategory(sessionData.category || 'General');
+      setCurrentTransformType(sessionData.transformType || 'JsonToJson');
+    }
+  }, []);
   const [sampleData, setSampleData] = useState<any[]>([]);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [isManagerExpanded, setIsManagerExpanded] = useState(false);
@@ -289,6 +301,8 @@ const Pipeline = () => {
                 onExportDocumentation={handleExportDocumentation}
                 currentMappingName={currentMappingName}
                 currentMappingVersion={currentMappingVersion}
+                currentCategory={currentCategory}
+                currentTransformType={currentTransformType}
                 isExpanded={isManagerExpanded}
                 onToggleExpanded={setIsManagerExpanded}
               />

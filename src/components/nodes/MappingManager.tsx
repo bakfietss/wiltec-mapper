@@ -1,17 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download, Upload, ChevronDown, ChevronUp, Settings, Plus, Save, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Label } from '../ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface TransformType {
+  name: string;
+  display_name: string;
+  description?: string;
+  input_format: string;
+  output_format: string;
+  category: string;
+}
+
+interface NewMappingData {
+  name: string;
+  category: string;
+  transformType: string;
+}
 
 interface MappingManagerProps {
   onExportMapping?: () => void;
   onImportMapping?: (file: File) => void;
-  onNewMapping?: (name: string) => void;
+  onNewMapping?: (data: NewMappingData) => void;
   onSaveMapping?: (name: string) => void;
   onExportDocumentation?: () => void;
   currentMappingName?: string;
   currentMappingVersion?: string;
+  currentCategory?: string;
+  currentTransformType?: string;
   isExpanded?: boolean;
   onToggleExpanded?: (expanded: boolean) => void;
 }
@@ -24,11 +45,38 @@ const MappingManager: React.FC<MappingManagerProps> = ({
   onExportDocumentation,
   currentMappingName = 'Untitled Mapping',
   currentMappingVersion = '',
+  currentCategory = 'General',
+  currentTransformType = 'JsonToJson',
   isExpanded = false,
   onToggleExpanded
 }) => {
   const [isNewMappingOpen, setIsNewMappingOpen] = useState(false);
   const [newMappingName, setNewMappingName] = useState('');
+  const [newMappingCategory, setNewMappingCategory] = useState('General');
+  const [newMappingTransformType, setNewMappingTransformType] = useState('JsonToJson');
+  const [transformTypes, setTransformTypes] = useState<TransformType[]>([]);
+  const [categories, setCategories] = useState<string[]>(['General', 'Integration', 'Data Processing', 'Custom']);
+
+  useEffect(() => {
+    fetchTransformTypes();
+  }, []);
+
+  const fetchTransformTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transform_types')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true })
+        .order('display_name', { ascending: true });
+
+      if (error) throw error;
+      setTransformTypes(data || []);
+    } catch (error) {
+      console.error('Failed to fetch transform types:', error);
+      toast.error('Failed to load transform types');
+    }
+  };
 
   const handleToggle = () => {
     if (onToggleExpanded) {
@@ -51,8 +99,15 @@ const MappingManager: React.FC<MappingManagerProps> = ({
 
   const handleNewMapping = () => {
     if (newMappingName.trim() && onNewMapping) {
-      onNewMapping(newMappingName.trim());
+      const mappingData: NewMappingData = {
+        name: newMappingName.trim(),
+        category: newMappingCategory,
+        transformType: newMappingTransformType
+      };
+      onNewMapping(mappingData);
       setNewMappingName('');
+      setNewMappingCategory('General');
+      setNewMappingTransformType('JsonToJson');
       setIsNewMappingOpen(false);
     }
   };
@@ -88,6 +143,11 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                 {currentMappingVersion && (
                   <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-medium">
                     {currentMappingVersion}
+                  </span>
+                )}
+                {currentTransformType && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md font-medium">
+                    {transformTypes.find(t => t.name === currentTransformType)?.display_name || currentTransformType}
                   </span>
                 )}
               </div>
@@ -129,16 +189,59 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor="mapping-name" className="text-sm font-medium">
                           Mapping Name
-                        </label>
+                        </Label>
                         <Input
+                          id="mapping-name"
                           value={newMappingName}
                           onChange={(e) => setNewMappingName(e.target.value)}
                           placeholder="Enter mapping name..."
                           onKeyDown={(e) => e.key === 'Enter' && handleNewMapping()}
                         />
                       </div>
+                      
+                      <div>
+                        <Label htmlFor="mapping-category" className="text-sm font-medium">
+                          Category
+                        </Label>
+                        <Select value={newMappingCategory} onValueChange={setNewMappingCategory}>
+                          <SelectTrigger id="mapping-category">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="transform-type" className="text-sm font-medium">
+                          Transform Type
+                        </Label>
+                        <Select value={newMappingTransformType} onValueChange={setNewMappingTransformType}>
+                          <SelectTrigger id="transform-type">
+                            <SelectValue placeholder="Select transform type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {transformTypes.map((type) => (
+                              <SelectItem key={type.name} value={type.name}>
+                                <div className="flex flex-col">
+                                  <span>{type.display_name}</span>
+                                  <span className="text-xs text-gray-500">
+                                    {type.input_format} → {type.output_format}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setIsNewMappingOpen(false)}>
                           Cancel
