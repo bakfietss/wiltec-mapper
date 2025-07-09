@@ -30,13 +30,11 @@ export const buildExecutionSteps = (
 
   const getSampleValue = (node: Node, fieldName: string) => {
     const nodeData = node.data as any;
+    // Use sampleData as the single source of truth
     if (nodeData?.data && Array.isArray(nodeData.data) && nodeData.data.length > 0) {
       return nodeData.data[0][fieldName];
     }
-    if (nodeData?.fields && Array.isArray(nodeData.fields)) {
-      const field = nodeData.fields.find((f: any) => f.name === fieldName);
-      return field?.exampleValue;
-    }
+    // NOTE: No fallback to exampleValue - using sampleData only
     return undefined;
   };
 

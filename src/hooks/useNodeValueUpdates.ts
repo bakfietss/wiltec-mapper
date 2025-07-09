@@ -330,11 +330,12 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         }
     }
     
-    // Only fallback to schema exampleValue if no sampleData exists or field not found in data
+    // Only fallback to schema fields if no sampleData exists or field not found in data
     const sourceFields = sourceNode.data?.fields || [];
     const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
-    const fallbackValue = sourceField ? (sourceField.exampleValue || null) : null;
-    console.log('Fallback to schema exampleValue:', fallbackValue);
+    // NOTE: No exampleValue fallback - using sampleData as single source of truth
+    const fallbackValue = null;
+    console.log('No fallback value available - sampleData is the single source of truth');
     return fallbackValue;
 };
 

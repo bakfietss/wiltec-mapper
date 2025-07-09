@@ -5,7 +5,7 @@ export interface SchemaField {
     id: string;
     name: string;
     type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
-    exampleValue?: any;
+    // NOTE: Removed exampleValue - using sampleData as single source of truth
     children?: SchemaField[];
     parent?: string;
 }

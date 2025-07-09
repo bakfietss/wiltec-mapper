@@ -85,8 +85,8 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 const field: SchemaField = {
                     id: fieldId,
                     name: key,
-                    type: getFieldType(value),
-                    exampleValue: value
+                    type: getFieldType(value)
+                    // NOTE: No exampleValue - actual data is in sampleData
                 };
                 
                 if (field.type === 'object' && value && typeof value === 'object' && !Array.isArray(value)) {
@@ -95,8 +95,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     if (typeof value[0] === 'object' && value[0] !== null) {
                         field.children = processObject(value[0], `${fieldId}-item`);
                     }
-                    // Set example value to show array length
-                    field.exampleValue = `[${value.length} items]`;
+                    // NOTE: No exampleValue needed - actual array data is in sampleData
                 }
                 
                 processedFields.push(field);
@@ -341,6 +340,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                             onFieldExpansionToggle={handleFieldExpansionToggle}
                             selectedFields={selectedFields}
                             onFieldToggle={handleFieldToggle}
+                            sampleData={nodeData}
                             handleType="source"
                             handlePosition={Position.Right}
                             nodeId={id}

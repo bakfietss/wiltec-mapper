@@ -9,7 +9,7 @@ export interface SchemaField {
     children?: SchemaField[];
     parent?: string;
     groupBy?: string;
-    exampleValue?: any;
+    // NOTE: Removed exampleValue - using sampleData as single source of truth
 }
 
 export const getTypeColor = (type: string) => {
@@ -37,6 +37,7 @@ interface FieldRendererProps {
     // SourceNode specific props
     selectedFields?: Set<string>;
     onFieldToggle?: (fieldId: string) => void;
+    sampleData?: any[]; // Add sampleData for source nodes
     
     // Handle configuration
     handleType: 'source' | 'target';
@@ -53,6 +54,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
     onFieldUpdate,
     selectedFields,
     onFieldToggle,
+    sampleData,
     handleType,
     handlePosition,
     nodeId
@@ -169,6 +171,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         onFieldUpdate={onFieldUpdate}
                         selectedFields={selectedFields}
                         onFieldToggle={onFieldToggle}
+                        sampleData={sampleData}
                         handleType={handleType}
                         handlePosition={handlePosition}
                         nodeId={nodeId}
@@ -241,6 +244,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         onFieldUpdate={onFieldUpdate}
                         selectedFields={selectedFields}
                         onFieldToggle={onFieldToggle}
+                        sampleData={sampleData}
                         handleType={handleType}
                         handlePosition={handlePosition}
                         nodeId={nodeId}
@@ -276,16 +280,22 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         <span className="text-gray-400 italic">no value</span>
                     )
                 ) : (
-                    // Source node - show example value if available
-                    field.exampleValue !== undefined && field.exampleValue !== null && field.exampleValue !== '' ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
-                            {typeof field.exampleValue === 'string' 
-                                ? `"${field.exampleValue}"` 
-                                : String(field.exampleValue)}
-                        </span>
-                    ) : (
-                        <span className="text-gray-400 italic">no value</span>
-                    )
+                    // Source node - get value from sampleData instead of exampleValue
+                    (() => {
+                        // Get value from node's sampleData
+                        const dataRecord = sampleData?.[0];
+                        const sourceFieldValue = dataRecord?.[field.name];
+                        
+                        return sourceFieldValue !== undefined && sourceFieldValue !== null && sourceFieldValue !== '' ? (
+                            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                                {typeof sourceFieldValue === 'string' 
+                                    ? `"${sourceFieldValue}"` 
+                                    : String(sourceFieldValue)}
+                            </span>
+                        ) : (
+                            <span className="text-gray-400 italic">no value</span>
+                        );
+                    })()
                 )}
             </div>
             
