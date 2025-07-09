@@ -15,6 +15,7 @@ import NotFound from './pages/NotFound';
 import './App.css';
 
 import MyMappings from './pages/MyMappings';
+import MyTransformations from './pages/MyTransformations';
 import AiMapper from './pages/AiMapper';
 
 const queryClient = new QueryClient();
@@ -101,6 +102,25 @@ function App() {
                       </header>
                       <main className="flex-1">
                         <TemplateMapper />
+                      </main>
+                    </div>
+                  </div>
+                </SidebarProvider>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/my-transformations" element={
+              <ProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <div className="flex-1 flex flex-col">
+                      <header className="h-12 flex items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                        <SidebarTrigger className="ml-4" />
+                        <h1 className="ml-4 font-semibold">My Transformations</h1>
+                      </header>
+                      <main className="flex-1">
+                        <MyTransformations />
                       </main>
                     </div>
                   </div>

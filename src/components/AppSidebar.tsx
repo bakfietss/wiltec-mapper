@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Wand2, Brain, Settings, LogOut, User, ChevronDown, FolderOpen } from 'lucide-react';
+import { Home, Wand2, Brain, Settings, LogOut, User, ChevronDown, FolderOpen, Activity } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,7 @@ const builderItems = [
 
 const mappingItems = [
   { title: 'My Mappings', url: '/my-mappings', icon: Home },
+  { title: 'My Transformations', url: '/my-transformations', icon: Activity },
 ];
 
 const navigationItems = [
