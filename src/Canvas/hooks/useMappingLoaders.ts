@@ -77,7 +77,13 @@ export const useMappingLoaders = ({
           console.log('Imported edges:', edges);
           
           setNodes(nodes);
-          setEdges(edges);
+          setEdges([]);  // Clear edges first
+          
+          // Add edges after nodes are rendered and expanded
+          setTimeout(() => {
+            setEdges(edges);
+            setTimeout(() => triggerUpdate('MAPPING_LOADED_FROM_DB'), 100);
+          }, 300);
           
           setCurrentMappingName(mappingToLoad.name);
           setCurrentMappingVersion(mappingToLoad.version);
