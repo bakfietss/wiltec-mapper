@@ -5,6 +5,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
