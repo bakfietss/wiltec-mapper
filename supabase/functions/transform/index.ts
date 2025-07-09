@@ -135,8 +135,11 @@ serve(async (req) => {
     }
 
     // Execute the transformation
-    const output = await executeTransformation(input, executionConfig);
+    const transformResult = await executeTransformation(input, executionConfig);
+    const output = transformResult.output;
+    const recordCount = transformResult.recordCount;
     const executionTime = Date.now() - startTime;
+    const endTime = new Date().toISOString();
 
     // Log execution
     await supabase
@@ -145,7 +148,10 @@ serve(async (req) => {
         mapping_id: mapping.id,
         input_payload: input,
         output_payload: output,
-        status: 'success'
+        status: 'success',
+        category: mapping.category,
+        end_time: endTime,
+        record_count: recordCount
       });
 
     const response: TransformResponse = {
@@ -177,8 +183,9 @@ serve(async (req) => {
   }
 });
 
-async function executeTransformation(input: any, executionConfig: any): Promise<any> {
+async function executeTransformation(input: any, executionConfig: any): Promise<{ output: any; recordCount: number }> {
   const output: any = {};
+  let recordCount = 0;
   
   // Handle direct mappings
   if (executionConfig.mappings) {
@@ -191,6 +198,8 @@ async function executeTransformation(input: any, executionConfig: any): Promise<
         // Continue with other mappings
       }
     }
+    // For direct mappings, we process 1 record
+    recordCount = 1;
   }
 
   // Handle array mappings
@@ -199,6 +208,8 @@ async function executeTransformation(input: any, executionConfig: any): Promise<
       try {
         const arrayResult = await executeArrayMapping(input, arrayMapping);
         setNestedValue(output, arrayMapping.target, arrayResult);
+        // Add the length of the array to record count
+        recordCount += arrayResult.length;
       } catch (error) {
         console.error(`Error executing array mapping for ${arrayMapping.target}:`, error);
         // Continue with other mappings
@@ -206,7 +217,12 @@ async function executeTransformation(input: any, executionConfig: any): Promise<
     }
   }
 
-  return output;
+  // If no mappings were processed, default to 1 record
+  if (recordCount === 0) {
+    recordCount = 1;
+  }
+
+  return { output, recordCount };
 }
 
 async function executeMappingRule(input: any, mapping: any): Promise<any> {

@@ -60,28 +60,37 @@ export type Database = {
       }
       mapping_logs: {
         Row: {
+          category: string | null
+          end_time: string | null
           id: string
           input_payload: Json | null
           mapping_id: string | null
           output_payload: Json | null
+          record_count: number | null
           run_at: string | null
           status: string | null
           transform_type: string | null
         }
         Insert: {
+          category?: string | null
+          end_time?: string | null
           id?: string
           input_payload?: Json | null
           mapping_id?: string | null
           output_payload?: Json | null
+          record_count?: number | null
           run_at?: string | null
           status?: string | null
           transform_type?: string | null
         }
         Update: {
+          category?: string | null
+          end_time?: string | null
           id?: string
           input_payload?: Json | null
           mapping_id?: string | null
           output_payload?: Json | null
+          record_count?: number | null
           run_at?: string | null
           status?: string | null
           transform_type?: string | null
