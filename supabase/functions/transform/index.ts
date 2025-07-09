@@ -158,6 +158,10 @@ serve(async (req) => {
       return `${hours}-${minutes}-${seconds}`;
     };
 
+    // Format end time
+    const endTime = new Date();
+    const endTimeGmt1 = new Date(endTime.getTime() + (60 * 60 * 1000)); // GMT+1
+
     // Log execution
     await supabase
       .from('mapping_logs')
@@ -166,12 +170,15 @@ serve(async (req) => {
         mapping_name: mapping.name,
         input_payload: input,
         output_payload: output,
+        record_count: recordCount,
         status: 'success',
         transform_type: mapping.transform_type,
         category: mapping.category,
         version: mapping.version,
         start_date: formatDate(gmt1Date),
-        start_time_formatted: formatTime(gmt1Date)
+        start_time_formatted: formatTime(gmt1Date),
+        end_date: formatDate(endTimeGmt1),
+        end_time_formatted: formatTime(endTimeGmt1)
       });
 
     const response: TransformResponse = {

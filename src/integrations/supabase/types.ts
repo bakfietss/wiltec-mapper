@@ -62,7 +62,6 @@ export type Database = {
         Row: {
           category: string | null
           end_date: string | null
-          end_time: string | null
           end_time_formatted: string | null
           id: string
           input_payload: Json | null
@@ -79,7 +78,6 @@ export type Database = {
         Insert: {
           category?: string | null
           end_date?: string | null
-          end_time?: string | null
           end_time_formatted?: string | null
           id?: string
           input_payload?: Json | null
@@ -96,7 +94,6 @@ export type Database = {
         Update: {
           category?: string | null
           end_date?: string | null
-          end_time?: string | null
           end_time_formatted?: string | null
           id?: string
           input_payload?: Json | null
