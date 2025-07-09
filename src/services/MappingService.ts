@@ -401,24 +401,58 @@ export class MappingService {
       throw new Error(`A mapping with the name "${name.trim()}" already exists. Please choose a different name.`);
     }
 
-    // Update ALL mappings in the same group (all versions)
-    const updateData: any = { 
-      name: name.trim(),
-      category: category.trim()
-    };
-    
-    if (transformType) {
-      updateData.transform_type = transformType.trim();
-    }
-
-    const { error } = await supabase
+    // Get all mappings in the group to update their ui_config and execution_config
+    const { data: allMappings, error: fetchError } = await supabase
       .from('mappings')
-      .update(updateData)
+      .select('*')
       .eq('mapping_group_id', existingMapping.mapping_group_id)
       .eq('user_id', userId);
 
-    if (error) {
-      throw new Error(`Failed to update mapping: ${error.message}`);
+    if (fetchError) {
+      throw new Error(`Failed to fetch mapping group: ${fetchError.message}`);
+    }
+
+    // Update each mapping in the group
+    for (const mapping of allMappings || []) {
+      const updateData: any = { 
+        name: name.trim(),
+        category: category.trim()
+      };
+      
+      if (transformType) {
+        updateData.transform_type = transformType.trim();
+      }
+
+      // Update ui_config with new name
+      if (mapping.ui_config) {
+        const uiConfig = mapping.ui_config as any;
+        const updatedUiConfig = {
+          ...uiConfig,
+          name: name.trim()
+        };
+        updateData.ui_config = updatedUiConfig;
+      }
+
+      // Update execution_config with new name
+      if (mapping.execution_config) {
+        const executionConfig = mapping.execution_config as any;
+        const updatedExecutionConfig = {
+          ...executionConfig,
+          name: name.trim()
+        };
+        updateData.execution_config = updatedExecutionConfig;
+      }
+
+      // Update this specific mapping
+      const { error: updateError } = await supabase
+        .from('mappings')
+        .update(updateData)
+        .eq('id', mapping.id)
+        .eq('user_id', userId);
+
+      if (updateError) {
+        throw new Error(`Failed to update mapping: ${updateError.message}`);
+      }
     }
   }
 
