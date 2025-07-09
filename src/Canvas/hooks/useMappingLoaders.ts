@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Node, Edge } from '@xyflow/react';
 import { toast } from 'sonner';
 import { importConfiguration } from '../importers/ConfigImporter';
+import { calculateNodeFieldValues } from '../../hooks/useNodeValueUpdates';
 
 interface UseMappingLoadersProps {
   setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
@@ -85,15 +86,28 @@ export const useMappingLoaders = ({
           })));
           console.log('Imported edges:', edges);
           
+          // Set nodes first
           setNodes(nodes);
           setEdges([]);  // Clear edges first
           
-          // Add edges after nodes are rendered and expanded
+          // Add edges and directly calculate values
           setTimeout(() => {
-            console.log('=== SETTING EDGES AND TRIGGERING UPDATE ===');
+            console.log('=== SETTING EDGES AND CALCULATING VALUES ===');
             setEdges(edges);
+            
+            // Directly calculate field values instead of relying on trigger system
             setTimeout(() => {
-              console.log('=== FINAL TRIGGER UPDATE ===');
+              console.log('=== DIRECTLY CALCULATING FIELD VALUES ===');
+              const enhancedNodes = calculateNodeFieldValues(nodes, edges);
+              console.log('Enhanced nodes with calculated values:', enhancedNodes);
+              console.log('Target nodes after calculation:', enhancedNodes.filter(n => n.type === 'target').map(n => ({
+                id: n.id,
+                fieldValues: n.data?.fieldValues,
+                hasFieldValues: !!n.data?.fieldValues && Object.keys(n.data.fieldValues).length > 0
+              })));
+              
+              // Update nodes with calculated values
+              setNodes(enhancedNodes);
               triggerUpdate('MAPPING_LOADED_FROM_DB');
             }, 100);
           }, 300);
