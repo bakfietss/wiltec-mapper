@@ -177,10 +177,8 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                 Mapping Actions:
               </label>
               <div className="space-y-2">
-                <Dialog open={isNewMappingOpen} onOpenChange={(open) => {
-                  console.log('🔍 Dialog onOpenChange called:', open);
-                  console.log('🔍 Current state:', isNewMappingOpen);
-                  setIsNewMappingOpen(open);
+                <Dialog open={isNewMappingOpen} onOpenChange={() => {
+                  // Prevent dialog from closing except via buttons
                 }}>
                   <DialogTrigger asChild>
                     <button className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200">
@@ -189,24 +187,9 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                     </button>
                   </DialogTrigger>
                   <DialogContent 
-                    onInteractOutside={(e) => {
-                      console.log('🔍 onInteractOutside triggered:', e.target);
-                      console.log('🔍 Event type:', e.type);
-                      console.log('🔍 Preventing default...');
-                      e.preventDefault();
-                    }}
-                    onEscapeKeyDown={(e) => {
-                      console.log('🔍 Escape key pressed');
-                      e.preventDefault();
-                    }}
-                    onPointerDownOutside={(e) => {
-                      console.log('🔍 Pointer down outside:', e.target);
-                      e.preventDefault();
-                    }}
-                    onClick={(e) => {
-                      console.log('🔍 DialogContent clicked:', e.target);
-                      e.stopPropagation();
-                    }}
+                    onInteractOutside={(e) => e.preventDefault()}
+                    onEscapeKeyDown={(e) => e.preventDefault()}
+                    onPointerDownOutside={(e) => e.preventDefault()}
                   >
                     <DialogHeader>
                       <DialogTitle>Create New Mapping</DialogTitle>
