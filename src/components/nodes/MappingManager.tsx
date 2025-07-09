@@ -184,11 +184,11 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                       New Mapping
                     </button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent onClick={(e) => e.stopPropagation()}>
                     <DialogHeader>
                       <DialogTitle>Create New Mapping</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
                       <div>
                         <Label htmlFor="mapping-name" className="text-sm font-medium">
                           Mapping Name
