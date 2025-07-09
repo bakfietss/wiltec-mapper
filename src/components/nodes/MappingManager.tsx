@@ -177,17 +177,37 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                 Mapping Actions:
               </label>
               <div className="space-y-2">
-                <Dialog open={isNewMappingOpen} onOpenChange={setIsNewMappingOpen}>
+                <Dialog open={isNewMappingOpen} onOpenChange={(open) => {
+                  console.log('🔍 Dialog onOpenChange called:', open);
+                  console.log('🔍 Current state:', isNewMappingOpen);
+                  setIsNewMappingOpen(open);
+                }}>
                   <DialogTrigger asChild>
                     <button className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200">
                       <Plus className="w-4 h-4" />
                       New Mapping
                     </button>
                   </DialogTrigger>
-                  <DialogContent onInteractOutside={(e) => {
-                    // Prevent closing when clicking on select dropdowns
-                    e.preventDefault();
-                  }}>
+                  <DialogContent 
+                    onInteractOutside={(e) => {
+                      console.log('🔍 onInteractOutside triggered:', e.target);
+                      console.log('🔍 Event type:', e.type);
+                      console.log('🔍 Preventing default...');
+                      e.preventDefault();
+                    }}
+                    onEscapeKeyDown={(e) => {
+                      console.log('🔍 Escape key pressed');
+                      e.preventDefault();
+                    }}
+                    onPointerDownOutside={(e) => {
+                      console.log('🔍 Pointer down outside:', e.target);
+                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      console.log('🔍 DialogContent clicked:', e.target);
+                      e.stopPropagation();
+                    }}
+                  >
                     <DialogHeader>
                       <DialogTitle>Create New Mapping</DialogTitle>
                     </DialogHeader>
