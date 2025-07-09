@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Wand2, Brain, Settings, LogOut, User, ChevronDown, FolderOpen, Activity } from 'lucide-react';
+import { Home, Wand2, Brain, Settings, LogOut, User, ChevronDown, FolderOpen, Activity, Key } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const builderItems = [
   { title: 'Template Mapper', url: '/template-mapper', icon: Wand2 },
@@ -41,10 +44,15 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, changePassword } = useAuth();
   const { toast } = useToast();
   const [builderOpen, setBuilderOpen] = useState(true);
   const [mappingsOpen, setMappingsOpen] = useState(true);
+  const [passwordDialog, setPasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const isCollapsed = state === 'collapsed';
 
@@ -55,6 +63,59 @@ export function AppSidebar() {
       description: "You have been successfully logged out",
     });
     navigate('/');
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all fields",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "New passwords don't match",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+      });
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      await changePassword(newPassword);
+      
+      toast({
+        title: "Success",
+        description: "Your password has been updated successfully",
+      });
+      
+      // Reset form and close dialog
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordDialog(false);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update password",
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const isActive = (path: string) => {
@@ -210,6 +271,68 @@ export function AppSidebar() {
                 <Separator />
               </>
             )}
+            
+            <Dialog open={passwordDialog} onOpenChange={setPasswordDialog}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size={isCollapsed ? "icon" : "sm"}
+                  className="w-full justify-start"
+                >
+                  <Key className="w-4 h-4" />
+                  {!isCollapsed && <span className="ml-2">Change Password</span>}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Change Password</DialogTitle>
+                  <DialogDescription>
+                    Update your password. Make sure it's at least 6 characters long.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setPasswordDialog(false);
+                        setNewPassword('');
+                        setConfirmPassword('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleChangePassword}
+                      disabled={passwordLoading}
+                    >
+                      {passwordLoading ? "Updating..." : "Update Password"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
             <Button
               variant="ghost"
               size={isCollapsed ? "icon" : "sm"}

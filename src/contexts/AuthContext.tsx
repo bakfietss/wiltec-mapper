@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -65,10 +66,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const changePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    
+    if (error) {
+      console.error('Error changing password:', error);
+      throw error;
+    }
+  };
+
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, loading, logout, changePassword, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );
