@@ -5,6 +5,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 import NodeEditSheet from './NodeEditSheet';
 import JsonImportDialog from './JsonImportDialog';
+import { FormatSelector } from './FormatSelector';
 import { FieldRenderer, SchemaField } from './shared/FieldRenderer';
 
 interface SourceNodeData {
@@ -20,6 +21,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     const [jsonInput, setJsonInput] = useState('');
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+    const [showFormatSelector, setShowFormatSelector] = useState(false);
 
     const allEdges = useStore((store) => store.edges);
 
@@ -298,12 +300,18 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                             <div className="flex items-center justify-between mb-3">
                                 <h4 className="font-medium">Schema Fields:</h4>
                                 <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowFormatSelector(true)}
+                                        className="flex items-center gap-1 px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                    >
+                                        Import Data
+                                    </button>
                                     <JsonImportDialog
                                         jsonInput={jsonInput}
                                         setJsonInput={setJsonInput}
                                         onImport={handleJsonImport}
-                                        triggerText="Import JSON"
-                                        title="Import Data & Generate Schema"
+                                        triggerText="JSON Only"
+                                        title="Import JSON Data"
                                     />
                                     <button
                                         onClick={() => addField()}
@@ -332,6 +340,18 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     </div>
                 </NodeEditSheet>
             </div>
+
+            <FormatSelector
+                open={showFormatSelector}
+                onOpenChange={setShowFormatSelector}
+                onDataParsed={(parsedData) => {
+                    setNodeData(parsedData);
+                    if (parsedData.length > 0) {
+                        const generatedFields = generateFieldsFromData(parsedData[0]);
+                        setFields(generatedFields);
+                    }
+                }}
+            />
 
             <div className="p-1">
                 {hasFields ? (
