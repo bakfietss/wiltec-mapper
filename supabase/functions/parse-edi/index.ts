@@ -65,8 +65,8 @@ function parseEdiToSemanticJson(ediData: string): any {
   // Clean up the EDI data
   const cleanedData = ediData.trim();
   
-  // Split into segments based on EDI segment terminators
-  const segments = cleanedData.split(/[\r\n]+/).filter(line => line.trim());
+  // Split into segments based on EDI segment terminators (single quotes)
+  const segments = cleanedData.split("'").filter(segment => segment.trim());
   
   const result: any = {
     messageType: '',
@@ -78,7 +78,7 @@ function parseEdiToSemanticJson(ediData: string): any {
   let currentLineItem: any = null;
 
   for (const segment of segments) {
-    const elements = segment.split(/['+]/);
+    const elements = segment.split('+');
     const segmentType = elements[0];
 
     switch (segmentType) {
@@ -136,7 +136,7 @@ function parseEdiToSemanticJson(ediData: string): any {
         }
         currentLineItem = {
           lineNumber: elements[1] || '',
-          productId: elements[3] || '',
+          productId: elements[3]?.split(':')[0] || '',
           additionalId: elements[4] || null
         };
         break;
@@ -144,10 +144,12 @@ function parseEdiToSemanticJson(ediData: string): any {
       case 'PIA':
         // Additional product identification
         if (currentLineItem) {
+          const piaValue = elements[2] || '';
+          const parts = piaValue.split(':');
           currentLineItem.PIA = {
             qualifier: elements[1] || '',
-            value: elements[2]?.split(':')[0] || '',
-            description: elements[2]?.split(':')[1] || ''
+            value: parts[0] || '',
+            description: parts[1] || ''
           };
         }
         break;
@@ -155,7 +157,9 @@ function parseEdiToSemanticJson(ediData: string): any {
       case 'IMD':
         // Item description
         if (currentLineItem) {
-          currentLineItem.IMD = elements[3] || '';
+          // The description is typically in the last element after multiple colons
+          const descriptionParts = elements[4]?.split(':') || [];
+          currentLineItem.IMD = descriptionParts[descriptionParts.length - 1] || elements[4] || '';
         }
         break;
 
