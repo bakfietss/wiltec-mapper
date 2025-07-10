@@ -162,9 +162,13 @@ function parseEdiToSemanticJson(ediData: string): any {
       case 'IMD':
         // Item description
         if (currentLineItem) {
-          // The description is typically in the last element after multiple colons
-          const descriptionParts = elements[4]?.split(':') || [];
-          currentLineItem.IMD = descriptionParts[descriptionParts.length - 1] || elements[4] || '';
+          // IMD format: IMD+F+DSC+:::SHOWA 310 GROEN L
+          // The description is in elements[4] after the colons
+          const descriptionElement = elements[4] || '';
+          const descriptionParts = descriptionElement.split(':');
+          // Take the last non-empty part
+          const description = descriptionParts.filter(part => part.trim()).pop() || '';
+          currentLineItem.IMD = description;
         }
         break;
 
