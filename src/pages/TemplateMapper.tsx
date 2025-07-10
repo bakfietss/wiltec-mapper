@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Upload, Play, Copy, Check, Download, ArrowRight, Sparkles, Wand2, Map } from 'lucide-react';
+import { Upload, Play, Copy, Check, Download, ArrowRight, Sparkles, Wand2, Map, Brain, BarChart3 } from 'lucide-react';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
 import { TemplateGenerationService } from '../services/TemplateGenerationService';
 import { TemplateToNodesConverter } from '../services/TemplateToNodesConverter';
+import { XmlJsonConverter } from '../services/XmlJsonConverter';
+import { IntelligentMappingService, type MappingRule, type AnalysisResult } from '../services/IntelligentMappingService';
 import { useNavigate } from 'react-router-dom';
 
 const TemplateMapper = () => {
@@ -18,7 +20,11 @@ const TemplateMapper = () => {
   const [fieldConnections, setFieldConnections] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [outputFormat, setOutputFormat] = useState<'xml' | 'json'>('json');
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [batchMode, setBatchMode] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -44,6 +50,11 @@ const TemplateMapper = () => {
   "orderStatus": "completed"
 }`;
 
+  const sampleXmlOutput = `<?xml version="1.0" encoding="UTF-8"?>
+<persons company_acro_name="TEIJIN">
+  <person personid_extern="7726295" firstname="John" lastname="Smith" email="john@example.com"/>
+</persons>`;
+
   const sampleTemplate = `{
   "customer": "{{ customerName }}",
   "order": "{{ orderId }}",
@@ -55,8 +66,64 @@ const TemplateMapper = () => {
     setSourceData(JSON.stringify(data, null, 2));
     setTransformedResults('');
     setFieldConnections([]);
+    setAnalysisResult(null);
     toast({ title: "Data uploaded successfully!" });
   }, [toast]);
+
+  const handleIntelligentAnalysis = useCallback(async () => {
+    if (!sourceData || !outputExample) {
+      toast({ 
+        title: "Missing Data", 
+        description: "Please provide both source data and output examples for intelligent analysis",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    
+    try {
+      const parsedSourceData = JSON.parse(sourceData);
+      const sourceArray = Array.isArray(parsedSourceData) ? parsedSourceData : [parsedSourceData];
+      
+      // Auto-detect output format and convert if needed
+      const outputFormat = XmlJsonConverter.detectFormat(outputExample);
+      setOutputFormat(outputFormat as 'xml' | 'json');
+      
+      let normalizedOutput;
+      if (outputFormat === 'xml') {
+        normalizedOutput = XmlJsonConverter.xmlToJson(outputExample);
+      } else {
+        normalizedOutput = JSON.parse(outputExample);
+      }
+      
+      // For batch analysis, we need multiple examples
+      // For now, we'll simulate this by using the first source record with the output
+      const targetExamples = [normalizedOutput];
+      
+      const analysisResult = IntelligentMappingService.analyzeMultipleExamples(
+        sourceArray.slice(0, 1), // Use first example for now
+        targetExamples
+      );
+      
+      setAnalysisResult(analysisResult);
+      
+      toast({ 
+        title: "Intelligent Analysis Complete!", 
+        description: `Found ${analysisResult.mappingRules.length} mapping rules with ${Math.round(analysisResult.confidence * 100)}% confidence` 
+      });
+    } catch (error) {
+      console.error('Analysis error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
+      toast({ 
+        title: "Analysis failed", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [sourceData, outputExample, toast]);
 
   const handleGenerateTemplate = useCallback(async () => {
     if (!sourceData || !outputExample) {
@@ -356,6 +423,70 @@ const TemplateMapper = () => {
           <p className="text-lg text-gray-600">Transform your data using custom templates with our Weavo-style interface</p>
         </div>
 
+        {/* Analysis Results Panel */}
+        {analysisResult && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-purple-600" />
+                Intelligent Analysis Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="bg-green-50 p-3 rounded">
+                  <div className="text-lg font-bold text-green-700">{Math.round(analysisResult.confidence * 100)}%</div>
+                  <div className="text-sm text-green-600">Confidence</div>
+                </div>
+                <div className="bg-blue-50 p-3 rounded">
+                  <div className="text-lg font-bold text-blue-700">{analysisResult.mappingRules.length}</div>
+                  <div className="text-sm text-blue-600">Smart Mappings</div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded">
+                  <div className="text-lg font-bold text-purple-700">{Math.round(analysisResult.coverage * 100)}%</div>
+                  <div className="text-sm text-purple-600">Coverage</div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Detected Patterns:</h4>
+                {analysisResult.mappingRules.map((rule, index) => (
+                  <div key={index} className={`p-2 rounded text-xs border-l-4 ${
+                    rule.mappingType === 'direct' ? 'bg-green-50 border-green-500' :
+                    rule.mappingType === 'conditional' ? 'bg-yellow-50 border-yellow-500' :
+                    rule.mappingType === 'transform' ? 'bg-blue-50 border-blue-500' :
+                    'bg-gray-50 border-gray-500'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono bg-white px-1 rounded">{rule.sourceField}</span>
+                      <ArrowRight className="h-3 w-3 text-gray-400" />
+                      <span className="font-mono bg-white px-1 rounded">{rule.targetField}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        rule.mappingType === 'direct' ? 'bg-green-100 text-green-700' :
+                        rule.mappingType === 'conditional' ? 'bg-yellow-100 text-yellow-700' :
+                        rule.mappingType === 'transform' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {rule.mappingType}
+                      </span>
+                    </div>
+                    {rule.conditions && (
+                      <div className="text-xs text-gray-600 ml-4">
+                        Conditions: {rule.conditions.map(c => `${c.sourceValue}→${c.targetValue}`).join(', ')}
+                      </div>
+                    )}
+                    {rule.transformation && (
+                      <div className="text-xs text-gray-600 ml-4">
+                        Transform: {rule.transformation.type}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 3-Panel Weavo Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
           
@@ -416,25 +547,48 @@ const TemplateMapper = () => {
               <p className="text-sm text-gray-500">Provide an example of your desired output</p>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-4">
+              {/* Format Selection */}
+              <div className="mb-4">
+                <Tabs value={outputFormat} onValueChange={(value) => setOutputFormat(value as 'xml' | 'json')} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="json">JSON Output</TabsTrigger>
+                    <TabsTrigger value="xml">XML Output</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
               <Textarea
                 value={outputExample}
                 onChange={(e) => setOutputExample(e.target.value)}
-                placeholder={sampleOutputExample}
-                className="flex-1 min-h-[400px] font-mono text-sm resize-none border-2 focus:border-orange-500 mb-4"
+                placeholder={outputFormat === 'xml' ? sampleXmlOutput : sampleOutputExample}
+                className="flex-1 min-h-[300px] font-mono text-sm resize-none border-2 focus:border-orange-500 mb-4"
               />
               
-              <Button
-                onClick={handleGenerateTemplate}
-                disabled={!outputExample || !sourceData || isGenerating}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white mb-4"
-                size="lg"
-              >
-                <Wand2 className="h-4 w-4 mr-2" />
-                {isGenerating ? "Generating..." : "Generate Template"}
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  onClick={handleIntelligentAnalysis}
+                  disabled={!outputExample || !sourceData || isAnalyzing}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  size="lg"
+                >
+                  <Brain className="h-4 w-4 mr-2" />
+                  {isAnalyzing ? "Analyzing..." : "🧠 Intelligent Analysis"}
+                </Button>
+                
+                <Button
+                  onClick={handleGenerateTemplate}
+                  disabled={!outputExample || !sourceData || isGenerating}
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+                  size="lg"
+                  variant="outline"
+                >
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  {isGenerating ? "Generating..." : "Basic Template"}
+                </Button>
+              </div>
               
               <div className="p-3 bg-orange-50 rounded text-sm text-orange-700">
-                <strong>How it works:</strong> Provide an example of your desired output structure, and we'll automatically generate the template with proper {`{{ fieldName }}`} placeholders
+                <strong>💡 Pro Tip:</strong> Use "Intelligent Analysis" to automatically detect patterns like conditional mappings (M→Male), date transformations, and more!
               </div>
             </CardContent>
           </Card>
