@@ -316,9 +316,12 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                                 } else if (part.startsWith('[') && part.endsWith(']')) {
                                     // Handle standalone [0] notation
                                     const index = parseInt(part.slice(1, -1));
-                                    if (Array.isArray(current) && current[index] !== undefined) {
+                                    console.log(`🎯 Processing standalone array index: ${index}, current is array:`, Array.isArray(current), 'array length:', current?.length, 'target item:', current?.[index]);
+                                    if (Array.isArray(current) && index >= 0 && index < current.length) {
                                         current = current[index];
+                                        console.log(`✅ Successfully accessed array[${index}]:`, current);
                                     } else {
+                                        console.log(`❌ Failed to access array[${index}]`);
                                         return undefined;
                                     }
                                 } else {
