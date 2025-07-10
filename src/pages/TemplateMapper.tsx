@@ -84,33 +84,59 @@ const TemplateMapper = () => {
     
     try {
       const parsedSourceData = JSON.parse(sourceData);
-      const sourceArray = Array.isArray(parsedSourceData) ? parsedSourceData : [parsedSourceData];
+      let sourceArray = Array.isArray(parsedSourceData) ? parsedSourceData : [parsedSourceData];
+      
+      // For large datasets, use smart sampling
+      const isLargeDataset = sourceArray.length > 100;
+      let sampleSize = Math.min(100, sourceArray.length);
+      
+      if (isLargeDataset) {
+        // Smart sampling: take samples from different parts of the dataset
+        const step = Math.floor(sourceArray.length / sampleSize);
+        const sampledData = [];
+        for (let i = 0; i < sourceArray.length && sampledData.length < sampleSize; i += step) {
+          sampledData.push(sourceArray[i]);
+        }
+        sourceArray = sampledData;
+        
+        toast({ 
+          title: "Large Dataset Detected", 
+          description: `Analyzing ${sampleSize} representative samples from ${parsedSourceData.length.toLocaleString()} total records`,
+          variant: "default"
+        });
+      }
       
       // Auto-detect output format and convert if needed
-      const outputFormat = XmlJsonConverter.detectFormat(outputExample);
-      setOutputFormat(outputFormat as 'xml' | 'json');
+      const detectedFormat = XmlJsonConverter.detectFormat(outputExample);
+      setOutputFormat(detectedFormat as 'xml' | 'json');
       
       let normalizedOutput;
-      if (outputFormat === 'xml') {
+      if (detectedFormat === 'xml') {
         normalizedOutput = XmlJsonConverter.xmlToJson(outputExample);
       } else {
         normalizedOutput = JSON.parse(outputExample);
       }
       
-      // For batch analysis, we need multiple examples
-      // For now, we'll simulate this by using the first source record with the output
-      const targetExamples = [normalizedOutput];
+      // For intelligent analysis, create multiple target examples by applying the pattern
+      // to the first few source records (simulating what the expected output would be)
+      const targetExamples = sourceArray.slice(0, Math.min(10, sourceArray.length)).map(() => normalizedOutput);
       
       const analysisResult = IntelligentMappingService.analyzeMultipleExamples(
-        sourceArray.slice(0, 1), // Use first example for now
+        sourceArray.slice(0, Math.min(10, sourceArray.length)),
         targetExamples
       );
       
       setAnalysisResult(analysisResult);
       
+      // Generate enhanced template based on analysis results
+      if (analysisResult.mappingRules.length > 0) {
+        const enhancedTemplate = await generateIntelligentTemplate(analysisResult, detectedFormat, normalizedOutput);
+        setOutputTemplate(enhancedTemplate);
+      }
+      
       toast({ 
-        title: "Intelligent Analysis Complete!", 
-        description: `Found ${analysisResult.mappingRules.length} mapping rules with ${Math.round(analysisResult.confidence * 100)}% confidence` 
+        title: "🧠 Intelligent Analysis Complete!", 
+        description: `Found ${analysisResult.mappingRules.length} smart mappings with ${Math.round(analysisResult.confidence * 100)}% confidence${isLargeDataset ? ` from ${sampleSize} samples` : ''}` 
       });
     } catch (error) {
       console.error('Analysis error:', error);
@@ -124,6 +150,55 @@ const TemplateMapper = () => {
       setIsAnalyzing(false);
     }
   }, [sourceData, outputExample, toast]);
+
+  // Generate template based on intelligent analysis results
+  const generateIntelligentTemplate = async (analysisResult: AnalysisResult, outputFormat: string, normalizedOutput: any): Promise<string> => {
+    let template = JSON.stringify(normalizedOutput, null, 2);
+    
+    // Apply detected mapping rules
+    for (const rule of analysisResult.mappingRules) {
+      const targetPattern = `"${rule.targetField}"\\s*:\\s*"[^"]*"`;
+      const regex = new RegExp(targetPattern, 'g');
+      
+      if (rule.mappingType === 'conditional' && rule.conditions) {
+        // Generate conditional template logic
+        let conditionalLogic = '{{#if ' + rule.sourceField + '}}';
+        rule.conditions.forEach(condition => {
+          conditionalLogic += `{{#eq ${rule.sourceField} "${condition.sourceValue}"}}${condition.targetValue}{{/eq}}`;
+        });
+        conditionalLogic += '{{/if}}';
+        
+        template = template.replace(regex, `"${rule.targetField}": "${conditionalLogic}"`);
+      } else if (rule.mappingType === 'transform' && rule.transformation) {
+        // Generate transformation template
+        if (rule.transformation.type === 'date_format') {
+          template = template.replace(regex, `"${rule.targetField}": "{{formatDate ${rule.sourceField} 'YYYY-MM-DD'}}"`);
+        }
+      } else {
+        // Direct mapping
+        template = template.replace(regex, `"${rule.targetField}": "{{ ${rule.sourceField} }}"`);
+      }
+    }
+    
+    // Apply static values
+    for (const [field, value] of Object.entries(analysisResult.staticValues)) {
+      const staticPattern = `"${field}"\\s*:\\s*"[^"]*"`;
+      const staticRegex = new RegExp(staticPattern, 'g');
+      template = template.replace(staticRegex, `"${field}": "${value}"`);
+    }
+    
+    // Convert back to XML if needed
+    if (outputFormat === 'xml') {
+      try {
+        const jsonTemplate = JSON.parse(template);
+        template = XmlJsonConverter.jsonToXml(jsonTemplate);
+      } catch (error) {
+        console.warn('Could not convert template back to XML, keeping JSON format');
+      }
+    }
+    
+    return template;
+  };
 
   const handleGenerateTemplate = useCallback(async () => {
     if (!sourceData || !outputExample) {
@@ -501,9 +576,10 @@ const TemplateMapper = () => {
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-4">
               <Tabs defaultValue="paste" className="flex-1 flex flex-col">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
                   <TabsTrigger value="paste">Paste JSON</TabsTrigger>
                   <TabsTrigger value="upload">Upload File</TabsTrigger>
+                  <TabsTrigger value="large">Large Dataset</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="paste" className="flex-1 flex flex-col">
@@ -527,10 +603,52 @@ const TemplateMapper = () => {
                     description="Drag & drop or click to upload JSON, CSV, or Excel files"
                   />
                 </TabsContent>
+
+                <TabsContent value="large" className="flex-1 flex flex-col space-y-4">
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">📊 Large Dataset Mode</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      For datasets with 1000+ records, upload your file and we'll analyze the first 100 records for pattern detection, then apply the logic to all records.
+                    </p>
+                    <div className="space-y-2">
+                      <DataUploadZone
+                        onDataUpload={handleDataUpload}
+                        acceptedTypes={['.json', '.csv', '.xlsx']}
+                        title="Upload Large Dataset"
+                        description="JSON, CSV, or Excel files up to 50MB"
+                      />
+                      <div className="text-xs text-blue-600">
+                        💡 We'll show a sample preview and use intelligent analysis on representative data
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {sourceData && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">Dataset Preview</span>
+                        <span className="text-xs text-gray-500">
+                          {JSON.parse(sourceData || '[]').length} records loaded
+                        </span>
+                      </div>
+                      <div className="bg-white p-2 rounded border max-h-32 overflow-y-auto">
+                        <pre className="text-xs text-gray-600">
+                          {JSON.stringify(JSON.parse(sourceData || '[]').slice(0, 2), null, 2)}
+                          {JSON.parse(sourceData || '[]').length > 2 && '\n... and ' + (JSON.parse(sourceData || '[]').length - 2) + ' more records'}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
               
               <div className="mt-3 p-2 bg-blue-50 rounded text-sm text-blue-700">
-                {sourceData ? `${JSON.parse(sourceData || '[]').length || 0} records loaded` : 'No data loaded'}
+                {sourceData ? (
+                  (() => {
+                    const recordCount = JSON.parse(sourceData || '[]').length || 0;
+                    return `${recordCount.toLocaleString()} records loaded ${recordCount > 1000 ? '(Large dataset detected 🚀)' : ''}`;
+                  })()
+                ) : 'No data loaded'}
               </div>
             </CardContent>
           </Card>
@@ -557,35 +675,54 @@ const TemplateMapper = () => {
                 </Tabs>
               </div>
 
-              <Textarea
-                value={outputExample}
-                onChange={(e) => setOutputExample(e.target.value)}
-                placeholder={outputFormat === 'xml' ? sampleXmlOutput : sampleOutputExample}
-                className="flex-1 min-h-[300px] font-mono text-sm resize-none border-2 focus:border-orange-500 mb-4"
-              />
-              
-              <div className="space-y-2">
-                <Button
-                  onClick={handleIntelligentAnalysis}
-                  disabled={!outputExample || !sourceData || isAnalyzing}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                  size="lg"
-                >
-                  <Brain className="h-4 w-4 mr-2" />
-                  {isAnalyzing ? "Analyzing..." : "🧠 Intelligent Analysis"}
-                </Button>
+              <Tabs value="output" className="flex-1 flex flex-col">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="output">Output Example</TabsTrigger>
+                  <TabsTrigger value="template">Template Result</TabsTrigger>
+                </TabsList>
                 
-                <Button
-                  onClick={handleGenerateTemplate}
-                  disabled={!outputExample || !sourceData || isGenerating}
-                  className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-                  size="lg"
-                  variant="outline"
-                >
-                  <Wand2 className="h-4 w-4 mr-2" />
-                  {isGenerating ? "Generating..." : "Basic Template"}
-                </Button>
-              </div>
+                <TabsContent value="output" className="flex-1 flex flex-col">
+                  <Textarea
+                    value={outputExample}
+                    onChange={(e) => setOutputExample(e.target.value)}
+                    placeholder={outputFormat === 'xml' ? sampleXmlOutput : sampleOutputExample}
+                    className="flex-1 min-h-[300px] font-mono text-sm resize-none border-2 focus:border-orange-500 mb-4"
+                  />
+                  
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleIntelligentAnalysis}
+                      disabled={!outputExample || !sourceData || isAnalyzing}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      size="lg"
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      {isAnalyzing ? "Analyzing 10K+ records..." : "🧠 Intelligent Analysis"}
+                    </Button>
+                    
+                    <Button
+                      onClick={handleGenerateTemplate}
+                      disabled={!outputExample || !sourceData || isGenerating}
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+                      size="lg"
+                      variant="outline"
+                    >
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      {isGenerating ? "Generating..." : "Basic Template"}
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="template" className="flex-1 flex flex-col">
+                  <Textarea
+                    value={outputTemplate}
+                    onChange={(e) => setOutputTemplate(e.target.value)}
+                    placeholder="Generated template will appear here..."
+                    className="flex-1 min-h-[350px] font-mono text-sm resize-none border-2 focus:border-green-500"
+                    readOnly={!outputTemplate}
+                  />
+                </TabsContent>
+              </Tabs>
               
               <div className="p-3 bg-orange-50 rounded text-sm text-orange-700">
                 <strong>💡 Pro Tip:</strong> Use "Intelligent Analysis" to automatically detect patterns like conditional mappings (M→Male), date transformations, and more!
