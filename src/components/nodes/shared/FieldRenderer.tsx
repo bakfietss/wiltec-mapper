@@ -303,18 +303,8 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                                     return undefined;
                                 }
                                 
-                                // Handle array notation like containers[0] or standalone [0]
-                                if (part.includes('[') && part.includes(']')) {
-                                    const [arrayKey, indexPart] = part.split('[');
-                                    const index = parseInt(indexPart.replace(']', ''));
-                                    
-                                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
-                                        current = current[arrayKey][index];
-                                    } else {
-                                        return undefined;
-                                    }
-                                } else if (part.startsWith('[') && part.endsWith(']')) {
-                                    // Handle standalone [0] notation
+                                // Handle standalone [0] notation first
+                                if (part.startsWith('[') && part.endsWith(']')) {
                                     const index = parseInt(part.slice(1, -1));
                                     console.log(`🎯 Processing standalone array index: ${index}, current is array:`, Array.isArray(current), 'array length:', current?.length, 'target item:', current?.[index]);
                                     if (Array.isArray(current) && index >= 0 && index < current.length) {
@@ -322,6 +312,16 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                                         console.log(`✅ Successfully accessed array[${index}]:`, current);
                                     } else {
                                         console.log(`❌ Failed to access array[${index}]`);
+                                        return undefined;
+                                    }
+                                // Handle array notation like containers[0]
+                                } else if (part.includes('[') && part.includes(']')) {
+                                    const [arrayKey, indexPart] = part.split('[');
+                                    const index = parseInt(indexPart.replace(']', ''));
+                                    
+                                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
+                                        current = current[arrayKey][index];
+                                    } else {
                                         return undefined;
                                     }
                                 } else {
