@@ -87,7 +87,7 @@ function parseEdiToSemanticJson(ediData: string): any {
         result.header = {
           sender: elements[2]?.split(':')[0] || '',
           recipient: elements[3]?.split(':')[0] || '',
-          date: parseEdiDate(elements[4]) || new Date().toISOString()
+          date: parseEdiDate(elements[4]?.split(':')[0]) || new Date().toISOString()
         };
         break;
 
@@ -123,7 +123,7 @@ function parseEdiToSemanticJson(ediData: string): any {
         if (!result.segments.NAD) result.segments.NAD = [];
         result.segments.NAD.push({
           qualifier: elements[1] || '',
-          identification: elements[2] || '',
+          identification: elements[2]?.split(':')[0] || '',
           name: elements[3] || '',
           address: elements[4] || ''
         });
@@ -207,15 +207,28 @@ function parseEdiToSemanticJson(ediData: string): any {
 function parseEdiDate(dateStr: string): string {
   if (!dateStr) return '';
   
+  // Handle YYMMDD:HHMM format (250703:0913)
+  if (dateStr.includes(':')) {
+    const [datePart, timePart] = dateStr.split(':');
+    if (datePart.length === 6) {
+      const year = parseInt(datePart.substring(0, 2));
+      const month = datePart.substring(2, 4);
+      const day = datePart.substring(4, 6);
+      const hour = timePart.substring(0, 2);
+      const minute = timePart.substring(2, 4);
+      
+      const fullYear = year <= 30 ? 2000 + year : 1900 + year;
+      return `${fullYear}-${month}-${day}T${hour}:${minute}:00Z`;
+    }
+  }
+  
   // Handle YYMMDD format
   if (dateStr.length === 6) {
     const year = parseInt(dateStr.substring(0, 2));
     const month = dateStr.substring(2, 4);
     const day = dateStr.substring(4, 6);
     
-    // Assume 20XX for years 00-30, 19XX for years 31-99
     const fullYear = year <= 30 ? 2000 + year : 1900 + year;
-    
     return `${fullYear}-${month}-${day}`;
   }
   
