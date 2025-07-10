@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, FileSpreadsheet, FileCode, FileType, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 import { XMLParser } from 'fast-xml-parser';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FormatSelectorProps {
   open: boolean;
@@ -114,47 +115,23 @@ export function FormatSelector({ open, onOpenChange, onDataParsed }: FormatSelec
     }
   };
 
-  const parseEDI = (data: string): any[] => {
+  const parseEDI = async (data: string): Promise<any[]> => {
     try {
-      // Basic EDI X12 parser - in real implementation you'd use a proper EDI library
-      const segments = data.split('\n').filter(line => line.trim());
-      const transactions: any[] = [];
-      let currentTransaction: any = {};
-      
-      segments.forEach(segment => {
-        const elements = segment.split('*');
-        const segmentId = elements[0];
-        
-        switch (segmentId) {
-          case 'ST':
-            currentTransaction = {
-              transactionType: elements[1],
-              controlNumber: elements[2]
-            };
-            break;
-          case 'BIG':
-            currentTransaction.invoice = {
-              number: elements[2],
-              date: elements[1]
-            };
-            break;
-          case 'N1':
-            if (!currentTransaction.parties) currentTransaction.parties = [];
-            currentTransaction.parties.push({
-              type: elements[1],
-              name: elements[2]
-            });
-            break;
-          case 'SE':
-            if (Object.keys(currentTransaction).length > 0) {
-              transactions.push({ ...currentTransaction });
-              currentTransaction = {};
-            }
-            break;
-        }
+      const { data: response, error } = await supabase.functions.invoke('parse-edi', {
+        body: { ediData: data }
       });
-      
-      return transactions.length > 0 ? transactions : [{ rawSegments: segments }];
+
+      if (error) {
+        throw new Error(`EDI Parse Error: ${error.message}`);
+      }
+
+      if (!response.success) {
+        throw new Error(`EDI Parse Error: ${response.error}`);
+      }
+
+      // Convert the semantic JSON to an array format suitable for our JSON editor
+      const semanticJson = response.parsedData;
+      return [semanticJson];
     } catch (error) {
       throw new Error(`EDI Parse Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -197,7 +174,7 @@ export function FormatSelector({ open, onOpenChange, onDataParsed }: FormatSelec
     }
   };
 
-  const handleParse = () => {
+  const handleParse = async () => {
     if (!selectedFormat || !inputData.trim()) return;
     
     setParseError(null);
@@ -216,7 +193,7 @@ export function FormatSelector({ open, onOpenChange, onDataParsed }: FormatSelec
           parsed = parseXML(inputData);
           break;
         case 'edi':
-          parsed = parseEDI(inputData);
+          parsed = await parseEDI(inputData);
           break;
         case 'text':
           parsed = parseText(inputData);
@@ -280,7 +257,16 @@ export function FormatSelector({ open, onOpenChange, onDataParsed }: FormatSelec
       case 'xml':
         return '<employees><employee><name>John</name><age>30</age></employee></employees>';
       case 'edi':
-        return 'ST*810*1234~\nBIG*20231201*INV001~\nN1*BT*Company Name~\nSE*4*1234~';
+        return `UNB+UNOC:3+8712423005846:14+8719333019055:14+250703:0913+1++ORDERS+++
+UNH+1+ORDERS:D:03B:UN:EAN008
+BGM+220+IOR25-009527+9
+DTM+137:20250703:102
+LIN+1++4901792012430:EN
+PIA+5+27.71310G:L
+IMD+++SHOWA 310 GROEN L
+QTY+21:360:PCE
+UNT+8+1
+UNZ+1+1`;
       case 'text':
         return 'John\t30\tNew York\nJane\t25\tLos Angeles';
       default:
