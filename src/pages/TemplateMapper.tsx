@@ -81,10 +81,27 @@ const TemplateMapper = () => {
     }
 
     setIsAnalyzing(true);
+    console.log('🧠 Starting intelligent analysis...');
+    console.log('Source data length:', sourceData.length);
+    console.log('Output example length:', outputExample.length);
     
     try {
       const parsedSourceData = JSON.parse(sourceData);
-      let sourceArray = Array.isArray(parsedSourceData) ? parsedSourceData : [parsedSourceData];
+      console.log('📊 Parsed source data:', parsedSourceData);
+      
+      // Handle different data structures
+      let sourceArray;
+      if (Array.isArray(parsedSourceData)) {
+        sourceArray = parsedSourceData;
+      } else if (parsedSourceData.rows && Array.isArray(parsedSourceData.rows)) {
+        // Handle {rows: [...]} structure
+        sourceArray = parsedSourceData.rows;
+        console.log('📋 Found rows structure with', sourceArray.length, 'records');
+      } else {
+        sourceArray = [parsedSourceData];
+      }
+      
+      console.log('📈 Processing', sourceArray.length, 'source records');
       
       // For large datasets, use smart sampling
       const isLargeDataset = sourceArray.length > 100;
@@ -98,54 +115,104 @@ const TemplateMapper = () => {
           sampledData.push(sourceArray[i]);
         }
         sourceArray = sampledData;
+        console.log('🎯 Sampled', sourceArray.length, 'records for analysis');
         
         toast({ 
           title: "Large Dataset Detected", 
-          description: `Analyzing ${sampleSize} representative samples from ${parsedSourceData.length.toLocaleString()} total records`,
+          description: `Analyzing ${sampleSize} representative samples from ${parsedSourceData.rows?.length || parsedSourceData.length} total records`,
           variant: "default"
         });
       }
       
       // Auto-detect output format and convert if needed
       const detectedFormat = XmlJsonConverter.detectFormat(outputExample);
+      console.log('🔍 Detected output format:', detectedFormat);
       setOutputFormat(detectedFormat as 'xml' | 'json');
       
       let normalizedOutput;
       if (detectedFormat === 'xml') {
+        console.log('🔧 Converting XML to JSON for analysis...');
         normalizedOutput = XmlJsonConverter.xmlToJson(outputExample);
+        console.log('✅ Normalized XML output:', normalizedOutput);
       } else {
         normalizedOutput = JSON.parse(outputExample);
+        console.log('✅ Parsed JSON output:', normalizedOutput);
       }
       
-      // For intelligent analysis, create multiple target examples by applying the pattern
-      // to the first few source records (simulating what the expected output would be)
-      const targetExamples = sourceArray.slice(0, Math.min(10, sourceArray.length)).map(() => normalizedOutput);
+      // Create target examples for analysis
+      // For intelligent analysis, we need to map source records to expected targets
+      console.log('🎯 Creating target examples for analysis...');
+      const numSamples = Math.min(5, sourceArray.length);
+      const targetExamples = Array(numSamples).fill(normalizedOutput);
       
+      console.log('🔬 Running intelligent mapping analysis...');
       const analysisResult = IntelligentMappingService.analyzeMultipleExamples(
-        sourceArray.slice(0, Math.min(10, sourceArray.length)),
+        sourceArray.slice(0, numSamples),
         targetExamples
       );
       
+      console.log('📊 Analysis result:', analysisResult);
       setAnalysisResult(analysisResult);
       
       // Generate enhanced template based on analysis results
-      if (analysisResult.mappingRules.length > 0) {
+      if (analysisResult.mappingRules.length > 0 || Object.keys(analysisResult.staticValues).length > 0) {
+        console.log('🔧 Generating intelligent template...');
         const enhancedTemplate = await generateIntelligentTemplate(analysisResult, detectedFormat, normalizedOutput);
+        console.log('✅ Generated template:', enhancedTemplate);
         setOutputTemplate(enhancedTemplate);
+      } else {
+        console.log('⚠️ No mapping rules found, generating basic template...');
+        // Fallback to basic template generation
+        const basicTemplate = TemplateGenerationService.generateTemplateFromExamples(
+          sourceArray.slice(0, 3),
+          normalizedOutput
+        );
+        setOutputTemplate(basicTemplate);
       }
       
+      const totalRules = analysisResult.mappingRules.length + Object.keys(analysisResult.staticValues).length;
       toast({ 
         title: "🧠 Intelligent Analysis Complete!", 
-        description: `Found ${analysisResult.mappingRules.length} smart mappings with ${Math.round(analysisResult.confidence * 100)}% confidence${isLargeDataset ? ` from ${sampleSize} samples` : ''}` 
+        description: `Found ${totalRules} mappings with ${Math.round(analysisResult.confidence * 100)}% confidence${isLargeDataset ? ` from ${sampleSize} samples` : ''}` 
       });
     } catch (error) {
-      console.error('Analysis error:', error);
+      console.error('❌ Analysis error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
       toast({ 
         title: "Analysis failed", 
-        description: errorMessage, 
+        description: `${errorMessage}. Check console for details.`, 
         variant: "destructive" 
       });
+      
+      // Try fallback to basic template generation
+      try {
+        console.log('🔄 Attempting fallback to basic template generation...');
+        const parsedSourceData = JSON.parse(sourceData);
+        const sourceArray = Array.isArray(parsedSourceData) ? parsedSourceData : 
+                          parsedSourceData.rows ? parsedSourceData.rows : [parsedSourceData];
+        
+        const detectedFormat = XmlJsonConverter.detectFormat(outputExample);
+        let normalizedOutput;
+        if (detectedFormat === 'xml') {
+          normalizedOutput = XmlJsonConverter.xmlToJson(outputExample);
+        } else {
+          normalizedOutput = JSON.parse(outputExample);
+        }
+        
+        const basicTemplate = TemplateGenerationService.generateTemplateFromExamples(
+          sourceArray.slice(0, 3),
+          normalizedOutput
+        );
+        setOutputTemplate(basicTemplate);
+        setOutputFormat(detectedFormat as 'xml' | 'json');
+        
+        toast({ 
+          title: "Fallback Template Generated", 
+          description: "Used basic template generation since intelligent analysis failed" 
+        });
+      } catch (fallbackError) {
+        console.error('❌ Fallback also failed:', fallbackError);
+      }
     } finally {
       setIsAnalyzing(false);
     }
