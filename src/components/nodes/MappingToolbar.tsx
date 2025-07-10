@@ -5,7 +5,7 @@ import { Plus, Database, FileText, Shuffle, GitMerge, ChevronDown, ChevronUp, La
 interface MappingToolbarProps {
   onAddTransform: (type: string) => void;
   onAddMappingNode: () => void;
-  onAddSchemaNode?: (type: 'source' | 'target') => void;
+  onAddSchemaNode?: (type: 'source' | 'target' | 'xmlTarget') => void;
   isExpanded?: boolean;
   onToggleExpanded?: (expanded: boolean) => void;
 }
@@ -82,7 +82,14 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200"
                 >
                   <FileText className="w-4 h-4" />
-                  Add Target Node
+                  Add Target Node (JSON)
+                </button>
+                <button
+                  onClick={() => onAddSchemaNode('xmlTarget')}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-orange-50 text-orange-700 hover:bg-orange-100 rounded border border-orange-200"
+                >
+                  <FileText className="w-4 h-4" />
+                  Add XML Target Node
                 </button>
               </div>
             </div>

@@ -10,6 +10,7 @@ export interface SchemaField {
     parent?: string;
     groupBy?: string;
     path?: string[]; // Add path for nested field value retrieval
+    isAttribute?: boolean; // For XML attributes
     // NOTE: Removed exampleValue - using sampleData as single source of truth
 }
 

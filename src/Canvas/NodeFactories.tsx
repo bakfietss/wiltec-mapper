@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
 import SourceNode from '../components/nodes/SourceNode';
 import TargetNode from '../components/nodes/TargetNode';
+import XmlTargetNode from '../components/nodes/XmlTargetNode';
 import TransformNode from '../components/nodes/TransformNode';
 import SplitterTransformNode from '../components/nodes/SplitterTransformNode';
 import IfThenNode from '../components/nodes/IfThenNode';
@@ -14,6 +15,7 @@ import ConcatTransformNode from '../components/nodes/ConcatTransformNode';
 export const nodeTypes = {
   source: SourceNode,
   target: TargetNode,
+  xmlTarget: XmlTargetNode,
   transform: TransformNode,
   splitterTransform: SplitterTransformNode,
   ifThen: IfThenNode,
@@ -27,16 +29,25 @@ export const useNodeFactories = (
     nodes: Node[],
     setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void
 ) => {
-    const addSchemaNode = useCallback((type: 'source' | 'target') => {
+    const addSchemaNode = useCallback((type: 'source' | 'target' | 'xmlTarget') => {
+        let nodeType = type;
+        let nodeData: any = {
+            label: type === 'source' ? 'Source Schema' : 
+                   type === 'xmlTarget' ? 'XML Target Schema' : 'Target Schema',
+            fields: [],
+            data: [],
+        };
+
+        // Add XML-specific properties for XML target
+        if (type === 'xmlTarget') {
+            nodeData.outputFormat = 'xml';
+        }
+
         const newNode: Node = {
             id: `${type}-${Date.now()}`,
-            type: type, // Use 'source' or 'target' instead of 'editableSchema'
+            type: nodeType,
             position: { x: type === 'source' ? 100 : 800, y: 100 + nodes.length * 50 },
-            data: {
-                label: type === 'source' ? 'Source Schema' : 'Target Schema',
-                fields: [],
-                data: [],
-            },
+            data: nodeData,
         };
 
         setNodes((nds) => [...nds, newNode]);
