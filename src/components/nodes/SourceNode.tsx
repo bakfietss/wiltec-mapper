@@ -353,16 +353,6 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 }}
             />
 
-            {/* Data Preview */}
-            {hasData && (
-                <div className="px-3 py-2 border-b bg-gray-50">
-                    <div className="text-xs text-gray-600 mb-1">Sample Data ({nodeData.length} records):</div>
-                    <div className="text-xs font-mono bg-white border rounded p-2 max-h-20 overflow-auto">
-                        {JSON.stringify(nodeData[0], null, 2).slice(0, 200)}...
-                    </div>
-                </div>
-            )}
-
             <div className="p-1">
                 {hasFields ? (
                     fields.map((field) => (
