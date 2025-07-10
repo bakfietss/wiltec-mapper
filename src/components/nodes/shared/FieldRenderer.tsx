@@ -290,12 +290,15 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         
                         // Get value using field ID as dot-separated path
                         const getNestedValue = (obj: any, fieldId: string): any => {
+                            console.log(`🔍 Getting value for field ID: "${fieldId}" from data:`, obj);
                             if (!fieldId || !obj) return undefined;
                             
                             const pathParts = fieldId.split('.');
+                            console.log(`📝 Path parts:`, pathParts);
                             let current = obj;
                             
                             for (const part of pathParts) {
+                                console.log(`🚶 Processing part: "${part}", current value:`, current);
                                 if (current === null || current === undefined) {
                                     return undefined;
                                 }
