@@ -26,18 +26,29 @@ export class TemplateToNodesConverter {
     const edges: EdgeData[] = [];
     
     try {
-      // Clean the template by removing comments and extra whitespace
-      let cleanedTemplate = template
-        .replace(/\/\/.*$/gm, '') // Remove single-line comments
-        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
-        .trim();
+      console.log('🔄 Converting template to nodes...', template.substring(0, 100));
       
-      // Fix unquoted template variables in JSON (make them temporarily valid for parsing)
-      cleanedTemplate = cleanedTemplate.replace(/:\s*\{\{\s*([^}]+)\s*\}\}/g, ': "{{$1}}"');
+      let parsedTemplate;
       
-      console.log('Cleaned template:', cleanedTemplate);
+      // Detect format and handle accordingly
+      if (template.trim().startsWith('<?xml') || template.trim().startsWith('<')) {
+        console.log('📄 Detected XML template, converting to JSON structure for node generation...');
+        // For XML templates, we need to create a JSON representation for the node system
+        parsedTemplate = this.xmlTemplateToJsonStructure(template);
+      } else {
+        // Clean the template by removing comments and extra whitespace
+        let cleanedTemplate = template
+          .replace(/\/\/.*$/gm, '') // Remove single-line comments
+          .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+          .trim();
+        
+        // Fix unquoted template variables in JSON (make them temporarily valid for parsing)
+        cleanedTemplate = cleanedTemplate.replace(/:\s*\{\{\s*([^}]+)\s*\}\}/g, ': "{{$1}}"');
+        
+        console.log('Cleaned template:', cleanedTemplate);
+        parsedTemplate = JSON.parse(cleanedTemplate);
+      }
       
-      const parsedTemplate = JSON.parse(cleanedTemplate);
       const sampleRecord = sourceData[0] || {};
       
       // Helper function to convert object to schema fields
@@ -90,59 +101,9 @@ export class TemplateToNodesConverter {
         return matches ? matches.map(match => match.replace(/\{\{\s*|\s*\}\}/g, '')) : [];
       };
 
-      // Helper function to find available fields at a given template level
-      const getAvailableFields = (templateObj: any, parentFields: string[] = []): string[] => {
-        const fields = [...parentFields];
-        Object.entries(templateObj).forEach(([key, value]) => {
-          if (!Array.isArray(value) && typeof value !== 'object') {
-            fields.push(...extractTemplateVars(value));
-          }
-        });
-        return [...new Set(fields)]; // Remove duplicates
-      };
-
-      // Helper function to determine groupBy field for arrays
-      const determineGroupBy = (arrayTemplate: any, availableParentFields: string[]): string | undefined => {
-        if (!arrayTemplate || typeof arrayTemplate !== 'object') return undefined;
-        
-        // Get all template variables used in the array items
-        const arrayFields = new Set<string>();
-        const collectArrayFields = (obj: any) => {
-          Object.entries(obj).forEach(([key, value]) => {
-            if (typeof value === 'string') {
-              extractTemplateVars(value).forEach(field => arrayFields.add(field));
-            } else if (typeof value === 'object' && !Array.isArray(value)) {
-              collectArrayFields(value);
-            }
-          });
-        };
-        collectArrayFields(arrayTemplate);
-        
-        // Find fields that exist both in parent context and array items
-        const commonFields = availableParentFields.filter(field => arrayFields.has(field));
-        
-        if (commonFields.length === 0) return undefined;
-        
-        // Prefer more specific fields (longer names usually indicate more specificity)
-        // Also prefer fields that don't contain 'Code' as they're usually IDs rather than grouping fields
-        const preferredField = commonFields.sort((a, b) => {
-          // Deprioritize fields containing 'Code' 
-          const aHasCode = a.toLowerCase().includes('code');
-          const bHasCode = b.toLowerCase().includes('code');
-          if (aHasCode && !bHasCode) return 1;
-          if (!aHasCode && bHasCode) return -1;
-          
-          // Otherwise prefer longer field names (more specific)
-          return b.length - a.length;
-        })[0];
-        
-        return preferredField;
-      };
-
       // Helper function to generate target fields from template
-      const generateTargetFields = (template: any, prefix = '', parentFields: string[] = []): any[] => {
+      const generateTargetFields = (template: any, prefix = ''): any[] => {
         const fields: any[] = [];
-        const currentLevelFields = getAvailableFields(template, parentFields);
         
         Object.entries(template).forEach(([key, value]) => {
           const fieldId = prefix ? `${prefix}.${key}` : key;
@@ -155,13 +116,7 @@ export class TemplateToNodesConverter {
             };
             
             if (value.length > 0 && typeof value[0] === 'object') {
-              // Determine groupBy field intelligently
-              const groupByField = determineGroupBy(value[0], currentLevelFields);
-              if (groupByField) {
-                field.groupBy = groupByField;
-              }
-              
-              field.children = generateTargetFields(value[0], `${fieldId}[0]`, currentLevelFields);
+              field.children = generateTargetFields(value[0], `${fieldId}[0]`);
             }
             
             fields.push(field);
@@ -170,7 +125,7 @@ export class TemplateToNodesConverter {
               id: fieldId,
               name: key,
               type: 'object',
-              children: generateTargetFields(value, fieldId, currentLevelFields)
+              children: generateTargetFields(value, fieldId)
             };
             fields.push(field);
           } else {
@@ -179,14 +134,6 @@ export class TemplateToNodesConverter {
               name: key,
               type: 'string' // Templates are typically string outputs
             };
-            
-            // For ID fields, preserve the template structure for display
-            if (key === 'id' && typeof value === 'string' && value.includes('{{')) {
-              field.templateValue = value; // Store original template for reference
-              // Set a readable example based on the template structure
-              field.exampleValue = value; // Show the actual template variables
-            }
-            
             fields.push(field);
           }
         });
@@ -364,35 +311,6 @@ export class TemplateToNodesConverter {
         }
       });
 
-      // Process static values at top level
-      Object.entries(parsedTemplate).forEach(([targetField, templateValue]) => {
-        if (typeof templateValue === 'string' && !(templateValue.includes('{{') && templateValue.includes('}}'))) {
-          // Static value - create static value node
-          const staticNodeId = `static-${nodeCounter++}`;
-          
-          nodes.push({
-            id: staticNodeId,
-            type: 'staticValue',
-            position: { x: 400, y: yPosition },
-            data: {
-              label: 'Static Value',
-              value: templateValue,
-              valueType: 'string'
-            }
-          });
-
-          // Connect static to target field
-          edges.push({
-            id: `edge-${staticNodeId}-${targetField}`,
-            source: staticNodeId,
-            target: targetNodeId,
-            targetHandle: targetField
-          });
-
-          yPosition += spacing;
-        }
-      });
-
       return {
         nodes,
         edges,
@@ -403,6 +321,36 @@ export class TemplateToNodesConverter {
     } catch (error) {
       console.error('Error converting template to nodes:', error);
       throw new Error('Failed to parse template for node conversion');
+    }
+  }
+
+  // Helper method to convert XML template to JSON structure for node generation
+  static xmlTemplateToJsonStructure(xmlTemplate: string): any {
+    try {
+      // Extract template variables from XML
+      const templateVars = xmlTemplate.match(/\{\{\s*([^}]+)\s*\}\}/g) || [];
+      console.log('🔍 Found template variables in XML:', templateVars);
+      
+      // Create a simplified JSON structure that represents the XML mapping
+      const jsonStructure: any = {};
+      
+      // Parse out XML structure - simplified approach for node generation
+      templateVars.forEach((templateVar, index) => {
+        const fieldName = templateVar.replace(/\{\{\s*|\s*\}\}/g, '');
+        jsonStructure[`mapping_${index}`] = templateVar;
+      });
+      
+      // If no template variables found, create a basic structure
+      if (Object.keys(jsonStructure).length === 0) {
+        jsonStructure.xml_output = "XML_OUTPUT";
+      }
+      
+      console.log('📊 Generated JSON structure from XML:', jsonStructure);
+      return jsonStructure;
+    } catch (error) {
+      console.error('❌ XML template parsing error:', error);
+      // Return a fallback structure
+      return { xml_template: "XML_TEMPLATE" };
     }
   }
 

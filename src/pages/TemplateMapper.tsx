@@ -602,7 +602,15 @@ const TemplateMapper = () => {
 
     try {
       const parsedSourceData = JSON.parse(sourceData);
-      const sourceArray = Array.isArray(parsedSourceData) ? parsedSourceData : [parsedSourceData];
+      // Handle different data structures
+      let sourceArray;
+      if (Array.isArray(parsedSourceData)) {
+        sourceArray = parsedSourceData;
+      } else if (parsedSourceData.rows && Array.isArray(parsedSourceData.rows)) {
+        sourceArray = parsedSourceData.rows;
+      } else {
+        sourceArray = [parsedSourceData];
+      }
       
       const conversionResult = TemplateToNodesConverter.convertTemplateToNodes(
         outputTemplate, 
