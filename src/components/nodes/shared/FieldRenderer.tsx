@@ -300,13 +300,21 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                                     return undefined;
                                 }
                                 
-                                // Handle array notation like containers[0]
+                                // Handle array notation like containers[0] or standalone [0]
                                 if (part.includes('[') && part.includes(']')) {
                                     const [arrayKey, indexPart] = part.split('[');
                                     const index = parseInt(indexPart.replace(']', ''));
                                     
-                                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index]) {
+                                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
                                         current = current[arrayKey][index];
+                                    } else {
+                                        return undefined;
+                                    }
+                                } else if (part.startsWith('[') && part.endsWith(']')) {
+                                    // Handle standalone [0] notation
+                                    const index = parseInt(part.slice(1, -1));
+                                    if (Array.isArray(current) && current[index] !== undefined) {
+                                        current = current[index];
                                     } else {
                                         return undefined;
                                     }
