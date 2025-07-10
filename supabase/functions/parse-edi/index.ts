@@ -34,8 +34,13 @@ serve(async (req) => {
       });
     }
 
+    console.log('Raw EDI data:', ediData);
+    console.log('EDI data length:', ediData.length);
+
     // Parse EDI data to semantic JSON
     const parsedData = parseEdiToSemanticJson(ediData);
+    
+    console.log('Parsed data:', JSON.stringify(parsedData, null, 2));
 
     const response: EdiParseResponse = {
       success: true,
