@@ -37,63 +37,6 @@ export class XmlJsonConverter {
     return xmlDeclaration + '\n' + this.objectToXmlElementEnhanced(rootElement || 'root', jsonObj);
   }
 
-  /**
-   * Enhanced XML element generation that handles attributes properly
-   */
-  private static objectToXmlElementEnhanced(tagName: string, obj: any, indent: string = ''): string {
-    if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
-      return `${indent}<${tagName}>${obj}</${tagName}>`;
-    }
-    
-    if (Array.isArray(obj)) {
-      return obj.map(item => this.objectToXmlElementEnhanced(tagName, item, indent)).join('\n');
-    }
-    
-    if (typeof obj === 'object' && obj !== null) {
-      let attributes = '';
-      let content = '';
-      let hasChildren = false;
-      
-      // Handle attributes (keys starting with @)
-      const attrKeys = Object.keys(obj).filter(key => key.startsWith('@'));
-      if (attrKeys.length > 0) {
-        attributes = attrKeys
-          .map(key => ` ${key.substring(1)}="${obj[key]}"`)
-          .join('');
-      }
-      
-      // Handle text content
-      if (obj['#text']) {
-        content = obj['#text'];
-      }
-      
-      // Handle child elements (keys not starting with @ or #)
-      const childKeys = Object.keys(obj).filter(key => !key.startsWith('@') && key !== '#text');
-      for (const key of childKeys) {
-        hasChildren = true;
-        const value = obj[key];
-        if (Array.isArray(value)) {
-          content += '\n' + value.map(item => 
-            this.objectToXmlElementEnhanced(key, item, indent + '\t')
-          ).join('\n');
-        } else {
-          content += '\n' + this.objectToXmlElementEnhanced(key, value, indent + '\t');
-        }
-      }
-      
-      if (hasChildren) {
-        content += '\n' + indent;
-      }
-      
-      if (content.trim()) {
-        return `${indent}<${tagName}${attributes}>${content}</${tagName}>`;
-      } else {
-        return `${indent}<${tagName}${attributes}/>`;
-      }
-    }
-    
-    return `${indent}<${tagName}></${tagName}>`;
-  }
 
   /**
    * Convert DOM element to JSON object
@@ -211,16 +154,16 @@ export class XmlJsonConverter {
         throw new Error('Invalid XML format');
       }
       
-      const result = this.elementToJsonEnhanced(xmlDoc.documentElement);
+      // Get the root element and convert it properly
+      const rootElement = xmlDoc.documentElement;
+      const result = this.elementToJsonEnhanced(rootElement);
       
-      // For your specific case, extract the structure properly
-      if (result && typeof result === 'object') {
-        const rootKey = Object.keys(result)[0] || 'root';
-        return { [rootKey]: result };
-      }
+      console.log('🔍 XML parsed to JSON:', result);
       
-      return result;
+      // Return the structure with the correct root element name
+      return { [rootElement.tagName]: result };
     } catch (error) {
+      console.error('❌ XML parsing error:', error);
       throw new Error(`XML parsing failed: ${error}`);
     }
   }
@@ -231,11 +174,11 @@ export class XmlJsonConverter {
   private static elementToJsonEnhanced(element: Element): any {
     const result: any = {};
     
-    // Handle attributes - store them in a way that makes template generation easier
+    // Handle attributes - store them properly as strings
     if (element.attributes.length > 0) {
       for (let i = 0; i < element.attributes.length; i++) {
         const attr = element.attributes[i];
-        result[`@${attr.name}`] = attr.value;
+        result[`@${attr.name}`] = attr.value; // Ensure it's stored as string
       }
     }
     
@@ -268,7 +211,78 @@ export class XmlJsonConverter {
       }
     }
     
+    // If no content and no attributes, return empty object
+    if (Object.keys(result).length === 0) {
+      return {};
+    }
+    
     return result;
+  }
+
+  /**
+   * Enhanced XML element generation that handles attributes properly
+   */
+  private static objectToXmlElementEnhanced(tagName: string, obj: any, indent: string = ''): string {
+    console.log(`🏗️ Converting to XML element: ${tagName}`, obj);
+    
+    if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+      return `${indent}<${tagName}>${obj}</${tagName}>`;
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.objectToXmlElementEnhanced(tagName, item, indent)).join('\n');
+    }
+    
+    if (typeof obj === 'object' && obj !== null) {
+      let attributes = '';
+      let content = '';
+      let hasChildren = false;
+      
+      // Handle attributes (keys starting with @)
+      const attrKeys = Object.keys(obj).filter(key => key.startsWith('@'));
+      if (attrKeys.length > 0) {
+        attributes = attrKeys
+          .map(key => {
+            const attrName = key.substring(1);
+            const attrValue = obj[key];
+            // Ensure attribute value is properly stringified
+            const stringValue = typeof attrValue === 'string' ? attrValue : String(attrValue);
+            return ` ${attrName}="${stringValue}"`;
+          })
+          .join('');
+      }
+      
+      // Handle text content
+      if (obj['#text']) {
+        content = obj['#text'];
+      }
+      
+      // Handle child elements (keys not starting with @ or #)
+      const childKeys = Object.keys(obj).filter(key => !key.startsWith('@') && key !== '#text');
+      for (const key of childKeys) {
+        hasChildren = true;
+        const value = obj[key];
+        if (Array.isArray(value)) {
+          content += '\n' + value.map(item => 
+            this.objectToXmlElementEnhanced(key, item, indent + '\t')
+          ).join('\n');
+        } else {
+          content += '\n' + this.objectToXmlElementEnhanced(key, value, indent + '\t');
+        }
+      }
+      
+      if (hasChildren) {
+        content += '\n' + indent;
+      }
+      
+      if (content.trim()) {
+        return `${indent}<${tagName}${attributes}>${content}</${tagName}>`;
+      } else {
+        return `${indent}<${tagName}${attributes}/>`;
+      }
+    }
+    
+    return `${indent}<${tagName}></${tagName}>`;
   }
 
   /**

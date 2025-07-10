@@ -220,51 +220,124 @@ const TemplateMapper = () => {
 
   // Generate template based on intelligent analysis results
   const generateIntelligentTemplate = async (analysisResult: AnalysisResult, outputFormat: string, normalizedOutput: any): Promise<string> => {
-    let template = JSON.stringify(normalizedOutput, null, 2);
+    console.log('🔧 Generating intelligent template from:', normalizedOutput);
+    console.log('📋 Analysis result:', analysisResult);
     
-    // Apply detected mapping rules
-    for (const rule of analysisResult.mappingRules) {
-      const targetPattern = `"${rule.targetField}"\\s*:\\s*"[^"]*"`;
-      const regex = new RegExp(targetPattern, 'g');
+    try {
+      // Start with the normalized output structure
+      let workingTemplate = JSON.parse(JSON.stringify(normalizedOutput));
       
-      if (rule.mappingType === 'conditional' && rule.conditions) {
-        // Generate conditional template logic
-        let conditionalLogic = '{{#if ' + rule.sourceField + '}}';
-        rule.conditions.forEach(condition => {
-          conditionalLogic += `{{#eq ${rule.sourceField} "${condition.sourceValue}"}}${condition.targetValue}{{/eq}}`;
-        });
-        conditionalLogic += '{{/if}}';
+      // Apply detected mapping rules to the template
+      for (const rule of analysisResult.mappingRules) {
+        console.log(`🔗 Applying rule: ${rule.sourceField} → ${rule.targetField} (${rule.mappingType})`);
         
-        template = template.replace(regex, `"${rule.targetField}": "${conditionalLogic}"`);
-      } else if (rule.mappingType === 'transform' && rule.transformation) {
-        // Generate transformation template
-        if (rule.transformation.type === 'date_format') {
-          template = template.replace(regex, `"${rule.targetField}": "{{formatDate ${rule.sourceField} 'YYYY-MM-DD'}}"`);
+        if (rule.mappingType === 'conditional' && rule.conditions) {
+          // Generate conditional template logic
+          let conditionalLogic = `{{#if ${rule.sourceField}}}`;
+          rule.conditions.forEach(condition => {
+            conditionalLogic += `{{#eq ${rule.sourceField} "${condition.sourceValue}"}}${condition.targetValue}{{/eq}}`;
+          });
+          conditionalLogic += '{{/if}}';
+          
+          // Apply to the working template
+          workingTemplate = setNestedTemplateValue(workingTemplate, rule.targetField, conditionalLogic);
+        } else if (rule.mappingType === 'transform' && rule.transformation) {
+          // Generate transformation template
+          if (rule.transformation.type === 'date_format') {
+            const transformLogic = `{{formatDate ${rule.sourceField} 'YYYY-MM-DD'}}`;
+            workingTemplate = setNestedTemplateValue(workingTemplate, rule.targetField, transformLogic);
+          }
+        } else {
+          // Direct mapping
+          const templateVar = `{{ ${rule.sourceField} }}`;
+          workingTemplate = setNestedTemplateValue(workingTemplate, rule.targetField, templateVar);
         }
+      }
+      
+      // Apply static values
+      for (const [field, value] of Object.entries(analysisResult.staticValues)) {
+        console.log(`🏷️ Applying static value: ${field} = ${value}`);
+        workingTemplate = setNestedTemplateValue(workingTemplate, field, value);
+      }
+      
+      console.log('✅ Working template after processing:', workingTemplate);
+      
+      // Convert back to appropriate format
+      if (outputFormat === 'xml') {
+        // Find the root element name from the original structure
+        const rootKey = Object.keys(normalizedOutput)[0] || 'persons';
+        const xmlTemplate = XmlJsonConverter.jsonToXml(workingTemplate, rootKey);
+        console.log('🎯 Final XML template:', xmlTemplate);
+        return xmlTemplate;
       } else {
-        // Direct mapping
-        template = template.replace(regex, `"${rule.targetField}": "{{ ${rule.sourceField} }}"`);
+        return JSON.stringify(workingTemplate, null, 2);
+      }
+    } catch (error) {
+      console.error('❌ Template generation error:', error);
+      
+      // Fallback to basic template
+      console.log('🔄 Falling back to basic template generation...');
+      if (outputFormat === 'xml') {
+        // Simple XML template with basic field replacement
+        const rootKey = Object.keys(normalizedOutput)[0] || 'persons';
+        const basicXml = generateBasicXmlTemplate(normalizedOutput[rootKey] || normalizedOutput);
+        return `<?xml version="1.0" encoding="UTF-8"?>\n<${rootKey}>${basicXml}</${rootKey}>`;
+      } else {
+        return JSON.stringify(normalizedOutput, null, 2);
       }
     }
+  };
+
+  // Helper function to set nested template values
+  const setNestedTemplateValue = (obj: any, path: string, value: any): any => {
+    const result = JSON.parse(JSON.stringify(obj));
+    const keys = path.split('.');
+    let current = result;
     
-    // Apply static values
-    for (const [field, value] of Object.entries(analysisResult.staticValues)) {
-      const staticPattern = `"${field}"\\s*:\\s*"[^"]*"`;
-      const staticRegex = new RegExp(staticPattern, 'g');
-      template = template.replace(staticRegex, `"${field}": "${value}"`);
-    }
-    
-    // Convert back to XML if needed
-    if (outputFormat === 'xml') {
-      try {
-        const jsonTemplate = JSON.parse(template);
-        template = XmlJsonConverter.jsonToXml(jsonTemplate);
-      } catch (error) {
-        console.warn('Could not convert template back to XML, keeping JSON format');
+    for (let i = 0; i < keys.length - 1; i++) {
+      const key = keys[i];
+      if (!current[key]) {
+        current[key] = {};
       }
+      current = current[key];
     }
     
-    return template;
+    const finalKey = keys[keys.length - 1];
+    current[finalKey] = value;
+    
+    return result;
+  };
+
+  // Helper function to generate basic XML template
+  const generateBasicXmlTemplate = (obj: any): string => {
+    if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+      return String(obj);
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => generateBasicXmlTemplate(item)).join('\n');
+    }
+    
+    if (typeof obj === 'object' && obj !== null) {
+      let result = '';
+      
+      for (const [key, value] of Object.entries(obj)) {
+        if (key.startsWith('@')) {
+          // Skip attributes for now in basic template
+          continue;
+        }
+        
+        if (Array.isArray(value)) {
+          result += value.map(item => `<${key}>${generateBasicXmlTemplate(item)}</${key}>`).join('\n');
+        } else {
+          result += `<${key}>${generateBasicXmlTemplate(value)}</${key}>`;
+        }
+      }
+      
+      return result;
+    }
+    
+    return '';
   };
 
   const handleGenerateTemplate = useCallback(async () => {
