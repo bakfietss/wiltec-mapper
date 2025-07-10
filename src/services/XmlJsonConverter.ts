@@ -25,13 +25,74 @@ export class XmlJsonConverter {
     
     const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8"?>';
     
-    if (rootElement) {
-      return xmlDeclaration + '\n' + this.objectToXmlElement(rootElement, jsonObj);
+    // Handle the specific case where we have a properly structured object
+    if (typeof jsonObj === 'object' && !Array.isArray(jsonObj)) {
+      // Find the root element (first key that's not an attribute)
+      const rootKey = Object.keys(jsonObj).find(key => !key.startsWith('@')) || 'root';
+      const rootData = jsonObj[rootKey] || jsonObj;
+      
+      return xmlDeclaration + '\n' + this.objectToXmlElementEnhanced(rootElement || rootKey, rootData);
     }
     
-    // If no root element specified, use the first key as root
-    const firstKey = Object.keys(jsonObj)[0];
-    return xmlDeclaration + '\n' + this.objectToXmlElement(firstKey, jsonObj[firstKey]);
+    return xmlDeclaration + '\n' + this.objectToXmlElementEnhanced(rootElement || 'root', jsonObj);
+  }
+
+  /**
+   * Enhanced XML element generation that handles attributes properly
+   */
+  private static objectToXmlElementEnhanced(tagName: string, obj: any, indent: string = ''): string {
+    if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+      return `${indent}<${tagName}>${obj}</${tagName}>`;
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.objectToXmlElementEnhanced(tagName, item, indent)).join('\n');
+    }
+    
+    if (typeof obj === 'object' && obj !== null) {
+      let attributes = '';
+      let content = '';
+      let hasChildren = false;
+      
+      // Handle attributes (keys starting with @)
+      const attrKeys = Object.keys(obj).filter(key => key.startsWith('@'));
+      if (attrKeys.length > 0) {
+        attributes = attrKeys
+          .map(key => ` ${key.substring(1)}="${obj[key]}"`)
+          .join('');
+      }
+      
+      // Handle text content
+      if (obj['#text']) {
+        content = obj['#text'];
+      }
+      
+      // Handle child elements (keys not starting with @ or #)
+      const childKeys = Object.keys(obj).filter(key => !key.startsWith('@') && key !== '#text');
+      for (const key of childKeys) {
+        hasChildren = true;
+        const value = obj[key];
+        if (Array.isArray(value)) {
+          content += '\n' + value.map(item => 
+            this.objectToXmlElementEnhanced(key, item, indent + '\t')
+          ).join('\n');
+        } else {
+          content += '\n' + this.objectToXmlElementEnhanced(key, value, indent + '\t');
+        }
+      }
+      
+      if (hasChildren) {
+        content += '\n' + indent;
+      }
+      
+      if (content.trim()) {
+        return `${indent}<${tagName}${attributes}>${content}</${tagName}>`;
+      } else {
+        return `${indent}<${tagName}${attributes}/>`;
+      }
+    }
+    
+    return `${indent}<${tagName}></${tagName}>`;
   }
 
   /**
@@ -136,6 +197,78 @@ export class XmlJsonConverter {
     }
     
     return `${indent}<${tagName}></${tagName}>`;
+  }
+
+  /**
+   * Enhanced XML to JSON conversion that better handles your specific XML structure
+   */
+  static xmlToJsonEnhanced(xmlString: string): any {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+      
+      if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
+        throw new Error('Invalid XML format');
+      }
+      
+      const result = this.elementToJsonEnhanced(xmlDoc.documentElement);
+      
+      // For your specific case, extract the structure properly
+      if (result && typeof result === 'object') {
+        const rootKey = Object.keys(result)[0] || 'root';
+        return { [rootKey]: result };
+      }
+      
+      return result;
+    } catch (error) {
+      throw new Error(`XML parsing failed: ${error}`);
+    }
+  }
+
+  /**
+   * Enhanced element to JSON conversion
+   */
+  private static elementToJsonEnhanced(element: Element): any {
+    const result: any = {};
+    
+    // Handle attributes - store them in a way that makes template generation easier
+    if (element.attributes.length > 0) {
+      for (let i = 0; i < element.attributes.length; i++) {
+        const attr = element.attributes[i];
+        result[`@${attr.name}`] = attr.value;
+      }
+    }
+    
+    // Handle child elements
+    const children = Array.from(element.children);
+    if (children.length > 0) {
+      for (const child of children) {
+        const childName = child.tagName;
+        const childValue = this.elementToJsonEnhanced(child);
+        
+        if (result[childName]) {
+          // Convert to array if multiple elements with same name
+          if (!Array.isArray(result[childName])) {
+            result[childName] = [result[childName]];
+          }
+          result[childName].push(childValue);
+        } else {
+          result[childName] = childValue;
+        }
+      }
+    }
+    
+    // Handle text content
+    const textContent = element.textContent?.trim();
+    if (textContent && children.length === 0) {
+      if (Object.keys(result).length > 0) {
+        result['#text'] = textContent;
+      } else {
+        return textContent;
+      }
+    }
+    
+    return result;
   }
 
   /**

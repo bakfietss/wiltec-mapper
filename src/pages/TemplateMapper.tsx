@@ -132,7 +132,7 @@ const TemplateMapper = () => {
       let normalizedOutput;
       if (detectedFormat === 'xml') {
         console.log('🔧 Converting XML to JSON for analysis...');
-        normalizedOutput = XmlJsonConverter.xmlToJson(outputExample);
+        normalizedOutput = XmlJsonConverter.xmlToJsonEnhanced(outputExample);
         console.log('✅ Normalized XML output:', normalizedOutput);
       } else {
         normalizedOutput = JSON.parse(outputExample);
@@ -194,7 +194,7 @@ const TemplateMapper = () => {
         const detectedFormat = XmlJsonConverter.detectFormat(outputExample);
         let normalizedOutput;
         if (detectedFormat === 'xml') {
-          normalizedOutput = XmlJsonConverter.xmlToJson(outputExample);
+          normalizedOutput = XmlJsonConverter.xmlToJsonEnhanced(outputExample);
         } else {
           normalizedOutput = JSON.parse(outputExample);
         }
