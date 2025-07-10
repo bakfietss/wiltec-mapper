@@ -334,7 +334,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         
                         const sourceFieldValue = getNestedValue(dataRecord, field.id);
                         
-                        if (sourceFieldValue !== undefined && sourceFieldValue !== null && sourceFieldValue !== '') {
+                        if (sourceFieldValue !== undefined && sourceFieldValue !== null) {
                             // Handle array/object display
                             if (Array.isArray(sourceFieldValue)) {
                                 return (
@@ -352,7 +352,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                                 return (
                                     <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
                                         {typeof sourceFieldValue === 'string' 
-                                            ? `"${sourceFieldValue}"` 
+                                            ? (sourceFieldValue === '' ? '""' : `"${sourceFieldValue}"`)
                                             : String(sourceFieldValue)}
                                     </span>
                                 );
