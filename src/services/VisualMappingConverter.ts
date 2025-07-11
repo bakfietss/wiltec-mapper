@@ -55,10 +55,15 @@ export class VisualMappingConverter {
     let yOffset = 300;
     
     mappings.forEach((mapping, index) => {
+      console.log(`🔧 Processing mapping ${index + 1}:`, mapping);
+      
       if (mapping.mappingType === 'direct') {
         // Direct mapping - create edge directly
         const sourceFieldId = this.findFieldIdByPath(sourceFields, mapping.sourceField);
         const targetFieldId = this.findFieldIdByPath(targetFields, mapping.targetField);
+        
+        console.log(`🔗 Direct mapping: ${mapping.sourceField} → ${mapping.targetField}`);
+        console.log(`📍 Source field ID: ${sourceFieldId}, Target field ID: ${targetFieldId}`);
         
         if (sourceFieldId && targetFieldId) {
           edges.push({
@@ -69,6 +74,8 @@ export class VisualMappingConverter {
             targetHandle: targetFieldId,
             type: 'default'
           });
+        } else {
+          console.warn(`⚠️ Could not find field IDs for direct mapping: ${mapping.sourceField} → ${mapping.targetField}`);
         }
       } else if (mapping.mappingType === 'concat' && mapping.sourceFields) {
         // Concatenation - create concat transform node
@@ -269,11 +276,13 @@ export class VisualMappingConverter {
   }
   
   private static createTargetFieldsFromMappings(mappings: FieldMapping[]): SchemaField[] {
+    console.log('🎯 Creating target fields from mappings:', mappings);
     const fieldMap = new Map<string, SchemaField>();
     
     mappings.forEach((mapping, index) => {
       const fieldPath = mapping.targetField;
       const parts = fieldPath.split('.');
+      console.log(`📋 Processing target field: ${fieldPath}, parts:`, parts);
       
       // Create nested structure
       let currentPath = '';
@@ -284,6 +293,7 @@ export class VisualMappingConverter {
         
         if (!fieldMap.has(currentPath)) {
           const fieldId = `target-field-${Date.now()}-${index}-${partIndex}`;
+          console.log(`🆔 Creating field: ${currentPath} with ID: ${fieldId}`);
           
           fieldMap.set(currentPath, {
             id: fieldId,
