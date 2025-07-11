@@ -309,26 +309,42 @@ export class VisualMappingConverter {
     // Build hierarchy
     const rootFields: SchemaField[] = [];
     const allFields = Array.from(fieldMap.values());
+    console.log('🗂️ All created fields:', allFields);
     
-    allFields.forEach(field => {
-      const fullPath = mappings.find(m => m.targetField.includes(field.name))?.targetField || '';
-      const parts = fullPath.split('.');
-      
-      if (parts.length === 1 || parts[parts.length - 1].replace('@', '') === field.name) {
-        if (parts.length === 1) {
-          rootFields.push(field);
-        } else {
-          // Find parent and add as child
-          const parentPath = parts.slice(0, -1).join('.');
-          const parent = allFields.find(f => mappings.some(m => m.targetField === parentPath));
-          if (parent && !parent.children?.some(c => c.id === field.id)) {
-            parent.children = parent.children || [];
-            parent.children.push(field);
-          }
-        }
+    // Group fields by their hierarchy
+    const rootFieldNames = new Set<string>();
+    mappings.forEach(mapping => {
+      const parts = mapping.targetField.split('.');
+      if (parts.length > 0) {
+        rootFieldNames.add(parts[0]);
       }
     });
     
+    console.log('🌳 Root field names:', Array.from(rootFieldNames));
+    
+    // Build the hierarchy properly
+    rootFieldNames.forEach(rootName => {
+      const rootField = allFields.find(f => {
+        const matchingMapping = mappings.find(m => m.targetField.startsWith(rootName));
+        return matchingMapping && matchingMapping.targetField.split('.')[0] === rootName;
+      });
+      
+      if (rootField) {
+        // Find all children for this root
+        const children = allFields.filter(f => {
+          const matchingMapping = mappings.find(m => m.targetField.includes(f.name));
+          if (!matchingMapping) return false;
+          const parts = matchingMapping.targetField.split('.');
+          return parts.length > 1 && parts[0] === rootName && parts[parts.length - 1].replace('@', '') === f.name;
+        });
+        
+        rootField.children = children;
+        rootFields.push(rootField);
+        console.log(`🌿 Root field ${rootName} with ${children.length} children:`, children);
+      }
+    });
+    
+    console.log('🎯 Final target fields structure:', rootFields);
     return rootFields.length > 0 ? rootFields : allFields;
   }
   
