@@ -638,10 +638,10 @@ const TemplateMapper = () => {
   }, [transformedResults, toast]);
 
   const handleConvertToVisualMapping = useCallback(() => {
-    if (!outputTemplate || !sourceData) {
+    if (!comparisonResult) {
       toast({ 
-        title: "Missing Data", 
-        description: "Please generate a template first and have source data",
+        title: "Missing Analysis", 
+        description: "Please run comprehensive analysis first to generate mappings",
         variant: "destructive" 
       });
       return;
@@ -659,12 +659,22 @@ const TemplateMapper = () => {
         sourceArray = [parsedSourceData];
       }
       
-      const conversionResult = TemplateToNodesConverter.convertTemplateToNodes(
-        outputTemplate, 
-        sourceArray
-      );
+      console.log('🚀 Converting to visual mapping with:', {
+        sourceData: sourceArray,
+        mappings: comparisonResult.mappings,
+        outputTemplate,
+        outputFormat
+      });
       
-      TemplateToNodesConverter.storeConversionData(conversionResult);
+      const conversionData = {
+        sourceData: sourceArray,
+        outputTemplate,
+        mappings: comparisonResult.mappings,
+        outputFormat: outputFormat as 'xml' | 'json'
+      };
+      
+      // Store in localStorage for the canvas to pick up
+      localStorage.setItem('visualMappingData', JSON.stringify(conversionData));
       
       toast({ 
         title: "Converting to visual mapping!", 

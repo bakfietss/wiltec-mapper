@@ -57,8 +57,37 @@ const Pipeline = () => {
   useEffect(() => {
     const savedData = sessionStorage.getItem('mappingSessionData');
     const conversionData = sessionStorage.getItem('templateMappingConversion');
+    const visualMappingData = localStorage.getItem('visualMappingData');
     
-    if (conversionData) {
+    // Check for visual mapping conversion data from template mapper (priority)
+    if (visualMappingData) {
+      console.log('🎯 Loading visual mapping data from template mapper...');
+      try {
+        const conversionDataParsed = JSON.parse(visualMappingData);
+        console.log('📥 Visual mapping data:', conversionDataParsed);
+        
+        // Convert the mapping analysis to visual nodes using VisualMappingConverter
+        const { nodes: convertedNodes, edges: convertedEdges } = VisualMappingConverter.convertAnalysisToNodes(conversionDataParsed);
+        
+        console.log('🔄 Converted nodes:', convertedNodes);
+        console.log('🔄 Converted edges:', convertedEdges);
+        
+        setNodes(convertedNodes);
+        setEdges(convertedEdges);
+        
+        // Set sample data from source data
+        if (conversionDataParsed.sourceData) {
+          setSampleData(conversionDataParsed.sourceData);
+        }
+        
+        // Clear the conversion data
+        localStorage.removeItem('visualMappingData');
+        
+        console.log('✅ Visual mapping conversion loaded successfully');
+      } catch (error) {
+        console.error('❌ Failed to load visual mapping conversion:', error);
+      }
+    } else if (conversionData) {
       console.log('🔄 Loading template mapper conversion...');
       try {
         const parsedConversion = JSON.parse(conversionData);
