@@ -10,16 +10,23 @@ import { useNavigate } from 'react-router-dom';
 
 const TemplateMapper = () => {
   const [sourceData, setSourceData] = useState('');
+  const [targetData, setTargetData] = useState('');
   const [generatedTemplate, setGeneratedTemplate] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleDataUpload = useCallback((data: any[]) => {
+  const handleSourceDataUpload = useCallback((data: any[]) => {
     setSourceData(JSON.stringify(data, null, 2));
     setGeneratedTemplate('');
-    toast({ title: "Data uploaded successfully!" });
+    toast({ title: "Source data uploaded successfully!" });
+  }, [toast]);
+
+  const handleTargetDataUpload = useCallback((data: any[]) => {
+    setTargetData(JSON.stringify(data, null, 2));
+    setGeneratedTemplate('');
+    toast({ title: "Target data uploaded successfully!" });
   }, [toast]);
 
   // Simple conversion logic - you can build your own here
@@ -171,7 +178,7 @@ const TemplateMapper = () => {
           </p>
         </div>
 
-        {/* Data Upload */}
+        {/* Source Data Upload */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -181,7 +188,7 @@ const TemplateMapper = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <DataUploadZone 
-              onDataUpload={handleDataUpload}
+              onDataUpload={handleSourceDataUpload}
               acceptedTypes={['JSON', 'CSV', 'Excel']}
               title="Upload Source Data"
               description="Drag and drop your data file or click to browse"
@@ -191,7 +198,7 @@ const TemplateMapper = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-slate-700">
-                    Uploaded Data Preview
+                    Source Data Preview
                   </span>
                   <Button
                     size="sm"
@@ -206,6 +213,47 @@ const TemplateMapper = () => {
                   onChange={(e) => setSourceData(e.target.value)}
                   className="min-h-[200px] font-mono text-sm"
                   placeholder="Your source data will appear here..."
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Target Data Upload */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Target Data
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <DataUploadZone 
+              onDataUpload={handleTargetDataUpload}
+              acceptedTypes={['JSON', 'CSV', 'Excel']}
+              title="Upload Target Data"
+              description="Drag and drop your target data file or click to browse"
+            />
+            
+            {targetData && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-slate-700">
+                    Target Data Preview
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(targetData)}
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <Textarea
+                  value={targetData}
+                  onChange={(e) => setTargetData(e.target.value)}
+                  className="min-h-[200px] font-mono text-sm"
+                  placeholder="Your target data will appear here..."
                 />
               </div>
             )}
