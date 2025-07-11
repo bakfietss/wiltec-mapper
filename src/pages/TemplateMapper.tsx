@@ -787,6 +787,22 @@ const TemplateMapper = () => {
                     </div>
                   </div>
                 )}
+                
+                {/* Visual Mapping Creation Button */}
+                <div className="mt-4">
+                  <Button
+                    onClick={handleConvertToVisualMapping}
+                    disabled={!comparisonResult}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    size="lg"
+                  >
+                    <Map className="h-4 w-4 mr-2" />
+                    Create Visual Mapping
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Convert analysis results into visual mapping nodes on the canvas
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
