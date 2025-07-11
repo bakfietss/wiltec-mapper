@@ -243,7 +243,7 @@ export class VisualMappingConverter {
     
     Object.keys(sampleData).forEach((key, index) => {
       const value = sampleData[key];
-      const fieldId = `field-${Date.now()}-${prefix}-${index}`;
+      const fieldId = `${prefix}${key}`;
       const fieldPath = prefix ? `${prefix}.${key}` : key;
       
       if (Array.isArray(value)) {
@@ -252,7 +252,7 @@ export class VisualMappingConverter {
           name: key,
           type: 'array',
           children: value.length > 0 && typeof value[0] === 'object' 
-            ? this.extractFieldsFromData(value[0], fieldId)
+            ? this.extractFieldsFromData(value[0], `${fieldId}.`)
             : []
         });
       } else if (value && typeof value === 'object') {
@@ -260,7 +260,7 @@ export class VisualMappingConverter {
           id: fieldId,
           name: key,
           type: 'object',
-          children: this.extractFieldsFromData(value, fieldId)
+          children: this.extractFieldsFromData(value, `${fieldId}.`)
         });
       } else {
         fields.push({
@@ -277,75 +277,56 @@ export class VisualMappingConverter {
   
   private static createTargetFieldsFromMappings(mappings: FieldMapping[]): SchemaField[] {
     console.log('🎯 Creating target fields from mappings:', mappings);
-    const fieldMap = new Map<string, SchemaField>();
+    
+    // Simple approach: create a flat structure first, then build hierarchy
+    const targetFields: SchemaField[] = [];
+    const processedPaths = new Set<string>();
     
     mappings.forEach((mapping, index) => {
       const fieldPath = mapping.targetField;
       const parts = fieldPath.split('.');
-      console.log(`📋 Processing target field: ${fieldPath}, parts:`, parts);
       
-      // Create nested structure
-      let currentPath = '';
-      parts.forEach((part, partIndex) => {
-        const isAttribute = part.startsWith('@');
-        const cleanPart = part.replace('@', '');
-        currentPath = currentPath ? `${currentPath}.${part}` : part;
-        
-        if (!fieldMap.has(currentPath)) {
-          const fieldId = `target-field-${Date.now()}-${index}-${partIndex}`;
-          console.log(`🆔 Creating field: ${currentPath} with ID: ${fieldId}`);
+      console.log(`📋 Processing target field: ${fieldPath}`);
+      
+      // Create root element if not exists
+      if (!processedPaths.has(parts[0])) {
+        const rootField: SchemaField = {
+          id: `target-${parts[0]}`,
+          name: parts[0],
+          type: 'object',
+          children: []
+        };
+        targetFields.push(rootField);
+        processedPaths.add(parts[0]);
+        console.log(`🌳 Created root field: ${parts[0]}`);
+      }
+      
+      // For nested fields (like person.@personid_extern)
+      if (parts.length > 1) {
+        const rootField = targetFields.find(f => f.name === parts[0]);
+        if (rootField) {
+          const leafField = parts[parts.length - 1];
+          const isAttribute = leafField.startsWith('@');
+          const cleanName = leafField.replace('@', '');
           
-          fieldMap.set(currentPath, {
-            id: fieldId,
-            name: cleanPart,
-            type: partIndex === parts.length - 1 ? 'string' : 'object',
-            isAttribute: isAttribute,
-            children: []
-          });
+          const childField: SchemaField = {
+            id: `target-${parts[0]}-${cleanName}`,
+            name: cleanName,
+            type: 'string',
+            isAttribute: isAttribute
+          };
+          
+          if (!rootField.children?.find(c => c.name === cleanName)) {
+            rootField.children = rootField.children || [];
+            rootField.children.push(childField);
+            console.log(`🌿 Added child field: ${cleanName} to ${parts[0]}`);
+          }
         }
-      });
-    });
-    
-    // Build hierarchy
-    const rootFields: SchemaField[] = [];
-    const allFields = Array.from(fieldMap.values());
-    console.log('🗂️ All created fields:', allFields);
-    
-    // Group fields by their hierarchy
-    const rootFieldNames = new Set<string>();
-    mappings.forEach(mapping => {
-      const parts = mapping.targetField.split('.');
-      if (parts.length > 0) {
-        rootFieldNames.add(parts[0]);
       }
     });
     
-    console.log('🌳 Root field names:', Array.from(rootFieldNames));
-    
-    // Build the hierarchy properly
-    rootFieldNames.forEach(rootName => {
-      const rootField = allFields.find(f => {
-        const matchingMapping = mappings.find(m => m.targetField.startsWith(rootName));
-        return matchingMapping && matchingMapping.targetField.split('.')[0] === rootName;
-      });
-      
-      if (rootField) {
-        // Find all children for this root
-        const children = allFields.filter(f => {
-          const matchingMapping = mappings.find(m => m.targetField.includes(f.name));
-          if (!matchingMapping) return false;
-          const parts = matchingMapping.targetField.split('.');
-          return parts.length > 1 && parts[0] === rootName && parts[parts.length - 1].replace('@', '') === f.name;
-        });
-        
-        rootField.children = children;
-        rootFields.push(rootField);
-        console.log(`🌿 Root field ${rootName} with ${children.length} children:`, children);
-      }
-    });
-    
-    console.log('🎯 Final target fields structure:', rootFields);
-    return rootFields.length > 0 ? rootFields : allFields;
+    console.log('🎯 Final target fields structure:', targetFields);
+    return targetFields;
   }
   
   private static findFieldIdByPath(fields: SchemaField[], path: string): string | null {
