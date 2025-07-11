@@ -10,6 +10,7 @@ import { TemplateGenerationService } from '../services/TemplateGenerationService
 import { TemplateToNodesConverter } from '../services/TemplateToNodesConverter';
 import { XmlJsonConverter } from '../services/XmlJsonConverter';
 import { IntelligentMappingService, type MappingRule, type AnalysisResult } from '../services/IntelligentMappingService';
+import { MappingComparisonService, type ComparisonResult } from '../services/MappingComparisonService';
 import { useNavigate } from 'react-router-dom';
 
 const TemplateMapper = () => {
@@ -24,6 +25,7 @@ const TemplateMapper = () => {
   const [copied, setCopied] = useState(false);
   const [outputFormat, setOutputFormat] = useState<'xml' | 'json'>('json');
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const [batchMode, setBatchMode] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -67,6 +69,7 @@ const TemplateMapper = () => {
     setTransformedResults('');
     setFieldConnections([]);
     setAnalysisResult(null);
+    setComparisonResult(null);
     toast({ title: "Data uploaded successfully!" });
   }, [toast]);
 
@@ -213,6 +216,50 @@ const TemplateMapper = () => {
       } catch (fallbackError) {
         console.error('❌ Fallback also failed:', fallbackError);
       }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [sourceData, outputExample, toast]);
+
+  // New comprehensive comparison analysis
+  const handleComprehensiveAnalysis = useCallback(async () => {
+    if (!sourceData || !outputExample) {
+      toast({ 
+        title: "Missing Data", 
+        description: "Please provide both source data and output examples for comprehensive analysis",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    console.log('🔍 Starting comprehensive mapping comparison...');
+    
+    try {
+      const result = MappingComparisonService.analyzeInputOutput(sourceData, outputExample);
+      console.log('📊 Comprehensive analysis result:', result);
+      
+      setComparisonResult(result);
+      
+      // Generate template from the comparison result
+      const detectedFormat = XmlJsonConverter.detectFormat(outputExample);
+      const generatedTemplate = MappingComparisonService.generateMappingTemplate(result, detectedFormat as 'xml' | 'json');
+      setOutputTemplate(generatedTemplate);
+      setOutputFormat(detectedFormat as 'xml' | 'json');
+      
+      toast({ 
+        title: "🔍 Comprehensive Analysis Complete!", 
+        description: `Found ${result.mappings.length} mappings: ${result.directMappings} direct, ${result.transformationsNeeded} transforms, ${result.staticValues} static values` 
+      });
+      
+    } catch (error) {
+      console.error('❌ Comprehensive analysis error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
+      toast({ 
+        title: "Analysis failed", 
+        description: `${errorMessage}. Check console for details.`, 
+        variant: "destructive" 
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -646,6 +693,105 @@ const TemplateMapper = () => {
           <p className="text-lg text-gray-600">Transform your data using custom templates with our Weavo-style interface</p>
         </div>
 
+        {/* Comprehensive Analysis Results Panel */}
+        {comparisonResult && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                Comprehensive Mapping Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div className="bg-green-50 p-3 rounded">
+                  <div className="text-lg font-bold text-green-700">{Math.round(comparisonResult.confidence * 100)}%</div>
+                  <div className="text-sm text-green-600">Overall Confidence</div>
+                </div>
+                <div className="bg-blue-50 p-3 rounded">
+                  <div className="text-lg font-bold text-blue-700">{comparisonResult.directMappings}</div>
+                  <div className="text-sm text-blue-600">Direct Mappings</div>
+                </div>
+                <div className="bg-orange-50 p-3 rounded">
+                  <div className="text-lg font-bold text-orange-700">{comparisonResult.transformationsNeeded}</div>
+                  <div className="text-sm text-orange-600">Transformations</div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded">
+                  <div className="text-lg font-bold text-purple-700">{comparisonResult.staticValues}</div>
+                  <div className="text-sm text-purple-600">Static Values</div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Detected Mappings:</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                  {comparisonResult.mappings.map((mapping, index) => (
+                    <div key={index} className={`p-2 rounded text-xs border-l-4 ${
+                      mapping.mappingType === 'direct' ? 'bg-green-50 border-green-500' :
+                      mapping.mappingType === 'concat' ? 'bg-blue-50 border-blue-500' :
+                      mapping.mappingType === 'transform' ? 'bg-orange-50 border-orange-500' :
+                      mapping.mappingType === 'conditional' ? 'bg-yellow-50 border-yellow-500' :
+                      'bg-gray-50 border-gray-500'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {mapping.sourceFields ? (
+                          <>
+                            <span className="font-mono bg-white px-1 rounded text-xs">{mapping.sourceFields.join(' + ')}</span>
+                            <ArrowRight className="h-3 w-3 text-gray-400" />
+                          </>
+                        ) : mapping.sourceField ? (
+                          <>
+                            <span className="font-mono bg-white px-1 rounded text-xs">{mapping.sourceField}</span>
+                            <ArrowRight className="h-3 w-3 text-gray-400" />
+                          </>
+                        ) : (
+                          <span className="font-mono bg-white px-1 rounded text-xs">static</span>
+                        )}
+                        <span className="font-mono bg-white px-1 rounded text-xs">{mapping.targetField}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          mapping.mappingType === 'direct' ? 'bg-green-100 text-green-700' :
+                          mapping.mappingType === 'concat' ? 'bg-blue-100 text-blue-700' :
+                          mapping.mappingType === 'transform' ? 'bg-orange-100 text-orange-700' :
+                          mapping.mappingType === 'conditional' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {mapping.mappingType}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {Math.round(mapping.confidence * 100)}%
+                        </span>
+                      </div>
+                      {mapping.transformation && (
+                        <div className="text-xs text-gray-600 ml-4">
+                          {mapping.transformation.type}: {JSON.stringify(mapping.transformation.details)}
+                        </div>
+                      )}
+                      {mapping.staticValue !== undefined && (
+                        <div className="text-xs text-gray-600 ml-4">
+                          Value: {mapping.staticValue}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                {comparisonResult.suggestions.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-medium text-sm mb-2">Suggestions:</h4>
+                    <div className="space-y-1">
+                      {comparisonResult.suggestions.map((suggestion, index) => (
+                        <div key={index} className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                          💡 {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Analysis Results Panel */}
         {analysisResult && (
           <Card className="mb-6">
@@ -839,10 +985,21 @@ const TemplateMapper = () => {
                   
                   <div className="space-y-2">
                     <Button
+                      onClick={handleComprehensiveAnalysis}
+                      disabled={!outputExample || !sourceData || isAnalyzing}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      size="lg"
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      {isAnalyzing ? "Analyzing..." : "🔍 Comprehensive Analysis"}
+                    </Button>
+                    
+                    <Button
                       onClick={handleIntelligentAnalysis}
                       disabled={!outputExample || !sourceData || isAnalyzing}
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                       size="lg"
+                      variant="outline"
                     >
                       <Brain className="h-4 w-4 mr-2" />
                       {isAnalyzing ? "Analyzing 10K+ records..." : "🧠 Intelligent Analysis"}
