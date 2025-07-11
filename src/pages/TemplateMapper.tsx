@@ -768,7 +768,7 @@ const TemplateMapper = () => {
                       )}
                       {mapping.staticValue !== undefined && (
                         <div className="text-xs text-gray-600 ml-4">
-                          Value: {mapping.staticValue}
+                          Value: {typeof mapping.staticValue === 'object' ? JSON.stringify(mapping.staticValue) : String(mapping.staticValue)}
                         </div>
                       )}
                     </div>

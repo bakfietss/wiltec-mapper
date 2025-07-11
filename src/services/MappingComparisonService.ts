@@ -34,8 +34,11 @@ export class MappingComparisonService {
       
       // Parse and normalize input data
       const parsedInput = JSON.parse(inputData);
-      const inputArray = Array.isArray(parsedInput) ? parsedInput : 
-                        parsedInput.rows ? parsedInput.rows : [parsedInput];
+      let inputArray = Array.isArray(parsedInput) ? parsedInput : 
+                      parsedInput.rows ? parsedInput.rows : [parsedInput];
+      
+      console.log('📊 Parsed input structure:', parsedInput);
+      console.log('📊 Input array for analysis:', inputArray);
       
       // Detect and normalize output format
       const outputFormat = XmlJsonConverter.detectFormat(outputData);
@@ -43,6 +46,14 @@ export class MappingComparisonService {
       
       if (outputFormat === 'xml') {
         normalizedOutput = XmlJsonConverter.xmlToJsonEnhanced(outputData);
+        console.log('🔧 Raw XML conversion result:', normalizedOutput);
+        
+        // If the result has a root wrapper, extract the actual data structure
+        const rootKeys = Object.keys(normalizedOutput);
+        if (rootKeys.length === 1 && typeof normalizedOutput[rootKeys[0]] === 'object') {
+          normalizedOutput = normalizedOutput[rootKeys[0]];
+          console.log('🎯 Extracted structure from root:', normalizedOutput);
+        }
       } else {
         normalizedOutput = JSON.parse(outputData);
       }
@@ -105,8 +116,12 @@ export class MappingComparisonService {
         const fieldPath = prefix ? `${prefix}.${key}` : key;
         fields.add(fieldPath);
         
-        if (obj[key] && typeof obj[key] === 'object') {
-          this.extractAllFields(obj[key], fieldPath, fields);
+        const value = obj[key];
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          this.extractAllFields(value, fieldPath, fields);
+        } else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+          // For arrays, extract fields from the first item
+          this.extractAllFields(value[0], fieldPath, fields);
         }
       });
     }
@@ -121,14 +136,14 @@ export class MappingComparisonService {
     
     targetFields.forEach(targetField => {
       const targetValue = this.getNestedValue(output, targetField);
-      console.log(`\n🎯 Analyzing target field: ${targetField} = ${targetValue}`);
+      console.log(`\n🎯 Analyzing target field: ${targetField} = ${JSON.stringify(targetValue)}`);
       
       // Try to find the best mapping for this target field
       const bestMapping = this.findBestMappingForTarget(inputArray, targetField, targetValue, sourceFields);
       
       if (bestMapping) {
         mappings.push(bestMapping);
-        console.log(`✅ Found mapping: ${bestMapping.sourceField || bestMapping.sourceFields?.join(' + ')} → ${targetField} (${bestMapping.mappingType})`);
+        console.log(`✅ Found mapping: ${bestMapping.sourceField || bestMapping.sourceFields?.join(' + ')} → ${targetField} (${bestMapping.mappingType}), confidence: ${bestMapping.confidence}`);
       } else {
         // No mapping found - this is a static value
         mappings.push({
@@ -138,7 +153,7 @@ export class MappingComparisonService {
           confidence: 1.0,
           staticValue: targetValue
         });
-        console.log(`📌 Static value: ${targetField} = ${targetValue}`);
+        console.log(`📌 Static value: ${targetField} = ${JSON.stringify(targetValue)}`);
       }
     });
     
