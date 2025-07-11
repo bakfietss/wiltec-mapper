@@ -638,10 +638,10 @@ const TemplateMapper = () => {
   }, [transformedResults, toast]);
 
   const handleConvertToVisualMapping = useCallback(() => {
-    if (!comparisonResult) {
+    if (!outputTemplate || !sourceData) {
       toast({ 
-        title: "Missing Analysis", 
-        description: "Please run comprehensive analysis first to generate mappings",
+        title: "Missing Data", 
+        description: "Please generate a template first and have source data",
         variant: "destructive" 
       });
       return;
@@ -659,22 +659,12 @@ const TemplateMapper = () => {
         sourceArray = [parsedSourceData];
       }
       
-      console.log('🚀 Converting to visual mapping with:', {
-        sourceData: sourceArray,
-        mappings: comparisonResult.mappings,
-        outputTemplate,
-        outputFormat
-      });
+      const conversionResult = TemplateToNodesConverter.convertTemplateToNodes(
+        outputTemplate, 
+        sourceArray
+      );
       
-      const conversionData = {
-        sourceData: sourceArray,
-        outputTemplate,
-        mappings: comparisonResult.mappings,
-        outputFormat: outputFormat as 'xml' | 'json'
-      };
-      
-      // Store in localStorage for the canvas to pick up
-      localStorage.setItem('visualMappingData', JSON.stringify(conversionData));
+      TemplateToNodesConverter.storeConversionData(conversionResult);
       
       toast({ 
         title: "Converting to visual mapping!", 
@@ -797,22 +787,6 @@ const TemplateMapper = () => {
                     </div>
                   </div>
                 )}
-                
-                {/* Visual Mapping Creation Button */}
-                <div className="mt-4">
-                  <Button
-                    onClick={handleConvertToVisualMapping}
-                    disabled={!comparisonResult}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    size="lg"
-                  >
-                    <Map className="h-4 w-4 mr-2" />
-                    Create Visual Mapping
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Convert analysis results into visual mapping nodes on the canvas
-                  </p>
-                </div>
               </div>
             </CardContent>
           </Card>

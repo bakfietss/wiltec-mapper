@@ -17,7 +17,6 @@ import '@xyflow/react/dist/style.css';
 import { useLocation } from 'react-router-dom';
 
 import { nodeTypes, useNodeFactories } from './NodeFactories';
-import { VisualMappingConverter } from '../services/VisualMappingConverter';
 import { useFieldStore } from '../store/fieldStore';
 import DataSidebar from '../components/nodes/DataSidebar';
 import MappingToolbar from '../components/nodes/MappingToolbar';
@@ -43,7 +42,6 @@ const initialNodes: Node[] = [
 const initialEdges: Edge[] = [];
 
 const Pipeline = () => {
-  const location = useLocation();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -53,87 +51,21 @@ const Pipeline = () => {
   const [currentCategory, setCurrentCategory] = useState<string>('General');
   const [currentTransformType, setCurrentTransformType] = useState<string>('JsonToJson');
 
-  // Load session data and check for template mapper conversion
+  // Load session data on component mount
   useEffect(() => {
-    const savedData = sessionStorage.getItem('mappingSessionData');
-    const conversionData = sessionStorage.getItem('templateMappingConversion');
-    const visualMappingData = localStorage.getItem('visualMappingData');
-    
-    // Check for visual mapping conversion data from template mapper (priority)
-    if (visualMappingData) {
-      console.log('🎯 Loading visual mapping data from template mapper...');
-      try {
-        const conversionDataParsed = JSON.parse(visualMappingData);
-        console.log('📥 Visual mapping data:', conversionDataParsed);
-        
-        // Convert the mapping analysis to visual nodes using VisualMappingConverter
-        const { nodes: convertedNodes, edges: convertedEdges } = VisualMappingConverter.convertAnalysisToNodes(conversionDataParsed);
-        
-        console.log('🔄 Converted nodes:', convertedNodes);
-        console.log('🔄 Converted edges:', convertedEdges);
-        
-        setNodes(convertedNodes);
-        setEdges(convertedEdges);
-        
-        // Set sample data from source data
-        if (conversionDataParsed.sourceData) {
-          setSampleData(conversionDataParsed.sourceData);
-        }
-        
-        // Clear the conversion data
-        localStorage.removeItem('visualMappingData');
-        
-        console.log('✅ Visual mapping conversion loaded successfully');
-      } catch (error) {
-        console.error('❌ Failed to load visual mapping conversion:', error);
-      }
-    } else if (conversionData) {
-      console.log('🔄 Loading template mapper conversion...');
-      try {
-        const parsedConversion = JSON.parse(conversionData);
-        const { nodes: convertedNodes, edges: convertedEdges } = VisualMappingConverter.convertAnalysisToNodes(parsedConversion);
-        
-        setNodes(convertedNodes);
-        setEdges(convertedEdges);
-        
-        // Clear the conversion data
-        sessionStorage.removeItem('templateMappingConversion');
-        
-        console.log('✅ Template mapper conversion loaded successfully');
-      } catch (error) {
-        console.error('❌ Failed to load template mapper conversion:', error);
-      }
-    } else if (savedData) {
-      console.log('📂 Loading saved mapping session...');
-      try {
-        const parsed = JSON.parse(savedData);
-        if (parsed.nodes) setNodes(parsed.nodes);
-        if (parsed.edges) setEdges(parsed.edges);
-        if (parsed.sampleData) setSampleData(parsed.sampleData);
-        if (parsed.mappingName) setCurrentMappingName(parsed.mappingName);
-        if (parsed.mappingVersion) setCurrentMappingVersion(parsed.mappingVersion);
-        if (parsed.mappingCategory) setCurrentCategory(parsed.mappingCategory);
-        if (parsed.transformType) setCurrentTransformType(parsed.transformType);
-        console.log('✅ Session data loaded successfully');
-      } catch (error) {
-        console.error('❌ Failed to load session data:', error);
-      }
-    }
-    
-    // Also check for legacy session data format
     const sessionData = JSON.parse(sessionStorage.getItem('currentMappingSession') || '{}');
-    if (sessionData.name && !savedData && !conversionData) {
+    if (sessionData.name) {
       setCurrentMappingName(sessionData.name);
       setCurrentCategory(sessionData.category || 'General');
       setCurrentTransformType(sessionData.transformType || 'JsonToJson');
     }
-  }, [setNodes, setEdges]);
-  
+  }, []);
   const [sampleData, setSampleData] = useState<any[]>([]);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [isManagerExpanded, setIsManagerExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { user } = useAuth();
+  const location = useLocation();
 
   // Listen for fullscreen changes
   useEffect(() => {

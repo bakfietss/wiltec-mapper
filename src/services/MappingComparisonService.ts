@@ -164,19 +164,11 @@ export class MappingComparisonService {
     let bestMapping: FieldMapping | null = null;
     let highestConfidence = 0;
     
-    console.log(`🔍 Finding mapping for target: ${targetField} (value: ${JSON.stringify(targetValue)})`);
-    console.log(`📋 Available source fields: ${sourceFields.join(', ')}`);
-    
-    // Clean target field name for better matching (remove @ prefix for XML attributes)
-    const cleanTargetField = targetField.replace(/^@/, '').replace(/^.*\.@?/, '');
-    console.log(`🧹 Clean target field: ${cleanTargetField}`);
-    
     // 1. Try direct field name matching
-    const directMatch = this.findDirectMatch(inputArray, cleanTargetField, targetValue, sourceFields);
+    const directMatch = this.findDirectMatch(inputArray, targetField, targetValue, sourceFields);
     if (directMatch && directMatch.confidence > highestConfidence) {
       bestMapping = directMatch;
       highestConfidence = directMatch.confidence;
-      console.log(`✅ Direct match found: ${directMatch.sourceField} → ${targetField}`);
     }
     
     // 2. Try value-based matching
@@ -184,7 +176,6 @@ export class MappingComparisonService {
     if (valueMatch && valueMatch.confidence > highestConfidence) {
       bestMapping = valueMatch;
       highestConfidence = valueMatch.confidence;
-      console.log(`✅ Value match found: ${valueMatch.sourceField} → ${targetField}`);
     }
     
     // 3. Try transformation matching
@@ -192,7 +183,6 @@ export class MappingComparisonService {
     if (transformMatch && transformMatch.confidence > highestConfidence) {
       bestMapping = transformMatch;
       highestConfidence = transformMatch.confidence;
-      console.log(`✅ Transform match found: ${transformMatch.sourceField} → ${targetField}`);
     }
     
     // 4. Try concatenation matching
@@ -200,36 +190,21 @@ export class MappingComparisonService {
     if (concatMatch && concatMatch.confidence > highestConfidence) {
       bestMapping = concatMatch;
       highestConfidence = concatMatch.confidence;
-      console.log(`✅ Concat match found: ${concatMatch.sourceFields?.join(' + ')} → ${targetField}`);
-    }
-    
-    if (!bestMapping) {
-      console.log(`❌ No mapping found for ${targetField}`);
     }
     
     return bestMapping;
   }
   
   private static findDirectMatch(inputArray: any[], targetField: string, targetValue: any, sourceFields: string[]): FieldMapping | null {
-    // Look for exact field name matches (case insensitive)
-    const exactNameMatch = sourceFields.find(field => {
-      const fieldName = field.split('.').pop() || field; // Get last part of path
-      const cleanFieldName = fieldName.replace(/^@/, ''); // Remove @ prefix
-      
-      return (
-        cleanFieldName.toLowerCase() === targetField.toLowerCase() ||
-        fieldName.toLowerCase() === targetField.toLowerCase() ||
-        field.toLowerCase() === targetField.toLowerCase() ||
-        // Also try partial matches
-        cleanFieldName.toLowerCase().includes(targetField.toLowerCase()) ||
-        targetField.toLowerCase().includes(cleanFieldName.toLowerCase())
-      );
-    });
+    // Look for exact field name matches
+    const exactNameMatch = sourceFields.find(field => 
+      field.toLowerCase() === targetField.toLowerCase() ||
+      field.toLowerCase().includes(targetField.toLowerCase()) ||
+      targetField.toLowerCase().includes(field.toLowerCase())
+    );
     
     if (exactNameMatch) {
       const sourceValue = this.getNestedValue(inputArray[0], exactNameMatch);
-      console.log(`🔍 Direct match candidate: ${exactNameMatch} = ${JSON.stringify(sourceValue)}`);
-      
       if (sourceValue !== undefined) {
         return {
           sourceField: exactNameMatch,
