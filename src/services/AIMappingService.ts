@@ -1012,22 +1012,12 @@ export class AIMappingService {
   }
 
   private generateSampleDataFromFields(fields: string[]): any[] {
-    // Generate 3 sample records using the actual field names
-    return Array.from({ length: 3 }, (_, index) => {
-      const record: any = {};
-      fields.forEach(field => {
-        // Generate varied sample data for each record
-        const baseValue = this.generateExampleValue(field);
-        if (typeof baseValue === 'string' && baseValue !== 'example') {
-          record[field] = baseValue;
-        } else if (typeof baseValue === 'number') {
-          record[field] = baseValue + index; // Vary numbers slightly
-        } else {
-          record[field] = `${field}_value_${index + 1}`;
-        }
-      });
-      return record;
+    // Generate only one sample record using the actual field names
+    const record: any = {};
+    fields.forEach(field => {
+      record[field] = this.generateExampleValue(field);
     });
+    return [record];
   }
 
   private getMatchReasoning(source: string, target: string, similarity: number): string {

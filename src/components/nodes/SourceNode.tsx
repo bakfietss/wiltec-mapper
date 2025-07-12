@@ -253,9 +253,12 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         }
         const firstRecord = nodeData[0];
         
-        // Use field.id directly as key for simplicity
-        const value = firstRecord[field.id] !== undefined && firstRecord[field.id] !== null ? String(firstRecord[field.id]) : '';
-        return value;
+        // Try both field.name and field.id as keys (for compatibility with different data sources)
+        let value = firstRecord[field.name];
+        if (value === undefined || value === null) {
+            value = firstRecord[field.id];
+        }
+        return value !== undefined && value !== null ? String(value) : '';
     };
 
     const updateFieldValue = (field: SchemaField, newValue: string) => {
@@ -263,8 +266,8 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         if (!nodeData || nodeData.length === 0) {
             const initialRecord: any = {};
             
-            // Use field.id directly as key (works for both AI-generated and manually created fields)
-            initialRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+            // Use field.name as key for consistency with data structure
+            initialRecord[field.name] = field.type === 'number' ? Number(newValue) || newValue : newValue;
             
             setNodeData([initialRecord]);
             return;
@@ -274,8 +277,8 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
             if (index === 0) { // Update first record for preview
                 const newRecord = { ...record };
                 
-                // Use field.id directly as key (works for both AI-generated and manually created fields)
-                newRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+                // Use field.name as key for consistency with data structure
+                newRecord[field.name] = field.type === 'number' ? Number(newValue) || newValue : newValue;
                 
                 return newRecord;
             }
