@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,7 +79,7 @@ export const TemplateMapperInterface: React.FC<TemplateMapperInterfaceProps> = (
             <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 hover:border-primary/50 transition-colors">
               <input
                 type="file"
-                accept=".json,.xml,.csv"
+                accept=".json,.xml"
                 onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'source')}
                 className="hidden"
                 id="template-source-file"
@@ -91,7 +90,7 @@ export const TemplateMapperInterface: React.FC<TemplateMapperInterfaceProps> = (
               >
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-center">
-                  {sourceFile ? sourceFile.name : 'Upload source file (.json/.xml/.csv)'}
+                  {sourceFile ? sourceFile.name : 'Upload source file (.json/.xml)'}
                 </span>
               </label>
             </div>
@@ -102,7 +101,7 @@ export const TemplateMapperInterface: React.FC<TemplateMapperInterfaceProps> = (
             <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 hover:border-primary/50 transition-colors">
               <input
                 type="file"
-                accept=".json,.xml,.csv"
+                accept=".json,.xml"
                 onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'target')}
                 className="hidden"
                 id="template-target-file"
@@ -113,7 +112,7 @@ export const TemplateMapperInterface: React.FC<TemplateMapperInterfaceProps> = (
               >
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-center">
-                  {targetFile ? targetFile.name : 'Upload target file (.json/.xml/.csv)'}
+                  {targetFile ? targetFile.name : 'Upload target file (.json/.xml)'}
                 </span>
               </label>
             </div>
@@ -147,4 +146,3 @@ export const TemplateMapperInterface: React.FC<TemplateMapperInterfaceProps> = (
     </Card>
   );
 };
-
