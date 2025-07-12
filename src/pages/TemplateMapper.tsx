@@ -206,7 +206,7 @@ const TemplateMapper = () => {
           <CardContent className="space-y-4">
             <DataUploadZone 
               onDataUpload={handleSourceDataUpload}
-              acceptedTypes={['JSON', 'CSV', 'Excel']}
+              acceptedTypes={['JSON', 'XML', 'CSV', 'Excel']}
               title="Upload Source Data"
               description="Drag and drop your data file or click to browse"
             />
@@ -296,7 +296,7 @@ const TemplateMapper = () => {
           <CardContent className="space-y-4">
             <DataUploadZone 
               onDataUpload={handleTargetDataUpload}
-              acceptedTypes={['JSON', 'CSV', 'Excel']}
+              acceptedTypes={['JSON', 'XML', 'CSV', 'Excel']}
               title="Upload Target Data"
               description="Drag and drop your target data file or click to browse"
             />
