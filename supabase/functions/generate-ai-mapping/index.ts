@@ -264,68 +264,24 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 Edge function called');
     const { sourceData, targetData } = await req.json();
+    console.log('📥 Received data:', { sourceCount: sourceData?.length, targetCount: targetData?.length });
 
-    // Get authorization header to extract user info
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    // Get OpenAI API key directly from secrets (like your local main.ts)
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      console.error('❌ No OpenAI API key found in secrets');
       return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
+        JSON.stringify({ error: 'OpenAI API key not configured in secrets' }),
         { 
-          status: 401, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
-
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      },
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
-    });
-
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Get OpenAI API key from user's stored keys
-    const { data: apiKeys, error: keyError } = await supabase
-      .from('api_keys')
-      .select('key')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .eq('revoked', false)
-      .ilike('description', '%OpenAI API Key%')
-      .limit(1);
-
-    if (keyError || !apiKeys || apiKeys.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not found. Please add your OpenAI API key in the Control Panel.' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    const openAIApiKey = apiKeys[0].key;
+    
+    console.log('✅ OpenAI API key found');
 
     const prompt = `
 You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
