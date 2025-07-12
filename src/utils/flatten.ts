@@ -1,3 +1,4 @@
+
 export type FlatObject = { [key: string]: any };
 
 export function flattenObject(obj: any, prefix = ''): FlatObject {
@@ -22,55 +23,89 @@ export function flattenJsonData(data: any): FlatObject[] {
 
 export function flattenXmlData(xmlString: string): FlatObject[] {
   try {
-    // Simple XML parsing for web - you might want to use a library like 'fast-xml-parser'
+    // Parse XML using DOMParser
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
     
-    // Find all person elements (adjust based on your XML structure)
-    const persons = xmlDoc.querySelectorAll('person');
-    const result: FlatObject[] = [];
+    // Check for parsing errors
+    const parseError = xmlDoc.querySelector('parsererror');
+    if (parseError) {
+      throw new Error('Invalid XML format');
+    }
     
-    persons.forEach(person => {
+    // Convert XML to objects
+    const convertXmlToObject = (element: Element): any => {
       const obj: any = {};
       
-      // Convert XML node to object
-      const convertXmlNodeToObject = (node: Element, parentKey = ''): any => {
-        const result: any = {};
-        
-        // Handle attributes
-        if (node.attributes.length > 0) {
-          Array.from(node.attributes).forEach(attr => {
-            const key = parentKey ? `${parentKey}.${attr.name}` : attr.name;
-            result[key] = attr.value;
-          });
-        }
-        
-        // Handle child nodes
-        if (node.children.length > 0) {
-          Array.from(node.children).forEach(child => {
-            const key = parentKey ? `${parentKey}.${child.tagName}` : child.tagName;
-            if (child.children.length > 0) {
-              Object.assign(result, convertXmlNodeToObject(child, key));
-            } else {
-              result[key] = child.textContent?.trim() || '';
+      // Handle attributes
+      if (element.attributes.length > 0) {
+        Array.from(element.attributes).forEach(attr => {
+          obj[`@${attr.name}`] = attr.value;
+        });
+      }
+      
+      // Handle child elements
+      const children = Array.from(element.children);
+      if (children.length > 0) {
+        children.forEach(child => {
+          const childName = child.tagName;
+          const childValue = convertXmlToObject(child);
+          
+          if (obj[childName]) {
+            // If multiple elements with same name, convert to array
+            if (!Array.isArray(obj[childName])) {
+              obj[childName] = [obj[childName]];
             }
-          });
-        } else if (node.textContent?.trim()) {
-          const key = parentKey || node.tagName;
-          result[key] = node.textContent.trim();
+            obj[childName].push(childValue);
+          } else {
+            obj[childName] = childValue;
+          }
+        });
+      } else {
+        // Handle text content
+        const textContent = element.textContent?.trim();
+        if (textContent) {
+          return textContent;
         }
-        
-        return result;
+      }
+      
+      return obj;
+    };
+    
+    // Get root element and convert
+    const rootElement = xmlDoc.documentElement;
+    const rootObject = convertXmlToObject(rootElement);
+    
+    // Try to find repeating elements (like persons, items, etc.)
+    const findArrays = (obj: any): any[] => {
+      const arrays: any[] = [];
+      
+      const traverse = (current: any) => {
+        if (Array.isArray(current)) {
+          arrays.push(current);
+        } else if (current && typeof current === 'object') {
+          Object.values(current).forEach(traverse);
+        }
       };
       
-      Object.assign(obj, convertXmlNodeToObject(person));
-      result.push(flattenObject(obj));
-    });
+      traverse(obj);
+      return arrays;
+    };
     
-    return result;
+    const arrays = findArrays(rootObject);
+    
+    // If we found arrays, use the largest one (likely the main data)
+    if (arrays.length > 0) {
+      const largestArray = arrays.reduce((a, b) => a.length > b.length ? a : b);
+      return largestArray.map((item: any) => flattenObject(item));
+    }
+    
+    // If no arrays found, treat the root object as a single item
+    return [flattenObject(rootObject)];
+    
   } catch (error) {
     console.error('Error parsing XML:', error);
-    return [];
+    throw new Error(`Failed to parse XML: ${error}`);
   }
 }
 
