@@ -18,6 +18,7 @@ interface TransformConfig {
   joinDelimiter?: string;
   substringStart?: number;
   substringEnd?: number;
+  dateFormat?: string;
   rules?: Array<{
     id: string;
     priority: number;
@@ -73,7 +74,11 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
         return `Substring from ${config.substringStart}${config.substringEnd !== undefined ? ` to ${config.substringEnd}` : ''}`;
       if (op === 'replace' && config.regex && config.replacement) 
         return `Replace "${config.regex}" → "${config.replacement}"`;
+      if (op === 'dateFormat' && config.dateFormat) return `Format date as: ${config.dateFormat}`;
       return op || 'String Transform';
+    }
+    if (transformType === 'Date Format') {
+      return config.dateFormat ? `Format date as: ${config.dateFormat}` : 'Date Format';
     }
     if (transformType === 'uppercase') return 'Convert to UPPERCASE';
     if (transformType === 'lowercase') return 'Convert to lowercase';
@@ -132,6 +137,7 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
                         <option value="suffix">Add suffix</option>
                         <option value="substring">Extract substring</option>
                         <option value="replace">Find and replace</option>
+                        <option value="dateFormat">Format date</option>
                       </select>
                     </div>
 
@@ -213,7 +219,45 @@ const TransformNode: React.FC<{ data: TransformNodeData; id: string }> = ({ data
                         </div>
                       </>
                     )}
+
+                    {config.stringOperation === 'dateFormat' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Date format:</label>
+                        <select
+                          value={config.dateFormat || ''}
+                          onChange={(e) => updateConfig({ dateFormat: e.target.value })}
+                          className="w-full border rounded px-3 py-2"
+                        >
+                          <option value="">Select format</option>
+                          <option value="YYYY-MM-DD">YYYY-MM-DD (2024-01-01)</option>
+                          <option value="DD/MM/YYYY">DD/MM/YYYY (01/01/2024)</option>
+                          <option value="MM/DD/YYYY">MM/DD/YYYY (01/01/2024)</option>
+                          <option value="DD-MM-YYYY">DD-MM-YYYY (01-01-2024)</option>
+                          <option value="YYYY/MM/DD">YYYY/MM/DD (2024/01/01)</option>
+                          <option value="ISO">ISO Format (2024-01-01T00:00:00.000Z)</option>
+                        </select>
+                      </div>
+                    )}
                   </>
+                )}
+
+                {transformType === 'Date Format' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Date format:</label>
+                    <select
+                      value={config.dateFormat || ''}
+                      onChange={(e) => updateConfig({ dateFormat: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">Select format</option>
+                      <option value="YYYY-MM-DD">YYYY-MM-DD (2024-01-01)</option>
+                      <option value="DD/MM/YYYY">DD/MM/YYYY (01/01/2024)</option>
+                      <option value="MM/DD/YYYY">MM/DD/YYYY (01/01/2024)</option>
+                      <option value="DD-MM-YYYY">DD-MM-YYYY (01-01-2024)</option>
+                      <option value="YYYY/MM/DD">YYYY/MM/DD (2024/01/01)</option>
+                      <option value="ISO">ISO Format (2024-01-01T00:00:00.000Z)</option>
+                    </select>
+                  </div>
                 )}
                 
                 {transformType === 'replace' && (

@@ -17,13 +17,17 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
   isExpanded = false,
   onToggleExpanded
 }) => {
-  const transformTypes = [
+  // Transform operations that use TransformNode
+  const transformOperations = [
     { type: 'String Transform', label: 'String Transform', icon: GitMerge },
     { type: 'Math Operation', label: 'Math Operation', icon: Plus },
     { type: 'Date Format', label: 'Date Format', icon: Shuffle },
+  ];
+
+  // Standalone node types
+  const specializedNodes = [
     { type: 'Text Splitter', label: 'Text Splitter', icon: Shuffle },
     { type: 'Concat', label: 'Concatenate Fields', icon: GitMerge },
-    { type: 'format', label: 'Format', icon: Shuffle },
     { type: 'IF THEN', label: 'IF THEN Logic', icon: GitMerge },
     { type: 'Static Value', label: 'Static Value', icon: Database },
     { type: 'Coalesce', label: 'Coalesce Transform', icon: GitMerge },
@@ -95,13 +99,32 @@ const MappingToolbar: React.FC<MappingToolbarProps> = ({
             </div>
           )}
           
-          {/* Transform Nodes */}
+          {/* Transform Operations */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Add Transform Nodes:
+              Transform Operations:
             </label>
             <div className="space-y-2">
-              {transformTypes.map(({ type, label, icon: Icon }) => (
+              {transformOperations.map(({ type, label, icon: Icon }) => (
+                <button
+                  key={type}
+                  onClick={() => onAddTransform(type)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-yellow-700 bg-yellow-50 hover:bg-yellow-100 rounded border border-yellow-200"
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Specialized Nodes */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Specialized Nodes:
+            </label>
+            <div className="space-y-2">
+              {specializedNodes.map(({ type, label, icon: Icon }) => (
                 <button
                   key={type}
                   onClick={() => onAddTransform(type)}
