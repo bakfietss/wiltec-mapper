@@ -25,6 +25,7 @@ export const ApiKeyManager = () => {
   // Form state
   const [description, setDescription] = useState('');
   const [keyType, setKeyType] = useState('general');
+  const [customKey, setCustomKey] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   
   useEffect(() => {
@@ -52,8 +53,13 @@ export const ApiKeyManager = () => {
         ? `OpenAI API Key${description.trim() ? ` - ${description.trim()}` : ''}`
         : description.trim() || undefined;
       
-      const newKey = await ApiKeyService.createApiKey(
+      const apiKey = keyType === 'openai' && customKey.trim() 
+        ? customKey.trim()
+        : ApiKeyService.generateApiKey();
+      
+      const newKey = await ApiKeyService.createApiKeyWithValue(
         user!.id, 
+        apiKey,
         fullDescription,
         expiresAt || undefined
       );
@@ -76,15 +82,37 @@ export const ApiKeyManager = () => {
     if (!editDialog.key) return;
     
     try {
-      const updatedKey = await ApiKeyService.updateApiKey(
-        editDialog.key.id,
-        user!.id,
-        description.trim() || undefined
-      );
+      const isOpenAIKey = editDialog.key.description?.startsWith('OpenAI API Key');
+      let updatedKey;
+      
+      if (customKey.trim()) {
+        // Update both description and key value
+        const fullDescription = isOpenAIKey 
+          ? `OpenAI API Key${description.trim() ? ` - ${description.trim()}` : ''}`
+          : description.trim() || undefined;
+          
+        updatedKey = await ApiKeyService.updateApiKeyWithValue(
+          editDialog.key.id,
+          user!.id,
+          customKey.trim(),
+          fullDescription
+        );
+      } else {
+        // Update only description
+        const fullDescription = isOpenAIKey 
+          ? `OpenAI API Key${description.trim() ? ` - ${description.trim()}` : ''}`
+          : description.trim() || undefined;
+          
+        updatedKey = await ApiKeyService.updateApiKey(
+          editDialog.key.id,
+          user!.id,
+          fullDescription
+        );
+      }
       
       setApiKeys(prev => 
         prev.map(key => 
-          key.id === editDialog.key!.id ? { ...key, description: updatedKey.description } : key
+          key.id === editDialog.key!.id ? { ...key, ...updatedKey } : key
         )
       );
       setEditDialog({ open: false, key: null });
@@ -100,7 +128,14 @@ export const ApiKeyManager = () => {
   const resetForm = () => {
     setDescription('');
     setKeyType('general');
+    setCustomKey('');
     setExpiresAt('');
+  };
+
+  const generateRandomKey = () => {
+    const newKey = ApiKeyService.generateApiKey();
+    setCustomKey(newKey);
+    toast.success('Random API key generated');
   };
 
   const handleRevokeApiKey = async (keyId: string) => {
@@ -222,6 +257,35 @@ export const ApiKeyManager = () => {
               </div>
               
               <div className="space-y-2">
+                <Label htmlFor="customKey">
+                  {keyType === 'openai' ? 'OpenAI API Key' : 'API Key (optional)'}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="customKey"
+                    type="password"
+                    placeholder={keyType === 'openai' ? 'sk-...' : 'Leave empty to generate automatically'}
+                    value={customKey}
+                    onChange={(e) => setCustomKey(e.target.value)}
+                  />
+                  {keyType === 'general' && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={generateRandomKey}
+                    >
+                      Generate
+                    </Button>
+                  )}
+                </div>
+                {keyType === 'openai' && (
+                  <p className="text-xs text-muted-foreground">
+                    Paste your OpenAI API key from the OpenAI platform
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
                 <Label htmlFor="expires">Expires At (optional)</Label>
                 <Input
                   id="expires"
@@ -336,7 +400,9 @@ export const ApiKeyManager = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            setDescription(key.description?.replace(/^OpenAI API Key\s*-\s*/, '') || '');
+                            const cleanDescription = key.description?.replace(/^OpenAI API Key\s*-\s*/, '') || '';
+                            setDescription(cleanDescription);
+                            setCustomKey(''); // Don't prefill the key for security
                             setEditDialog({ open: true, key });
                           }}
                         >
@@ -391,6 +457,31 @@ export const ApiKeyManager = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="editCustomKey">Update API Key (optional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="editCustomKey"
+                  type="password"
+                  placeholder="Leave empty to keep current key"
+                  value={customKey}
+                  onChange={(e) => setCustomKey(e.target.value)}
+                />
+                {!editDialog.key?.description?.startsWith('OpenAI API Key') && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={generateRandomKey}
+                  >
+                    Generate
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Only enter a new key if you want to replace the existing one
+              </p>
             </div>
           </div>
 

@@ -45,6 +45,36 @@ export class ApiKeyService {
     return data;
   }
 
+  static async createApiKeyWithValue(
+    userId: string, 
+    apiKey: string,
+    description?: string, 
+    expiresAt?: string
+  ): Promise<ApiKey> {
+    if (!userId) {
+      throw new Error('User authentication is required to create API keys');
+    }
+
+    const { data, error } = await supabase
+      .from('api_keys')
+      .insert({
+        user_id: userId,
+        key: apiKey,
+        description,
+        expires_at: expiresAt,
+        status: 'active',
+        revoked: false
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create API key: ${error.message}`);
+    }
+
+    return data;
+  }
+
   static async getApiKeys(userId: string): Promise<ApiKey[]> {
     if (!userId) {
       throw new Error('User authentication is required to fetch API keys');
@@ -122,7 +152,35 @@ export class ApiKeyService {
     return data;
   }
 
-  private static generateApiKey(): string {
+  static async updateApiKeyWithValue(
+    keyId: string, 
+    userId: string, 
+    apiKey: string,
+    description?: string
+  ): Promise<ApiKey> {
+    if (!userId) {
+      throw new Error('User authentication is required to update API keys');
+    }
+
+    const { data, error } = await supabase
+      .from('api_keys')
+      .update({ 
+        key: apiKey,
+        description 
+      })
+      .eq('id', keyId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update API key: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  static generateApiKey(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = 'mk_'; // prefix for mapping key
     for (let i = 0; i < 40; i++) {
