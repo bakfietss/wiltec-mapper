@@ -535,10 +535,8 @@ export class AIMappingService {
     // Smart positioning system
     const positions = this.calculateSmartPositions(mappings);
     
-    // Create source node with ALL detected fields and sample data
+    // Create source node with ALL detected fields
     const sourceFields = this.extractSourceFields(mappings);
-    const sampleData = this.generateSampleDataFromFields(sourceFields);
-    
     const sourceNode = {
       id: 'ai-source',
       type: 'source',
@@ -550,7 +548,7 @@ export class AIMappingService {
           name: field, 
           type: this.inferFieldType(field)
         })),
-        data: sampleData
+        data: []
       }
     };
     nodes.push(sourceNode);
@@ -764,16 +762,6 @@ export class AIMappingService {
     if (fieldName === 'Medewerker') return '1000257';
     if (fieldName === 'PTperc') return 100.0;
     if (fieldName === 'Geslacht') return 'M';
-    if (fieldName === 'Roepnaam') return 'Berend';
-    if (fieldName === 'Achternaam') return 'Raaij';
-    if (fieldName === 'Mailadres') return 'b.vanraaij@hakkers.com';
-    if (fieldName === 'Functiebenaming') return 'Werkvoorbereider';
-    if (fieldName === 'OE') return 'WERKVB';
-    if (fieldName === 'FunctieId') return 'WVB';
-    if (fieldName === 'OrgEenheid') return 'Werkvoorbereider';
-    if (fieldName === 'Voorvoegsel') return 'van';
-    if (fieldName === 'Indienst') return '2022-11-01T00:00:00Z';
-    if (fieldName === 'Uitdienst') return null;
     return 'example';
   }
 
@@ -1009,15 +997,6 @@ export class AIMappingService {
     }
     
     return matrix[s2.length][s1.length];
-  }
-
-  private generateSampleDataFromFields(fields: string[]): any[] {
-    // Generate only one sample record using the actual field names
-    const record: any = {};
-    fields.forEach(field => {
-      record[field] = this.generateExampleValue(field);
-    });
-    return [record];
   }
 
   private getMatchReasoning(source: string, target: string, similarity: number): string {
