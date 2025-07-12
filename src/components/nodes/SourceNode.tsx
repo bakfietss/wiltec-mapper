@@ -16,8 +16,27 @@ interface SourceNodeData {
 }
 
 const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolean }> = ({ id, data, selected }) => {
-    const [fields, setFields] = useState<SchemaField[]>(data.fields || []);
-    const [nodeData, setNodeData] = useState<any[]>(data.data || []);
+    // Handle both new format (from AI) and old format
+    const getInitialFields = () => {
+        if (data.fields) return data.fields;
+        if ((data as any).schema?.fields) {
+            // Convert AI-generated schema to our format
+            return (data as any).schema.fields.map((field: any) => ({
+                ...field,
+                path: [field.name]
+            }));
+        }
+        return [];
+    };
+
+    const getInitialData = () => {
+        if (data.data) return data.data;
+        if ((data as any).sampleData) return (data as any).sampleData;
+        return [];
+    };
+
+    const [fields, setFields] = useState<SchemaField[]>(getInitialFields());
+    const [nodeData, setNodeData] = useState<any[]>(getInitialData());
     const [jsonInput, setJsonInput] = useState('');
     const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
@@ -25,13 +44,16 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
 
     const allEdges = useStore((store) => store.edges);
 
-    // Sync data changes
+    // Sync data changes - handle both formats
     useEffect(() => {
-        if (data.fields && JSON.stringify(data.fields) !== JSON.stringify(fields)) {
-            setFields(data.fields);
+        const newFields = getInitialFields();
+        const newData = getInitialData();
+        
+        if (JSON.stringify(newFields) !== JSON.stringify(fields)) {
+            setFields(newFields);
         }
-        if (data.data && JSON.stringify(data.data) !== JSON.stringify(nodeData)) {
-            setNodeData(data.data);
+        if (JSON.stringify(newData) !== JSON.stringify(nodeData)) {
+            setNodeData(newData);
         }
         
         // Auto-expand based on initialExpandedFields from imported mapping
@@ -220,6 +242,49 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         setFields(deleteFieldRecursive(fields));
     };
 
+    const getFieldValue = (field: SchemaField) => {
+        if (!nodeData || nodeData.length === 0) return '';
+        const firstRecord = nodeData[0];
+        const path = field.path || [field.name];
+        let value = firstRecord;
+        for (const key of path) {
+            if (value && typeof value === 'object') {
+                value = value[key];
+            } else {
+                value = undefined;
+                break;
+            }
+        }
+        return value !== undefined && value !== null ? String(value) : '';
+    };
+
+    const updateFieldValue = (field: SchemaField, newValue: string) => {
+        if (!nodeData || nodeData.length === 0) return;
+        
+        const path = field.path || [field.name];
+        const updatedData = nodeData.map((record, index) => {
+            if (index === 0) { // Update first record for preview
+                const newRecord = { ...record };
+                let current = newRecord;
+                
+                // Navigate to the parent object
+                for (let i = 0; i < path.length - 1; i++) {
+                    if (!current[path[i]]) current[path[i]] = {};
+                    current = current[path[i]];
+                }
+                
+                // Set the final value
+                const finalKey = path[path.length - 1];
+                current[finalKey] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+                
+                return newRecord;
+            }
+            return record;
+        });
+        
+        setNodeData(updatedData);
+    };
+
     const renderFieldEditor = (field: SchemaField, level = 0) => (
         <div key={field.id} className="border rounded p-3 space-y-2" style={{ marginLeft: `${level * 16}px` }}>
             <div className="flex items-center gap-2">
@@ -258,6 +323,20 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     <Trash2 className="w-3 h-3" />
                 </button>
             </div>
+            
+            {/* Value input for non-object/array fields */}
+            {field.type !== 'object' && field.type !== 'array' && (
+                <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-600 w-16">Value:</label>
+                    <input
+                        type={field.type === 'number' ? 'number' : 'text'}
+                        value={getFieldValue(field)}
+                        onChange={(e) => updateFieldValue(field, e.target.value)}
+                        className="flex-1 border rounded px-2 py-1 text-sm bg-gray-50"
+                        placeholder="Sample value"
+                    />
+                </div>
+            )}
             
             {field.children && field.children.map(childField => 
                 renderFieldEditor(childField, level + 1)
