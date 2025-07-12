@@ -247,13 +247,19 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     };
 
     const getFieldValue = (field: SchemaField) => {
-        if (!nodeData || nodeData.length === 0) return '';
+        console.log('🔍 getFieldValue called for field:', field.id, 'nodeData:', nodeData);
+        if (!nodeData || nodeData.length === 0) {
+            console.log('⚠️ No nodeData, returning empty string');
+            return '';
+        }
         const firstRecord = nodeData[0];
         
         // For AI-generated fields, use field.id directly as key
         // For manually created fields, use field.path
         if (!field.path || field.path.length === 0) {
-            return firstRecord[field.id] !== undefined && firstRecord[field.id] !== null ? String(firstRecord[field.id]) : '';
+            const value = firstRecord[field.id] !== undefined && firstRecord[field.id] !== null ? String(firstRecord[field.id]) : '';
+            console.log('🎯 Direct field access:', field.id, '=', value);
+            return value;
         }
         
         const path = field.path;
@@ -266,11 +272,42 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 break;
             }
         }
-        return value !== undefined && value !== null ? String(value) : '';
+        const result = value !== undefined && value !== null ? String(value) : '';
+        console.log('🎯 Path field access:', path, '=', result);
+        return result;
     };
 
     const updateFieldValue = (field: SchemaField, newValue: string) => {
-        if (!nodeData || nodeData.length === 0) return;
+        console.log('🔧 updateFieldValue called for field:', field.id, 'new value:', newValue, 'current nodeData:', nodeData);
+        
+        // If no data exists, create initial data structure
+        if (!nodeData || nodeData.length === 0) {
+            console.log('📝 Creating initial data structure');
+            const initialRecord: any = {};
+            
+            // For AI-generated fields, use field.id directly as key
+            // For manually created fields, use field.path
+            if (!field.path || field.path.length === 0) {
+                initialRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+            } else {
+                const path = field.path;
+                let current = initialRecord;
+                
+                // Navigate to the parent object
+                for (let i = 0; i < path.length - 1; i++) {
+                    if (!current[path[i]]) current[path[i]] = {};
+                    current = current[path[i]];
+                }
+                
+                // Set the final value
+                const finalKey = path[path.length - 1];
+                current[finalKey] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+            }
+            
+            console.log('✅ Created initial record:', initialRecord);
+            setNodeData([initialRecord]);
+            return;
+        }
         
         const updatedData = nodeData.map((record, index) => {
             if (index === 0) { // Update first record for preview
@@ -280,6 +317,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 // For manually created fields, use field.path
                 if (!field.path || field.path.length === 0) {
                     newRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+                    console.log('✅ Updated direct field:', field.id, '=', newRecord[field.id]);
                 } else {
                     const path = field.path;
                     let current = newRecord;
@@ -293,6 +331,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                     // Set the final value
                     const finalKey = path[path.length - 1];
                     current[finalKey] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+                    console.log('✅ Updated path field:', path, '=', current[finalKey]);
                 }
                 
                 return newRecord;
@@ -300,6 +339,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
             return record;
         });
         
+        console.log('📤 Setting updated data:', updatedData);
         setNodeData(updatedData);
     };
 
