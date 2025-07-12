@@ -178,9 +178,10 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     };
 
     const addField = (parentId?: string) => {
+        const fieldName = `Field${fields.length + 1}`;
         const newField: SchemaField = {
-            id: `field-${Date.now()}`,
-            name: 'New Field',
+            id: fieldName,
+            name: fieldName,
             type: 'string'
         };
         
@@ -247,64 +248,24 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     };
 
     const getFieldValue = (field: SchemaField) => {
-        console.log('🔍 getFieldValue called for field:', field.id, 'nodeData:', nodeData);
         if (!nodeData || nodeData.length === 0) {
-            console.log('⚠️ No nodeData, returning empty string');
             return '';
         }
         const firstRecord = nodeData[0];
         
-        // For AI-generated fields, use field.id directly as key
-        // For manually created fields, use field.path
-        if (!field.path || field.path.length === 0) {
-            const value = firstRecord[field.id] !== undefined && firstRecord[field.id] !== null ? String(firstRecord[field.id]) : '';
-            console.log('🎯 Direct field access:', field.id, '=', value);
-            return value;
-        }
-        
-        const path = field.path;
-        let value = firstRecord;
-        for (const key of path) {
-            if (value && typeof value === 'object') {
-                value = value[key];
-            } else {
-                value = undefined;
-                break;
-            }
-        }
-        const result = value !== undefined && value !== null ? String(value) : '';
-        console.log('🎯 Path field access:', path, '=', result);
-        return result;
+        // Use field.id directly as key for simplicity
+        const value = firstRecord[field.id] !== undefined && firstRecord[field.id] !== null ? String(firstRecord[field.id]) : '';
+        return value;
     };
 
     const updateFieldValue = (field: SchemaField, newValue: string) => {
-        console.log('🔧 updateFieldValue called for field:', field.id, 'new value:', newValue, 'current nodeData:', nodeData);
-        
         // If no data exists, create initial data structure
         if (!nodeData || nodeData.length === 0) {
-            console.log('📝 Creating initial data structure');
             const initialRecord: any = {};
             
-            // For AI-generated fields, use field.id directly as key
-            // For manually created fields, use field.path
-            if (!field.path || field.path.length === 0) {
-                initialRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
-            } else {
-                const path = field.path;
-                let current = initialRecord;
-                
-                // Navigate to the parent object
-                for (let i = 0; i < path.length - 1; i++) {
-                    if (!current[path[i]]) current[path[i]] = {};
-                    current = current[path[i]];
-                }
-                
-                // Set the final value
-                const finalKey = path[path.length - 1];
-                current[finalKey] = field.type === 'number' ? Number(newValue) || newValue : newValue;
-            }
+            // Use field.id directly as key (works for both AI-generated and manually created fields)
+            initialRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
             
-            console.log('✅ Created initial record:', initialRecord);
             setNodeData([initialRecord]);
             return;
         }
@@ -313,33 +274,14 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
             if (index === 0) { // Update first record for preview
                 const newRecord = { ...record };
                 
-                // For AI-generated fields, use field.id directly as key
-                // For manually created fields, use field.path
-                if (!field.path || field.path.length === 0) {
-                    newRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
-                    console.log('✅ Updated direct field:', field.id, '=', newRecord[field.id]);
-                } else {
-                    const path = field.path;
-                    let current = newRecord;
-                    
-                    // Navigate to the parent object
-                    for (let i = 0; i < path.length - 1; i++) {
-                        if (!current[path[i]]) current[path[i]] = {};
-                        current = current[path[i]];
-                    }
-                    
-                    // Set the final value
-                    const finalKey = path[path.length - 1];
-                    current[finalKey] = field.type === 'number' ? Number(newValue) || newValue : newValue;
-                    console.log('✅ Updated path field:', path, '=', current[finalKey]);
-                }
+                // Use field.id directly as key (works for both AI-generated and manually created fields)
+                newRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
                 
                 return newRecord;
             }
             return record;
         });
         
-        console.log('📤 Setting updated data:', updatedData);
         setNodeData(updatedData);
     };
 
@@ -349,8 +291,8 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 <input
                     type="text"
                     value={field.name}
-                    onChange={(e) => updateField(field.id, { name: e.target.value })}
-                    className="flex-1 border rounded px-2 py-1 text-sm"
+                    onChange={(e) => updateField(field.id, { name: e.target.value, id: e.target.value })}
+                    className="flex-1 border rounded px-2 py-1 text-sm bg-white"
                     placeholder="Field name"
                 />
                 <select
