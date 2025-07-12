@@ -249,7 +249,14 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     const getFieldValue = (field: SchemaField) => {
         if (!nodeData || nodeData.length === 0) return '';
         const firstRecord = nodeData[0];
-        const path = field.path || [field.name];
+        
+        // For AI-generated fields, use field.id directly as key
+        // For manually created fields, use field.path
+        if (!field.path || field.path.length === 0) {
+            return firstRecord[field.id] !== undefined && firstRecord[field.id] !== null ? String(firstRecord[field.id]) : '';
+        }
+        
+        const path = field.path;
         let value = firstRecord;
         for (const key of path) {
             if (value && typeof value === 'object') {
@@ -265,21 +272,28 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
     const updateFieldValue = (field: SchemaField, newValue: string) => {
         if (!nodeData || nodeData.length === 0) return;
         
-        const path = field.path || [field.name];
         const updatedData = nodeData.map((record, index) => {
             if (index === 0) { // Update first record for preview
                 const newRecord = { ...record };
-                let current = newRecord;
                 
-                // Navigate to the parent object
-                for (let i = 0; i < path.length - 1; i++) {
-                    if (!current[path[i]]) current[path[i]] = {};
-                    current = current[path[i]];
+                // For AI-generated fields, use field.id directly as key
+                // For manually created fields, use field.path
+                if (!field.path || field.path.length === 0) {
+                    newRecord[field.id] = field.type === 'number' ? Number(newValue) || newValue : newValue;
+                } else {
+                    const path = field.path;
+                    let current = newRecord;
+                    
+                    // Navigate to the parent object
+                    for (let i = 0; i < path.length - 1; i++) {
+                        if (!current[path[i]]) current[path[i]] = {};
+                        current = current[path[i]];
+                    }
+                    
+                    // Set the final value
+                    const finalKey = path[path.length - 1];
+                    current[finalKey] = field.type === 'number' ? Number(newValue) || newValue : newValue;
                 }
-                
-                // Set the final value
-                const finalKey = path[path.length - 1];
-                current[finalKey] = field.type === 'number' ? Number(newValue) || newValue : newValue;
                 
                 return newRecord;
             }
@@ -336,7 +350,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                         type={field.type === 'number' ? 'number' : 'text'}
                         value={getFieldValue(field)}
                         onChange={(e) => updateFieldValue(field, e.target.value)}
-                        className="flex-1 border rounded px-2 py-1 text-sm bg-gray-50"
+                        className="flex-1 border rounded px-2 py-1 text-sm bg-white"
                         placeholder="Sample value"
                     />
                 </div>
