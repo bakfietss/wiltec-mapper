@@ -268,20 +268,33 @@ serve(async (req) => {
     const { sourceData, targetData } = await req.json();
     console.log('📥 Received data:', { sourceCount: sourceData?.length, targetCount: targetData?.length });
 
-    // Get OpenAI API key directly from secrets (like your local main.ts)
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      console.error('❌ No OpenAI API key found in secrets');
+    // Get OpenAI API key from database (no auth needed for testing)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get the OpenAI API key from the database
+    const { data: apiKeys, error: keyError } = await supabase
+      .from('api_keys')
+      .select('key')
+      .eq('status', 'active')
+      .eq('revoked', false)
+      .ilike('key', 'sk-proj-%')  // Look for OpenAI project keys
+      .limit(1);
+
+    if (keyError || !apiKeys || apiKeys.length === 0) {
+      console.error('❌ No OpenAI API key found in database');
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured in secrets' }),
+        JSON.stringify({ error: 'OpenAI API key not found in database' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
-    
-    console.log('✅ OpenAI API key found');
+
+    const openAIApiKey = apiKeys[0].key;
+    console.log('✅ OpenAI API key found in database');
 
     const prompt = `
 You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
