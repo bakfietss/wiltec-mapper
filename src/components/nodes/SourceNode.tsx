@@ -23,6 +23,8 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
             // Convert AI-generated schema to our format
             return (data as any).schema.fields.map((field: any) => ({
                 ...field,
+                // Ensure field ID matches the data key for proper value lookup
+                id: field.id || field.name,
                 path: [field.name]
             }));
         }
@@ -50,9 +52,11 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         const newData = getInitialData();
         
         if (JSON.stringify(newFields) !== JSON.stringify(fields)) {
+            console.log('Updating fields from data prop:', newFields);
             setFields(newFields);
         }
         if (JSON.stringify(newData) !== JSON.stringify(nodeData)) {
+            console.log('Updating nodeData from data prop:', newData);
             setNodeData(newData);
         }
         
