@@ -1,5 +1,6 @@
 import { useReactFlow } from '@xyflow/react';
 import { useMemo } from 'react';
+import { transformDate } from '../utils/dateTransform';
 
 interface SchemaField {
     id: string;
@@ -487,9 +488,22 @@ const applyTransformation = (sourceValue: any, transformNode: any): any => {
             case 'replace':
                 const regex = new RegExp(config.regex || '', 'g');
                 return inputValue.replace(regex, config.replacement || '');
+            case 'dateFormat':
+                return transformDate(sourceValue, {
+                    inputDateFormat: config.inputDateFormat,
+                    outputDateFormat: config.outputDateFormat
+                });
             default:
                 return sourceValue;
         }
+    }
+    
+    // Handle standalone Date Format transform type
+    if (transformType === 'Date Format') {
+        return transformDate(sourceValue, {
+            inputDateFormat: config.inputDateFormat,
+            outputDateFormat: config.outputDateFormat
+        });
     }
     
     return sourceValue;
