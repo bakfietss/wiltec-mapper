@@ -53,14 +53,9 @@ export class TemplateMapperService {
                 throw new Error(`AI mapping generation failed: ${error.message}`);
             }
 
-            const mappings: MappingSuggestion[] = data.mappings;
-            console.log("\n✅ AI Mapping Suggestions:\n", mappings);
-
-            const nodesAndEdges = convertMappingsToCanvas(mappings);
-            console.log("\n🎨 Canvas-Ready Nodes and Edges:\n", nodesAndEdges);
-
-            const reactFlowReady = applyTemplate(nodesAndEdges);
-            console.log("\n🧪 React Flow–Ready Output:\n", reactFlowReady);
+            // The edge function now returns the canvas directly
+            const reactFlowReady = data.canvas;
+            console.log("\n✅ Generated Template Mapping:\n", reactFlowReady);
 
             return reactFlowReady;
         } catch (error) {
