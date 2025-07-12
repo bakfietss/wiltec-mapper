@@ -41,11 +41,22 @@ export class TemplateMapperService {
             const estimatedTokens = estimateTokens(redactedSource, redactedTarget);
             console.log(`📊 Estimated tokens: ~${estimatedTokens} (≈ €${(estimatedTokens / 1000 * 0.01).toFixed(3)} EUR)`);
 
-            // Call the edge function
+            // Get user session for authentication
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                throw new Error('Authentication required. Please log in.');
+            }
+
+            console.log('🌐 Fetch request to: https://hkuwnqgdpnlfjpfvbjjb.supabase.co/functions/v1/generate-ai-mapping');
+
+            // Call the edge function with proper authentication
             const { data, error } = await supabase.functions.invoke('generate-ai-mapping', {
                 body: {
                     sourceData: redactedSource,
                     targetData: redactedTarget
+                },
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`
                 }
             });
 
