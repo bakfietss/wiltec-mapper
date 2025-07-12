@@ -293,8 +293,8 @@ serve(async (req) => {
       );
     }
 
-    const openAIApiKey = apiKeys[0].key;
-    console.log('✅ OpenAI API key found in database');
+    const openAIApiKey = apiKeys[0].key.trim(); // Remove any spaces
+    console.log('✅ OpenAI API key found in database, length:', openAIApiKey.length);
 
     const prompt = `
 You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
@@ -336,6 +336,7 @@ Return a JSON array:
 ]
 `;
 
+    console.log('🤖 Making OpenAI API call...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -343,7 +344,7 @@ Return a JSON array:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',  // Use a valid model
         messages: [
           {
             role: 'system',
@@ -355,12 +356,30 @@ Return a JSON array:
       }),
     });
 
+    console.log('🤖 OpenAI response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI API error:', errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
     const aiResult = await response.json();
+    console.log('✅ OpenAI response received');
+    
+    if (!aiResult.choices || aiResult.choices.length === 0) {
+      console.error('❌ No choices in OpenAI response:', aiResult);
+      throw new Error('No choices returned from OpenAI API');
+    }
+    
     const raw = aiResult.choices[0]?.message?.content || "";
+    console.log('📝 Raw AI response length:', raw.length);
     
     const jsonStart = raw.indexOf("[");
     const jsonEnd = raw.lastIndexOf("]") + 1;
     const jsonString = raw.slice(jsonStart, jsonEnd);
+
+    console.log('🔍 Extracted JSON string length:', jsonString.length);
 
     const parsed = JSON.parse(jsonString);
     const canvas = convertMappingsToCanvas(parsed);
