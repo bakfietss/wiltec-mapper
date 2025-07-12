@@ -281,6 +281,11 @@ For source and target nodes, fields MUST use this exact SchemaField format:
   "exampleValue": "actual_value_or_empty_string"
 }
 
+## CRITICAL: Data Array Rules
+- ALWAYS generate exactly ONE sample record in the data array, never multiple identical records
+- Example: "data": [{ "fieldName1": "a", "fieldName2": "b" }] ✓
+- NEVER: "data": [{ "fieldName1": "a" }, { "fieldName1": "a" }, { "fieldName1": "a" }] ✗
+
 ## CRITICAL: Handle Connection Rules & Smart Mapping
 - You can use EITHER field.id OR field.name for handles - the system will auto-resolve field names to IDs
 - For create_edge actions, you can use field names like "Voorvoegsel" or "reference_5" and the system will find the correct field IDs
