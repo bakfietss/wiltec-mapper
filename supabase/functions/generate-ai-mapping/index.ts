@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import OpenAI from 'https://deno.land/x/openai@v4.28.0/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -296,6 +297,11 @@ serve(async (req) => {
     const openAIApiKey = apiKeys[0].key.trim(); // Remove any spaces
     console.log('✅ OpenAI API key found in database, length:', openAIApiKey.length);
 
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: openAIApiKey,
+    });
+
     const prompt = `
 You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
 
@@ -337,42 +343,21 @@ Return a JSON array:
 `;
 
     console.log('🤖 Making OpenAI API call...');
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',  // Use a valid model
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a data mapping assistant. Analyze and suggest structured field mappings in JSON.'
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2,
-      }),
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a data mapping assistant. Analyze and suggest structured field mappings in JSON."
+        },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.2,
     });
 
-    console.log('🤖 OpenAI response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
-    }
-
-    const aiResult = await response.json();
     console.log('✅ OpenAI response received');
     
-    if (!aiResult.choices || aiResult.choices.length === 0) {
-      console.error('❌ No choices in OpenAI response:', aiResult);
-      throw new Error('No choices returned from OpenAI API');
-    }
-    
-    const raw = aiResult.choices[0]?.message?.content || "";
+    const raw = response.choices[0]?.message?.content || "";
     console.log('📝 Raw AI response length:', raw.length);
     
     const jsonStart = raw.indexOf("[");
