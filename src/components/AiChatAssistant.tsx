@@ -281,10 +281,12 @@ For source and target nodes, fields MUST use this exact SchemaField format:
   "exampleValue": "actual_value_or_empty_string"
 }
 
-## CRITICAL: Data Array Rules
-- ALWAYS generate exactly ONE sample record in the data array, never multiple identical records
-- Example: "data": [{ "fieldName1": "a", "fieldName2": "b" }] ✓
-- NEVER: "data": [{ "fieldName1": "a" }, { "fieldName1": "a" }, { "fieldName1": "a" }] ✗
+## CRITICAL: Data Array Rules - READ THIS CAREFULLY
+- Source nodes should contain EXACTLY ONE sample record for preview purposes
+- NEVER generate multiple records (like 5 rows) - this is incorrect
+- When user asks for "5 fields with values a,b,c,d,e" they want ONE record with those 5 field values
+- Correct: "data": [{ "fieldName1": "a", "fieldName2": "b", "fieldName3": "c", "fieldName4": "d", "fieldName5": "e" }]
+- WRONG: Multiple records with variations like a1, b1, c1 or identical records
 
 ## CRITICAL: Handle Connection Rules & Smart Mapping
 - You can use EITHER field.id OR field.name for handles - the system will auto-resolve field names to IDs
