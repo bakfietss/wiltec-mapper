@@ -337,11 +337,6 @@ Return a JSON array:
 `;
 
     console.log('🤖 Making OpenAI API call...');
-    
-    // Create AbortController for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -349,7 +344,7 @@ Return a JSON array:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', // Use faster model
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -358,12 +353,8 @@ Return a JSON array:
           { role: 'user', content: prompt }
         ],
         temperature: 0.2,
-        max_tokens: 2000, // Limit response size for faster processing
       }),
-      signal: controller.signal,
     });
-    
-    clearTimeout(timeoutId);
 
     console.log('🤖 OpenAI response status:', response.status);
     
