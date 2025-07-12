@@ -101,21 +101,25 @@ export class ApiKeyService {
   static async updateApiKey(
     keyId: string, 
     userId: string, 
-    updates: { description?: string; expires_at?: string }
-  ): Promise<void> {
+    description?: string
+  ): Promise<ApiKey> {
     if (!userId) {
       throw new Error('User authentication is required to update API keys');
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('api_keys')
-      .update(updates)
+      .update({ description })
       .eq('id', keyId)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select()
+      .single();
 
     if (error) {
       throw new Error(`Failed to update API key: ${error.message}`);
     }
+
+    return data;
   }
 
   private static generateApiKey(): string {

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Copy, Eye, EyeOff, Key, Plus, Trash2, Calendar, AlertTriangle } from 'lucide-react';
+import { Copy, Eye, EyeOff, Key, Plus, Trash2, Calendar, AlertTriangle, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const ApiKeyManager = () => {
@@ -18,11 +18,13 @@ export const ApiKeyManager = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialog, setCreateDialog] = useState(false);
+  const [editDialog, setEditDialog] = useState<{ open: boolean; key: ApiKey | null }>({ open: false, key: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; key: ApiKey | null }>({ open: false, key: null });
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   
-  // Create form state
+  // Form state
   const [description, setDescription] = useState('');
+  const [keyType, setKeyType] = useState('general');
   const [expiresAt, setExpiresAt] = useState('');
   
   useEffect(() => {
@@ -46,16 +48,19 @@ export const ApiKeyManager = () => {
 
   const handleCreateApiKey = async () => {
     try {
+      const fullDescription = keyType === 'openai' 
+        ? `OpenAI API Key${description.trim() ? ` - ${description.trim()}` : ''}`
+        : description.trim() || undefined;
+      
       const newKey = await ApiKeyService.createApiKey(
         user!.id, 
-        description.trim() || undefined,
+        fullDescription,
         expiresAt || undefined
       );
       
       setApiKeys(prev => [newKey, ...prev]);
       setCreateDialog(false);
-      setDescription('');
-      setExpiresAt('');
+      resetForm();
       
       // Show the new key temporarily
       setVisibleKeys(prev => new Set([...prev, newKey.id]));
@@ -65,6 +70,37 @@ export const ApiKeyManager = () => {
       console.error('Failed to create API key:', error);
       toast.error('Failed to create API key');
     }
+  };
+
+  const handleEditApiKey = async () => {
+    if (!editDialog.key) return;
+    
+    try {
+      const updatedKey = await ApiKeyService.updateApiKey(
+        editDialog.key.id,
+        user!.id,
+        description.trim() || undefined
+      );
+      
+      setApiKeys(prev => 
+        prev.map(key => 
+          key.id === editDialog.key!.id ? { ...key, description: updatedKey.description } : key
+        )
+      );
+      setEditDialog({ open: false, key: null });
+      resetForm();
+      
+      toast.success('API key updated successfully');
+    } catch (error) {
+      console.error('Failed to update API key:', error);
+      toast.error('Failed to update API key');
+    }
+  };
+
+  const resetForm = () => {
+    setDescription('');
+    setKeyType('general');
+    setExpiresAt('');
   };
 
   const handleRevokeApiKey = async (keyId: string) => {
@@ -161,10 +197,25 @@ export const ApiKeyManager = () => {
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="description">Description (optional)</Label>
+                <Label htmlFor="keyType">Key Type</Label>
+                <select
+                  id="keyType"
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                  value={keyType}
+                  onChange={(e) => setKeyType(e.target.value)}
+                >
+                  <option value="general">General API Key</option>
+                  <option value="openai">OpenAI API Key</option>
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  {keyType === 'openai' ? 'Additional Description (optional)' : 'Description (optional)'}
+                </Label>
                 <Textarea
                   id="description"
-                  placeholder="e.g., Power Automate Integration"
+                  placeholder={keyType === 'openai' ? 'e.g., For template analysis' : 'e.g., Power Automate Integration'}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -182,7 +233,7 @@ export const ApiKeyManager = () => {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateDialog(false)}>
+              <Button variant="outline" onClick={() => { setCreateDialog(false); resetForm(); }}>
                 Cancel
               </Button>
               <Button onClick={handleCreateApiKey}>
@@ -281,6 +332,16 @@ export const ApiKeyManager = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setDescription(key.description?.replace(/^OpenAI API Key\s*-\s*/, '') || '');
+                            setEditDialog({ open: true, key });
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         {!key.revoked && !ApiKeyService.isExpired(key.expires_at) && (
                           <Button
                             size="sm"
@@ -307,6 +368,45 @@ export const ApiKeyManager = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit API Key Dialog */}
+      <Dialog open={editDialog.open} onOpenChange={(open) => { 
+        setEditDialog({ open, key: null }); 
+        if (!open) resetForm(); 
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit API Key</DialogTitle>
+            <DialogDescription>
+              Update the description for this API key.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editDescription">Description</Label>
+              <Textarea
+                id="editDescription"
+                placeholder="e.g., Power Automate Integration"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => { setEditDialog({ open: false, key: null }); resetForm(); }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditApiKey}>
+              Update API Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, key: null })}>

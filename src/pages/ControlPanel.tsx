@@ -171,16 +171,15 @@ const ControlPanel = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
-                AI Configuration
+                OpenAI Integration
               </CardTitle>
-              <CardDescription>Configure OpenAI API key for template analysis and chatbot features</CardDescription>
+              <CardDescription>Manage your OpenAI API key for AI-powered features</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="p-4 border rounded-lg bg-muted/50">
                 <h4 className="font-medium mb-2">OpenAI API Key</h4>
                 <p className="text-sm text-muted-foreground mb-4">
-                  This key is used for AI-powered template analysis and the canvas chatbot. 
-                  The key is securely stored in Supabase secrets.
+                  Create an OpenAI API key in the API Keys tab above. The key will be used for template analysis and the canvas chatbot.
                 </p>
                 <div className="space-y-2">
                   <Button
@@ -193,7 +192,7 @@ const ControlPanel = () => {
                     Get OpenAI API Key
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    Click the button below to securely add your OpenAI API key
+                    After getting your key from OpenAI, add it as an "OpenAI API Key" in the API Keys tab above.
                   </p>
                 </div>
               </div>
