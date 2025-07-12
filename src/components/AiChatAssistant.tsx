@@ -527,7 +527,19 @@ Be conversational and helpful. Always explain what you understand and what you'l
       case 'modify_node':
         setNodes(prev => prev.map(node => 
           node.id === action.nodeId 
-            ? { ...node, data: { ...node.data, ...action.updates } }
+            ? { 
+                ...node, 
+                data: { 
+                  ...node.data, 
+                  ...action.updates,
+                  // CRITICAL FIX: Ensure data array only has one record
+                  data: action.updates.data 
+                    ? (Array.isArray(action.updates.data) && action.updates.data.length > 0 
+                        ? [action.updates.data[0]]  // Only take the first record
+                        : action.updates.data)
+                    : node.data.data
+                } 
+              }
             : node
         ));
         toast.success('Node updated successfully!');
