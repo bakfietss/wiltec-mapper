@@ -2,31 +2,48 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
-import { Upload, Play, Copy, Check } from 'lucide-react';
+import { Upload, Play, Copy, Check, Shield, Eye, EyeOff } from 'lucide-react';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
 import { TemplateToNodesConverter } from '../services/TemplateToNodesConverter';
 import { useNavigate } from 'react-router-dom';
+import { flattenJsonData, flattenXmlData, flattenCsvData } from '../utils/flatten';
+import { redactArray } from '../utils/redact';
 
 const TemplateMapper = () => {
   const [sourceData, setSourceData] = useState('');
   const [targetData, setTargetData] = useState('');
+  const [sourceDataFlattened, setSourceDataFlattened] = useState('');
+  const [targetDataFlattened, setTargetDataFlattened] = useState('');
   const [generatedTemplate, setGeneratedTemplate] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showRedacted, setShowRedacted] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSourceDataUpload = useCallback((data: any[]) => {
+    // Store original data
     setSourceData(JSON.stringify(data, null, 2));
+    
+    // Flatten and process the data
+    const flattenedData = flattenJsonData(data);
+    setSourceDataFlattened(JSON.stringify(flattenedData, null, 2));
+    
     setGeneratedTemplate('');
-    toast({ title: "Source data uploaded successfully!" });
+    toast({ title: "Source data uploaded and flattened successfully!" });
   }, [toast]);
 
   const handleTargetDataUpload = useCallback((data: any[]) => {
+    // Store original data
     setTargetData(JSON.stringify(data, null, 2));
+    
+    // Flatten and process the data
+    const flattenedData = flattenJsonData(data);
+    setTargetDataFlattened(JSON.stringify(flattenedData, null, 2));
+    
     setGeneratedTemplate('');
-    toast({ title: "Target data uploaded successfully!" });
+    toast({ title: "Target data uploaded and flattened successfully!" });
   }, [toast]);
 
   // Simple conversion logic - you can build your own here
@@ -195,25 +212,74 @@ const TemplateMapper = () => {
             />
             
             {sourceData && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-700">
-                    Source Data Preview
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => copyToClipboard(sourceData)}
-                  >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+              <div className="space-y-4">
+                {/* Original Data */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-700">
+                      Original Source Data
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyToClipboard(sourceData)}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={sourceData}
+                    onChange={(e) => setSourceData(e.target.value)}
+                    className="min-h-[150px] font-mono text-sm"
+                    placeholder="Your source data will appear here..."
+                  />
                 </div>
-                <Textarea
-                  value={sourceData}
-                  onChange={(e) => setSourceData(e.target.value)}
-                  className="min-h-[200px] font-mono text-sm"
-                  placeholder="Your source data will appear here..."
-                />
+                
+                {/* Flattened Data */}
+                {sourceDataFlattened && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-slate-700">
+                        Flattened Source Data
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setShowRedacted(!showRedacted)}
+                        >
+                          {showRedacted ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          {showRedacted ? 'Show Original' : 'Show Redacted'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => copyToClipboard(showRedacted ? 
+                            JSON.stringify(redactArray(JSON.parse(sourceDataFlattened)), null, 2) : 
+                            sourceDataFlattened
+                          )}
+                        >
+                          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <Textarea
+                      value={showRedacted ? 
+                        JSON.stringify(redactArray(JSON.parse(sourceDataFlattened)), null, 2) : 
+                        sourceDataFlattened
+                      }
+                      readOnly
+                      className="min-h-[150px] font-mono text-sm"
+                      placeholder="Flattened data will appear here..."
+                    />
+                    {showRedacted && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Shield className="h-3 w-3" />
+                        Personal information has been redacted for privacy protection
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -236,25 +302,52 @@ const TemplateMapper = () => {
             />
             
             {targetData && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-700">
-                    Target Data Preview
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => copyToClipboard(targetData)}
-                  >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+              <div className="space-y-4">
+                {/* Original Target Data */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-700">
+                      Original Target Data
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyToClipboard(targetData)}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={targetData}
+                    onChange={(e) => setTargetData(e.target.value)}
+                    className="min-h-[150px] font-mono text-sm"
+                    placeholder="Your target data will appear here..."
+                  />
                 </div>
-                <Textarea
-                  value={targetData}
-                  onChange={(e) => setTargetData(e.target.value)}
-                  className="min-h-[200px] font-mono text-sm"
-                  placeholder="Your target data will appear here..."
-                />
+                
+                {/* Flattened Target Data */}
+                {targetDataFlattened && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-slate-700">
+                        Flattened Target Data
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => copyToClipboard(targetDataFlattened)}
+                      >
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={targetDataFlattened}
+                      readOnly
+                      className="min-h-[150px] font-mono text-sm"
+                      placeholder="Flattened target data will appear here..."
+                    />
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

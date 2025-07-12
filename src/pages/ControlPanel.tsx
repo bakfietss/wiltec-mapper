@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Activity, FileText, Key, BarChart3, Settings } from 'lucide-react';
+import { Activity, FileText, Key, BarChart3, Settings, Brain } from 'lucide-react';
 import { ApiKeyManager } from '@/components/ApiKeyManager';
 
 const ControlPanel = () => {
@@ -169,15 +169,47 @@ const ControlPanel = () => {
         <TabsContent value="settings" className="space-y-6">
           <Card>
             <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI Configuration
+              </CardTitle>
+              <CardDescription>Configure OpenAI API key for template analysis and chatbot features</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-medium mb-2">OpenAI API Key</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  This key is used for AI-powered template analysis and the canvas chatbot. 
+                  The key is securely stored in Supabase secrets.
+                </p>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => {
+                      window.open('https://platform.openai.com/api-keys', '_blank');
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Get OpenAI API Key
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Click the button below to securely add your OpenAI API key
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
               <CardTitle>System Settings</CardTitle>
-              <CardDescription>Configure system preferences and options</CardDescription>
+              <CardDescription>Additional system configuration options</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Settings panel coming soon</h3>
-                <p className="text-muted-foreground">
-                  System configuration options will be available here.
+              <div className="text-center py-8">
+                <Settings className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Additional settings will be available here.
                 </p>
               </div>
             </CardContent>
