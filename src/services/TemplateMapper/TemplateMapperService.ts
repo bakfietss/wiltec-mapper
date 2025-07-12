@@ -5,7 +5,7 @@ import { applyTemplate } from './GenerateCanvas';
 import { loadAndFlatten } from './FileProcessor';
 import { redactSample } from '@/utils/redact';
 
-const MAX_SAMPLES = 20;
+const MAX_SAMPLES = 5;
 
 function estimateTokens(source: any[], target: any[]): number {
     const promptSize =
