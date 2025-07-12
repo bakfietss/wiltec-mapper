@@ -8,6 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Types for mapping suggestions
 type MappingSuggestion =
   | {
       target_field: string;
@@ -66,7 +67,7 @@ interface CanvasEdge {
   to: string;
 }
 
-function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
+function convertMappingsToCanvas(mappings: MappingSuggestion[]): { nodes: CanvasNode[]; edges: CanvasEdge[] } {
   const nodes: CanvasNode[] = [];
   const edges: CanvasEdge[] = [];
   const addedNodeIds = new Set<string>();
@@ -74,7 +75,12 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
   for (const map of mappings) {
     const targetId = `target_${map.target_field}`;
     if (!addedNodeIds.has(targetId)) {
-      nodes.push({ id: targetId, type: "TargetNode", label: map.target_field });
+      nodes.push({ 
+        id: targetId, 
+        type: "TargetNode", 
+        label: map.target_field,
+        field: map.target_field
+      });
       addedNodeIds.add(targetId);
     }
 
@@ -84,7 +90,12 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
     const addSource = (field: string) => {
       const sourceId = `source_${field}`;
       if (!addedNodeIds.has(sourceId)) {
-        nodes.push({ id: sourceId, type: "SourceNode", label: field });
+        nodes.push({ 
+          id: sourceId, 
+          type: "SourceNode", 
+          label: field,
+          field: field
+        });
         addedNodeIds.add(sourceId);
       }
       return sourceId;
@@ -99,12 +110,22 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
 
       case "static":
         nodeId = `static_${map.target_field}`;
-        node = { id: nodeId, type: "StaticValueNode", value: map.value };
+        node = { 
+          id: nodeId, 
+          type: "StaticValueNode", 
+          label: `Static: ${map.value}`,
+          value: map.value 
+        };
         break;
 
       case "conditional":
         nodeId = `if_${map.target_field}`;
-        node = { id: nodeId, type: "IfThenNode", conditions: map.conditions };
+        node = { 
+          id: nodeId, 
+          type: "IfThenNode", 
+          label: "Conditional",
+          conditions: map.conditions 
+        };
         break;
 
       case "table": {
@@ -113,7 +134,8 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
         node = { 
           id: nodeId, 
           type: "ConversionMappingNode", 
-          source: map.source_field, 
+          label: `Convert: ${map.source_field}`,
+          sourceField: map.source_field, 
           mappingTable: map.table 
         };
         edges.push({ type: "edge", from, to: nodeId });
@@ -126,8 +148,9 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
         node = {
           id: nodeId,
           type: "TransformNode",
-          source: map.source_field,
-          stringOperation: "dateFormat",
+          label: `Date: ${map.format}`,
+          sourceField: map.source_field,
+          transformType: "dateFormat",
           format: map.format,
           autoDetect: true
         };
@@ -139,8 +162,8 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
         nodeId = `concat_${map.target_field}`;
         node = {
           id: nodeId,
-          type: "TransformNode",
-          stringOperation: "concat",
+          type: "ConcatTransformNode",
+          label: `Concat: ${map.source_fields.join(' + ')}`,
           sourceFields: map.source_fields,
           separator: map.separator ?? " "
         };
@@ -156,9 +179,9 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
         const from = addSource(map.source_field);
         node = {
           id: nodeId,
-          type: "TransformNode",
-          stringOperation: "split",
-          source: map.source_field,
+          type: "SplitterTransformNode",
+          label: `Split: ${map.source_field}[${map.index}]`,
+          sourceField: map.source_field,
           delimiter: map.delimiter,
           index: map.index
         };
@@ -179,7 +202,9 @@ function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
       addedNodeIds.add(node.id);
     }
 
-    edges.push({ type: "edge", from: nodeId, to: targetId });
+    if (node) {
+      edges.push({ type: "edge", from: nodeId, to: targetId });
+    }
   }
 
   return { nodes, edges };
@@ -192,13 +217,17 @@ function applyTemplate(aiCanvasResult: { nodes: any[]; edges: any[] }) {
     id: n.id,
     type: n.type,
     position: layout[n.id] || { x: 100, y: 100 },
-    data: { ...n }
+    data: { 
+      label: n.label || n.field || n.id,
+      ...n 
+    }
   }));
 
-  const edges = aiCanvasResult.edges.map((e) => ({
-    id: `${e.from}-${e.to}`,
+  const edges = aiCanvasResult.edges.map((e, idx) => ({
+    id: `${e.from}-${e.to}-${idx}`,
     source: e.from,
-    target: e.to
+    target: e.to,
+    type: 'smoothstep'
   }));
 
   return { nodes, edges };
@@ -208,23 +237,23 @@ function calculateLayout(nodes: any[]): Record<string, { x: number; y: number }>
   const layout: Record<string, { x: number; y: number }> = {};
   
   // Group nodes by type for better layout
-  const targetNodes = nodes.filter(n => n.type === 'TargetNode');
   const sourceNodes = nodes.filter(n => n.type === 'SourceNode');
+  const targetNodes = nodes.filter(n => n.type === 'TargetNode');
   const transformNodes = nodes.filter(n => !['TargetNode', 'SourceNode'].includes(n.type));
 
-  // Position targets on the left
-  targetNodes.forEach((node, i) => {
-    layout[node.id] = { x: 100, y: 100 + (i * 120) };
-  });
-
-  // Position sources on the right
+  // Position sources on the left
   sourceNodes.forEach((node, i) => {
-    layout[node.id] = { x: 800, y: 100 + (i * 120) };
+    layout[node.id] = { x: 100, y: 100 + (i * 120) };
   });
 
   // Position transforms in the middle
   transformNodes.forEach((node, i) => {
     layout[node.id] = { x: 450, y: 100 + (i * 120) };
+  });
+
+  // Position targets on the right
+  targetNodes.forEach((node, i) => {
+    layout[node.id] = { x: 800, y: 100 + (i * 120) };
   });
 
   return layout;
