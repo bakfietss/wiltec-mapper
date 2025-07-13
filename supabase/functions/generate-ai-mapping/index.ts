@@ -278,57 +278,136 @@ function redactAll(data: any[]): any[] {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     console.log('🚀 Edge function called');
-    const { sourceData, targetData } = await req.json();
-    console.log('📥 Received data:', { sourceCount: sourceData?.length, targetCount: targetData?.length });
+    
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('📥 Request body parsed successfully');
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { sourceData, targetData } = requestBody;
+    console.log('📥 Received data:', { 
+      sourceCount: sourceData?.length, 
+      targetCount: targetData?.length,
+      sourceType: typeof sourceData,
+      targetType: typeof targetData
+    });
+
+    // Validate input data
+    if (!sourceData || !targetData) {
+      console.error('❌ Missing sourceData or targetData');
+      return new Response(
+        JSON.stringify({ error: 'sourceData and targetData are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!Array.isArray(sourceData) || !Array.isArray(targetData)) {
+      console.error('❌ sourceData and targetData must be arrays');
+      return new Response(
+        JSON.stringify({ error: 'sourceData and targetData must be arrays' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (sourceData.length === 0 || targetData.length === 0) {
+      console.error('❌ Empty data arrays');
+      return new Response(
+        JSON.stringify({ error: 'sourceData and targetData cannot be empty' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Get OpenAI API key from database
+    console.log('🔑 Fetching OpenAI API key from database...');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: apiKeys, error: keyError } = await supabase
-      .from('api_keys')
-      .select('key')
-      .eq('status', 'active')
-      .eq('revoked', false)
-      .ilike('key', 'sk-proj-%')
-      .limit(1);
+    let openAIApiKey;
+    try {
+      const { data: apiKeys, error: keyError } = await supabase
+        .from('api_keys')
+        .select('key')
+        .eq('status', 'active')
+        .eq('revoked', false)
+        .ilike('key', 'sk-proj-%')
+        .limit(1);
 
-    if (keyError || !apiKeys || apiKeys.length === 0) {
-      console.error('❌ No OpenAI API key found in database');
+      if (keyError) {
+        console.error('❌ Database error fetching API key:', keyError);
+        return new Response(
+          JSON.stringify({ error: 'Database error fetching API key' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!apiKeys || apiKeys.length === 0) {
+        console.error('❌ No OpenAI API key found in database');
+        return new Response(
+          JSON.stringify({ error: 'OpenAI API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      openAIApiKey = apiKeys[0].key.trim();
+      console.log('✅ OpenAI API key found, length:', openAIApiKey.length);
+    } catch (dbError) {
+      console.error('❌ Exception fetching API key:', dbError);
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not found in database' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: 'Failed to fetch API key' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const openAIApiKey = apiKeys[0].key.trim();
-    console.log('✅ OpenAI API key found in database, length:', openAIApiKey.length);
-
+    // Process data
+    console.log('🔄 Processing data...');
     const source = sourceData.slice(0, MAX_SAMPLES);
     const target = targetData.slice(0, MAX_SAMPLES);
 
-    const redactedSource = redactAll(source);
-    const redactedTarget = redactAll(target);
-
-    console.log("🟡 Sending these samples to AI...");
-    console.log("📤 Redacted Source:", redactedSource[0]);
-    console.log("📤 Redacted Target:", redactedTarget[0]);
+    let redactedSource, redactedTarget;
+    try {
+      redactedSource = redactAll(source);
+      redactedTarget = redactAll(target);
+      console.log('✅ Data redacted successfully');
+      console.log("📤 Redacted Source sample:", redactedSource[0]);
+      console.log("📤 Redacted Target sample:", redactedTarget[0]);
+    } catch (redactError) {
+      console.error('❌ Error redacting data:', redactError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to process data' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const estimatedTokens = estimateTokens(redactedSource, redactedTarget);
     console.log(`📊 Estimated tokens: ~${estimatedTokens} (≈ €${(estimatedTokens / 1000 * 0.01).toFixed(3)} EUR)`);
 
-    const prompt = `
-You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
+    // Check token limit
+    if (estimatedTokens > 25000) {
+      console.error('❌ Token limit exceeded:', estimatedTokens);
+      return new Response(
+        JSON.stringify({ error: `Request too large: ${estimatedTokens} tokens (limit: 25000)` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Prepare OpenAI prompt
+    const prompt = `You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
 
 For each target field, classify the mapping type:
 - "direct": a field with the same meaning in the source
@@ -364,66 +443,118 @@ Return a JSON array:
     "mapping_type": "...",
     ...
   }
-]
-`;
+]`;
 
+    // Call OpenAI API
     console.log('🤖 Making OpenAI API call...');
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a data mapping assistant. Analyze and suggest structured field mappings in JSON.'
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2,
-      }),
-    });
+    let aiResponse;
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4.1-2025-04-14',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a data mapping assistant. Analyze and suggest structured field mappings in JSON.'
+            },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.2,
+        }),
+      });
 
-    console.log('🤖 OpenAI response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
-    }
+      console.log('🤖 OpenAI response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ OpenAI API error:', response.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `OpenAI API error: ${response.status} - ${errorText}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    const aiResult = await response.json();
-    console.log('✅ OpenAI response received');
-    
-    if (!aiResult.choices || aiResult.choices.length === 0) {
-      console.error('❌ No choices in OpenAI response:', aiResult);
-      throw new Error('No choices returned from OpenAI API');
+      aiResponse = await response.json();
+      console.log('✅ OpenAI response received');
+    } catch (apiError) {
+      console.error('❌ OpenAI API call failed:', apiError);
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API call failed' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    const raw = aiResult.choices[0]?.message?.content || "";
+    if (!aiResponse.choices || aiResponse.choices.length === 0) {
+      console.error('❌ No choices in OpenAI response:', aiResponse);
+      return new Response(
+        JSON.stringify({ error: 'Invalid OpenAI response format' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const raw = aiResponse.choices[0]?.message?.content || "";
     console.log('📝 Raw AI response length:', raw.length);
     
-    const jsonStart = raw.indexOf("[");
-    const jsonEnd = raw.lastIndexOf("]") + 1;
-    const jsonString = raw.slice(jsonStart, jsonEnd);
+    // Parse AI response
+    let parsed;
+    try {
+      const jsonStart = raw.indexOf("[");
+      const jsonEnd = raw.lastIndexOf("]") + 1;
+      
+      if (jsonStart === -1 || jsonEnd === 0) {
+        console.error('❌ No JSON array found in AI response');
+        return new Response(
+          JSON.stringify({ error: 'Invalid AI response: no JSON array found' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const jsonString = raw.slice(jsonStart, jsonEnd);
+      console.log('🔍 Extracted JSON string length:', jsonString.length);
 
-    console.log('🔍 Extracted JSON string length:', jsonString.length);
+      parsed = JSON.parse(jsonString);
+      console.log("✅ AI Mapping Suggestions parsed:", parsed.length, "mappings");
+    } catch (parseError) {
+      console.error('❌ Failed to parse AI response JSON:', parseError);
+      console.log('Raw response:', raw);
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse AI response' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const parsed = JSON.parse(jsonString);
-    console.log("\n✅ AI Mapping Suggestions:\n");
-    console.dir(parsed, { depth: null });
+    // Convert to canvas
+    let canvas;
+    try {
+      canvas = convertMappingsToCanvas(parsed);
+      console.log("🎨 Canvas created:", canvas.nodes.length, "nodes,", canvas.edges.length, "edges");
+    } catch (canvasError) {
+      console.error('❌ Error converting to canvas:', canvasError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to convert mappings to canvas' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const canvas = convertMappingsToCanvas(parsed);
-    console.log("\n🎨 Canvas-Ready Nodes and Edges:\n");
-    console.dir(canvas, { depth: null });
+    // Apply template
+    let reactFlowOutput;
+    try {
+      reactFlowOutput = applyTemplate(canvas);
+      console.log("🧪 React Flow output created:", reactFlowOutput.nodes.length, "nodes");
+    } catch (templateError) {
+      console.error('❌ Error applying template:', templateError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to apply template' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const reactFlowOutput = applyTemplate(canvas);
-    console.log("\n🧪 React Flow–Ready Output:\n");
-    console.dir(reactFlowOutput, { depth: null });
-
+    console.log('✅ Success! Returning response');
     return new Response(
       JSON.stringify({ 
         mappings: parsed,
@@ -431,10 +562,11 @@ Return a JSON array:
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error) {
-    console.error('Error in generate-ai-mapping function:', error);
+    console.error('❌ Unexpected error in generate-ai-mapping function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: `Internal server error: ${error.message}` }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
