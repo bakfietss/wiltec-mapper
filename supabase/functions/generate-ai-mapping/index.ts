@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -7,255 +8,273 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Types for mapping suggestions
+// Your flatten.ts code
+export type FlatObject = { [key: string]: any };
+
+export function flattenObject(obj: any, prefix = ''): FlatObject {
+  return Object.entries(obj).reduce((acc, [key, value]) => {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(acc, flattenObject(value, fullKey));
+    } else if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'object') {
+      Object.assign(acc, flattenObject(value[0], fullKey));
+    } else {
+      acc[fullKey] = value;
+    }
+    return acc;
+  }, {} as FlatObject);
+}
+
+// Your redact.ts code
+const EMAIL_REGEX = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+
+function isEmail(value: any): boolean {
+    return typeof value === "string" && EMAIL_REGEX.test(value);
+}
+
+function isLikelyName(key: string, value: any): boolean {
+    const nameKeywords = ["name", "roepnaam", "achternaam", "voorvoegsel", "firstname", "lastname", "middlename"];
+    return typeof value === "string" && nameKeywords.some(k => key.toLowerCase().includes(k));
+}
+
+export function redactSample(obj: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = {};
+    for (const [key, val] of Object.entries(obj)) {
+        if (isEmail(val)) {
+            result[key] = "<email>";
+        } else if (isLikelyName(key, val)) {
+            result[key] = "<name>";
+        } else {
+            result[key] = val;
+        }
+    }
+    return result;
+}
+
+// Your aitocanvas.ts code
 type MappingSuggestion =
-  | {
-      target_field: string;
-      mapping_type: "direct";
-      source_field: string;
+    | {
+        target_field: string;
+        mapping_type: "direct";
+        source_field: string;
     }
-  | {
-      target_field: string;
-      mapping_type: "static";
-      value: string;
+    | {
+        target_field: string;
+        mapping_type: "static";
+        value: string;
     }
-  | {
-      target_field: string;
-      mapping_type: "conditional";
-      conditions: Array<{ condition: string; value: string }>;
+    | {
+        target_field: string;
+        mapping_type: "conditional";
+        conditions: Array<{ condition: string; value: string }>;
     }
-  | {
-      target_field: string;
-      mapping_type: "table";
-      source_field: string;
-      table: Record<string, string>;
+    | {
+        target_field: string;
+        mapping_type: "table";
+        source_field: string;
+        table: Record<string, string>;
     }
-  | {
-      target_field: string;
-      mapping_type: "date_conversion";
-      source_field: string;
-      format: string;
+    | {
+        target_field: string;
+        mapping_type: "date_conversion";
+        source_field: string;
+        format: string;
     }
-  | {
-      target_field: string;
-      mapping_type: "concat";
-      source_fields: string[];
-      separator: string;
+    | {
+        target_field: string;
+        mapping_type: "concat";
+        source_fields: string[];
+        separator: string;
     }
-  | {
-      target_field: string;
-      mapping_type: "split";
-      source_field: string;
-      delimiter: string;
-      index: number;
+    | {
+        target_field: string;
+        mapping_type: "split";
+        source_field: string;
+        delimiter: string;
+        index: number;
     }
-  | {
-      target_field: string;
-      mapping_type: "skip";
+    | {
+        target_field: string;
+        mapping_type: "skip";
     };
 
 interface CanvasNode {
-  id: string;
-  type: string;
-  [key: string]: any;
+    id: string;
+    type: string;
+    [key: string]: any;
 }
 
 interface CanvasEdge {
-  type: "edge" | "direct";
-  from: string;
-  to: string;
+    type: "edge" | "direct";
+    from: string;
+    to: string;
 }
 
-function convertMappingsToCanvas(mappings: MappingSuggestion[]): { nodes: CanvasNode[]; edges: CanvasEdge[] } {
-  const nodes: CanvasNode[] = [];
-  const edges: CanvasEdge[] = [];
-  const addedNodeIds = new Set<string>();
+export function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
+    const nodes: CanvasNode[] = [];
+    const edges: CanvasEdge[] = [];
+    const addedNodeIds = new Set<string>();
 
-  for (const map of mappings) {
-    const targetId = `target_${map.target_field}`;
-    if (!addedNodeIds.has(targetId)) {
-      nodes.push({ 
-        id: targetId, 
-        type: "TargetNode", 
-        label: map.target_field,
-        field: map.target_field
-      });
-      addedNodeIds.add(targetId);
-    }
-
-    let nodeId = "";
-    let node: CanvasNode | null = null;
-
-    const addSource = (field: string) => {
-      const sourceId = `source_${field}`;
-      if (!addedNodeIds.has(sourceId)) {
-        nodes.push({ 
-          id: sourceId, 
-          type: "SourceNode", 
-          label: field,
-          field: field
-        });
-        addedNodeIds.add(sourceId);
-      }
-      return sourceId;
-    };
-
-    switch (map.mapping_type) {
-      case "direct": {
-        const from = addSource(map.source_field);
-        edges.push({ type: "direct", from, to: targetId });
-        continue;
-      }
-
-      case "static":
-        nodeId = `static_${map.target_field}`;
-        node = { 
-          id: nodeId, 
-          type: "StaticValueNode", 
-          label: `Static: ${map.value}`,
-          value: map.value 
-        };
-        break;
-
-      case "conditional":
-        nodeId = `if_${map.target_field}`;
-        node = { 
-          id: nodeId, 
-          type: "IfThenNode", 
-          label: "Conditional",
-          conditions: map.conditions 
-        };
-        break;
-
-      case "table": {
-        nodeId = `convert_${map.target_field}`;
-        const from = addSource(map.source_field);
-        node = { 
-          id: nodeId, 
-          type: "ConversionMappingNode", 
-          label: `Convert: ${map.source_field}`,
-          sourceField: map.source_field, 
-          mappingTable: map.table 
-        };
-        edges.push({ type: "edge", from, to: nodeId });
-        break;
-      }
-
-      case "date_conversion": {
-        nodeId = `date_${map.target_field}`;
-        const from = addSource(map.source_field);
-        node = {
-          id: nodeId,
-          type: "TransformNode",
-          label: `Date: ${map.format}`,
-          sourceField: map.source_field,
-          transformType: "dateFormat",
-          format: map.format,
-          autoDetect: true
-        };
-        edges.push({ type: "edge", from, to: nodeId });
-        break;
-      }
-
-      case "concat": {
-        nodeId = `concat_${map.target_field}`;
-        node = {
-          id: nodeId,
-          type: "ConcatTransformNode",
-          label: `Concat: ${map.source_fields.join(' + ')}`,
-          sourceFields: map.source_fields,
-          separator: map.separator ?? " "
-        };
-        for (const field of map.source_fields) {
-          const from = addSource(field);
-          edges.push({ type: "edge", from, to: nodeId });
+    for (const map of mappings) {
+        const targetId = `target_${map.target_field}`;
+        if (!addedNodeIds.has(targetId)) {
+            nodes.push({ id: targetId, type: "TargetFieldNode", label: map.target_field });
+            addedNodeIds.add(targetId);
         }
-        break;
-      }
 
-      case "split": {
-        nodeId = `split_${map.target_field}`;
-        const from = addSource(map.source_field);
-        node = {
-          id: nodeId,
-          type: "SplitterTransformNode",
-          label: `Split: ${map.source_field}[${map.index}]`,
-          sourceField: map.source_field,
-          delimiter: map.delimiter,
-          index: map.index
+        let nodeId = "";
+        let node: CanvasNode | null = null;
+
+        const addSource = (field: string) => {
+            const sourceId = `source_${field}`;
+            if (!addedNodeIds.has(sourceId)) {
+                nodes.push({ id: sourceId, type: "SourceFieldNode", label: field });
+                addedNodeIds.add(sourceId);
+            }
+            return sourceId;
         };
-        edges.push({ type: "edge", from, to: nodeId });
-        break;
-      }
 
-      case "skip":
-        continue;
+        switch (map.mapping_type) {
+            case "direct": {
+                const from = addSource(map.source_field);
+                edges.push({ type: "direct", from, to: targetId });
+                continue;
+            }
 
-      default:
-        console.warn(`⚠️ Unknown mapping type: ${(map as any)["mapping_type"]}`);
-        continue;
+            case "static":
+                nodeId = `static_${map.target_field}`;
+                node = { id: nodeId, type: "StaticValueNode", value: map.value };
+                break;
+
+            case "conditional":
+                nodeId = `if_${map.target_field}`;
+                node = { id: nodeId, type: "IfThenNode", conditions: map.conditions };
+                break;
+
+            case "table": {
+                nodeId = `convert_${map.target_field}`;
+                const from = addSource(map.source_field);
+                node = { id: nodeId, type: "ConversionMappingNode", source: map.source_field, mappingTable: map.table };
+                edges.push({ type: "direct", from, to: nodeId });
+                break;
+            }
+
+            case "date_conversion": {
+                nodeId = `date_${map.target_field}`;
+                const from = addSource(map.source_field);
+                node = {
+                    id: nodeId,
+                    type: "TransformNode",
+                    source: map.source_field,
+                    stringOperation: "dateFormat",
+                    format: map.format,
+                    autoDetect: true
+                };
+                edges.push({ type: "direct", from, to: nodeId });
+                break;
+            }
+
+            case "concat": {
+                nodeId = `concat_${map.target_field}`;
+                node = {
+                    id: nodeId,
+                    type: "TransformNode",
+                    stringOperation: "concat",
+                    sourceFields: map.source_fields,
+                    separator: map.separator ?? " "
+                };
+                for (const field of map.source_fields) {
+                    const from = addSource(field);
+                    edges.push({ type: "direct", from, to: nodeId });
+                }
+                break;
+            }
+
+            case "split": {
+                nodeId = `split_${map.target_field}`;
+                const from = addSource(map.source_field);
+                node = {
+                    id: nodeId,
+                    type: "TransformNode",
+                    stringOperation: "split",
+                    source: map.source_field,
+                    delimiter: map.delimiter,
+                    index: map.index
+                };
+                edges.push({ type: "direct", from, to: nodeId });
+                break;
+            }
+
+            case "skip":
+                continue;
+
+            default:
+                console.warn(`⚠️ Unknown mapping type: ${(map as any)["mapping_type"]}`);
+                continue;
+        }
+
+        if (node && !addedNodeIds.has(node.id)) {
+            nodes.push(node);
+            addedNodeIds.add(node.id);
+        }
+
+        edges.push({ type: "edge", from: nodeId, to: targetId });
     }
 
-    if (node && !addedNodeIds.has(node.id)) {
-      nodes.push(node);
-      addedNodeIds.add(node.id);
-    }
-
-    if (node) {
-      edges.push({ type: "edge", from: nodeId, to: targetId });
-    }
-  }
-
-  return { nodes, edges };
+    return { nodes, edges };
 }
 
-function applyTemplate(aiCanvasResult: { nodes: any[]; edges: any[] }) {
-  const layout = calculateLayout(aiCanvasResult.nodes);
-  
-  const nodes = aiCanvasResult.nodes.map((n) => ({
-    id: n.id,
-    type: n.type,
-    position: layout[n.id] || { x: 100, y: 100 },
-    data: { 
-      label: n.label || n.field || n.id,
-      ...n 
-    }
-  }));
-
-  const edges = aiCanvasResult.edges.map((e, idx) => ({
-    id: `${e.from}-${e.to}-${idx}`,
-    source: e.from,
-    target: e.to,
-    type: 'smoothstep'
-  }));
-
-  return { nodes, edges };
+// Your generatecanvas.ts code
+interface FlowNode {
+    id: string;
+    type: string;
+    position: { x: number; y: number };
+    data: any;
 }
 
-function calculateLayout(nodes: any[]): Record<string, { x: number; y: number }> {
-  const layout: Record<string, { x: number; y: number }> = {};
-  
-  // Group nodes by type for better layout
-  const sourceNodes = nodes.filter(n => n.type === 'SourceNode');
-  const targetNodes = nodes.filter(n => n.type === 'TargetNode');
-  const transformNodes = nodes.filter(n => !['TargetNode', 'SourceNode'].includes(n.type));
+interface FlowEdge {
+    id: string;
+    source: string;
+    target: string;
+}
 
-  // Position sources on the left
-  sourceNodes.forEach((node, i) => {
-    layout[node.id] = { x: 100, y: 100 + (i * 120) };
-  });
+function mapToCanvasNodeType(type: string): string {
+    if (type === "TargetFieldNode") return "TargetNode";
+    if (type === "SourceFieldNode") return "SourceNode";
+    return type;
+}
 
-  // Position transforms in the middle
-  transformNodes.forEach((node, i) => {
-    layout[node.id] = { x: 450, y: 100 + (i * 120) };
-  });
+export function applyTemplate(aiCanvasResult: {
+    nodes: any[];
+    edges: any[];
+}) {
+    const nodes: FlowNode[] = aiCanvasResult.nodes.map((n, index) => ({
+        id: n.id,
+        type: mapToCanvasNodeType(n.type),
+        position: { x: 100 + index * 300, y: 100 },
+        data: { ...n }
+    }));
 
-  // Position targets on the right
-  targetNodes.forEach((node, i) => {
-    layout[node.id] = { x: 800, y: 100 + (i * 120) };
-  });
+    const edges: FlowEdge[] = aiCanvasResult.edges.map((e) => ({
+        id: `${e.from}-${e.to}`,
+        source: e.from,
+        target: e.to
+    }));
 
-  return layout;
+    return { nodes, edges };
+}
+
+const MAX_SAMPLES = 20;
+
+function estimateTokens(source: any[], target: any[]): number {
+    const promptSize =
+        JSON.stringify(source, null, 2).length +
+        JSON.stringify(target, null, 2).length;
+    return Math.round(promptSize / 4); // Rough estimate: 1 token ≈ 4 chars
+}
+
+function redactAll(data: any[]): any[] {
+    return data.map(redactSample);
 }
 
 serve(async (req) => {
@@ -268,18 +287,17 @@ serve(async (req) => {
     const { sourceData, targetData } = await req.json();
     console.log('📥 Received data:', { sourceCount: sourceData?.length, targetCount: targetData?.length });
 
-    // Get OpenAI API key from database (no auth needed for testing)
+    // Get OpenAI API key from database
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the OpenAI API key from the database
     const { data: apiKeys, error: keyError } = await supabase
       .from('api_keys')
       .select('key')
       .eq('status', 'active')
       .eq('revoked', false)
-      .ilike('key', 'sk-proj-%')  // Look for OpenAI project keys
+      .ilike('key', 'sk-proj-%')
       .limit(1);
 
     if (keyError || !apiKeys || apiKeys.length === 0) {
@@ -293,8 +311,21 @@ serve(async (req) => {
       );
     }
 
-    const openAIApiKey = apiKeys[0].key.trim(); // Remove any spaces
+    const openAIApiKey = apiKeys[0].key.trim();
     console.log('✅ OpenAI API key found in database, length:', openAIApiKey.length);
+
+    const source = sourceData.slice(0, MAX_SAMPLES);
+    const target = targetData.slice(0, MAX_SAMPLES);
+
+    const redactedSource = redactAll(source);
+    const redactedTarget = redactAll(target);
+
+    console.log("🟡 Sending these samples to AI...");
+    console.log("📤 Redacted Source:", redactedSource[0]);
+    console.log("📤 Redacted Target:", redactedTarget[0]);
+
+    const estimatedTokens = estimateTokens(redactedSource, redactedTarget);
+    console.log(`📊 Estimated tokens: ~${estimatedTokens} (≈ €${(estimatedTokens / 1000 * 0.01).toFixed(3)} EUR)`);
 
     const prompt = `
 You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
@@ -321,10 +352,10 @@ Examples:
 Now match these samples:
 
 Source Sample:
-${JSON.stringify(sourceData, null, 2)}
+${JSON.stringify(redactedSource, null, 2)}
 
 Target Sample:
-${JSON.stringify(targetData, null, 2)}
+${JSON.stringify(redactedTarget, null, 2)}
 
 Return a JSON array:
 [
@@ -382,8 +413,16 @@ Return a JSON array:
     console.log('🔍 Extracted JSON string length:', jsonString.length);
 
     const parsed = JSON.parse(jsonString);
+    console.log("\n✅ AI Mapping Suggestions:\n");
+    console.dir(parsed, { depth: null });
+
     const canvas = convertMappingsToCanvas(parsed);
+    console.log("\n🎨 Canvas-Ready Nodes and Edges:\n");
+    console.dir(canvas, { depth: null });
+
     const reactFlowOutput = applyTemplate(canvas);
+    console.log("\n🧪 React Flow–Ready Output:\n");
+    console.dir(reactFlowOutput, { depth: null });
 
     return new Response(
       JSON.stringify({ 
