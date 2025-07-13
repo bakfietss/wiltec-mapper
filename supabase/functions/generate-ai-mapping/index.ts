@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Your flatten.ts code
+// Your working flatten code adapted for Deno
 export type FlatObject = { [key: string]: any };
 
 export function flattenObject(obj: any, prefix = ''): FlatObject {
@@ -25,7 +25,7 @@ export function flattenObject(obj: any, prefix = ''): FlatObject {
   }, {} as FlatObject);
 }
 
-// Your redact.ts code
+// Your working redact code
 const EMAIL_REGEX = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
 
 function isEmail(value: any): boolean {
@@ -51,7 +51,7 @@ export function redactSample(obj: Record<string, any>): Record<string, any> {
     return result;
 }
 
-// Your aitocanvas.ts code
+// Your working aitocanvas code
 type MappingSuggestion =
     | {
         target_field: string;
@@ -224,7 +224,7 @@ export function convertMappingsToCanvas(mappings: MappingSuggestion[]) {
     return { nodes, edges };
 }
 
-// Your generatecanvas.ts code
+// Your working generatecanvas code
 interface FlowNode {
     id: string;
     type: string;
@@ -270,7 +270,7 @@ function estimateTokens(source: any[], target: any[]): number {
     const promptSize =
         JSON.stringify(source, null, 2).length +
         JSON.stringify(target, null, 2).length;
-    return Math.round(promptSize / 4); // Rough estimate: 1 token ≈ 4 chars
+    return Math.round(promptSize / 4);
 }
 
 function redactAll(data: any[]): any[] {
