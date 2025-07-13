@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -285,16 +284,26 @@ serve(async (req) => {
 
   try {
     console.log('🚀 Edge function called');
+    console.log('📥 Request method:', req.method);
+    console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
+    
+    // Log the raw request body first
+    const rawBody = await req.text();
+    console.log('📥 Raw request body:', rawBody);
+    console.log('📥 Raw body length:', rawBody.length);
+    console.log('📥 Raw body type:', typeof rawBody);
     
     // Parse request body
     let requestBody;
     try {
-      requestBody = await req.json();
-      console.log('📥 Request body parsed successfully');
+      requestBody = JSON.parse(rawBody);
+      console.log('✅ Request body parsed successfully');
+      console.log('📥 Parsed body:', requestBody);
     } catch (parseError) {
       console.error('❌ Failed to parse request body:', parseError);
+      console.log('🔍 Raw body that failed to parse:', rawBody);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        JSON.stringify({ error: 'Invalid JSON in request body', rawBody: rawBody.substring(0, 500) }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -445,7 +454,7 @@ Return a JSON array:
   }
 ]`;
 
-    // Call OpenAI API
+    // Call OpenAI API (REVERTED TO ORIGINAL MODEL)
     console.log('🤖 Making OpenAI API call...');
     let aiResponse;
     try {
@@ -456,7 +465,7 @@ Return a JSON array:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
+          model: 'gpt-4o', // REVERTED BACK TO ORIGINAL MODEL
           messages: [
             {
               role: 'system',
