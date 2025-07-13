@@ -287,23 +287,20 @@ serve(async (req) => {
     console.log('📥 Request method:', req.method);
     console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
     
-    // Log the raw request body first
-    const rawBody = await req.text();
-    console.log('📥 Raw request body:', rawBody);
-    console.log('📥 Raw body length:', rawBody.length);
-    console.log('📥 Raw body type:', typeof rawBody);
-    
-    // Parse request body
+    // Parse request body - Supabase client sends JSON directly
     let requestBody;
     try {
-      requestBody = JSON.parse(rawBody);
+      requestBody = await req.json();
       console.log('✅ Request body parsed successfully');
-      console.log('📥 Parsed body:', requestBody);
+      console.log('📥 Parsed body keys:', Object.keys(requestBody));
+      console.log('📥 Source data length:', requestBody.sourceData?.length);
+      console.log('📥 Target data length:', requestBody.targetData?.length);
     } catch (parseError) {
       console.error('❌ Failed to parse request body:', parseError);
-      console.log('🔍 Raw body that failed to parse:', rawBody);
+      const rawText = await req.text();
+      console.log('🔍 Raw body that failed to parse:', rawText.substring(0, 500));
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body', rawBody: rawBody.substring(0, 500) }),
+        JSON.stringify({ error: 'Invalid JSON in request body', details: parseError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
