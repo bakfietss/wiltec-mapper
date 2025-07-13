@@ -43,12 +43,21 @@ export class TemplateMapperService {
 
             console.log('🌐 Fetch request to: https://hkuwnqgdpnlfjpfvbjjb.supabase.co/functions/v1/generate-ai-mapping');
 
+            // Prepare the request body
+            const requestBody = {
+                sourceData: redactedSource,
+                targetData: redactedTarget
+            };
+
+            console.log('📤 REQUEST BODY WE ARE SENDING:');
+            console.log('📤 Full request body:', JSON.stringify(requestBody, null, 2));
+            console.log('📤 Request body size:', JSON.stringify(requestBody).length, 'characters');
+            console.log('📤 sourceData type:', typeof requestBody.sourceData, 'length:', requestBody.sourceData?.length);
+            console.log('📤 targetData type:', typeof requestBody.targetData, 'length:', requestBody.targetData?.length);
+
             // Call the edge function (no auth required for testing)
             const { data, error } = await supabase.functions.invoke('generate-ai-mapping', {
-                body: {
-                    sourceData: redactedSource,
-                    targetData: redactedTarget
-                }
+                body: requestBody
             });
 
             if (error) {
