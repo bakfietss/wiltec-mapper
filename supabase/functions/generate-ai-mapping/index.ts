@@ -286,8 +286,26 @@ serve(async (req) => {
     console.log('🚀 Edge function called');
     console.log('📥 Request method:', req.method);
     console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
+    console.log('📥 Request URL:', req.url);
     
-    // Parse request body - Supabase client sends JSON directly
+    // Check if request has a body
+    const contentLength = req.headers.get('content-length');
+    console.log('📥 Content-Length:', contentLength);
+    
+    // Clone the request to read the body multiple times if needed
+    const clonedReq = req.clone();
+    
+    // First, let's see the raw body
+    let rawBody;
+    try {
+      rawBody = await clonedReq.text();
+      console.log('📥 Raw body:', rawBody);
+      console.log('📥 Raw body length:', rawBody.length);
+    } catch (rawError) {
+      console.error('❌ Failed to read raw body:', rawError);
+    }
+    
+    // Now try to parse the original request as JSON
     let requestBody;
     try {
       requestBody = await req.json();
@@ -297,10 +315,14 @@ serve(async (req) => {
       console.log('📥 Target data length:', requestBody.targetData?.length);
     } catch (parseError) {
       console.error('❌ Failed to parse request body:', parseError);
-      const rawText = await req.text();
-      console.log('🔍 Raw body that failed to parse:', rawText.substring(0, 500));
+      console.log('🔍 Parse error details:', parseError.message);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body', details: parseError.message }),
+        JSON.stringify({ 
+          error: 'Invalid JSON in request body', 
+          details: parseError.message,
+          rawBody: rawBody?.substring(0, 500) || 'No raw body available',
+          contentLength: contentLength
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
