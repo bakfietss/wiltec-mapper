@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -7,23 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Your working flatten code adapted for Deno
-export type FlatObject = { [key: string]: any };
-
-export function flattenObject(obj: any, prefix = ''): FlatObject {
-  return Object.entries(obj).reduce((acc, [key, value]) => {
-    const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      Object.assign(acc, flattenObject(value, fullKey));
-    } else if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'object') {
-      Object.assign(acc, flattenObject(value[0], fullKey));
-    } else {
-      acc[fullKey] = value;
-    }
-    return acc;
-  }, {} as FlatObject);
-}
-
 // Your working redact code
 const EMAIL_REGEX = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
 
@@ -32,7 +16,7 @@ function isEmail(value: any): boolean {
 }
 
 function isLikelyName(key: string, value: any): boolean {
-    const nameKeywords = ["name", "roepnaam", "achternaam", "voorvoegsel", "firstname", "lastname", "middlename"];
+    const nameKeywords = ["name", "roepnaam", "achternaam", "voorvoegsel", "firstname", "lastname", "middlename", "voornaam", "tussenvoegsel"];
     return typeof value === "string" && nameKeywords.some(k => key.toLowerCase().includes(k));
 }
 
@@ -42,6 +26,9 @@ export function redactSample(obj: Record<string, any>): Record<string, any> {
         if (isEmail(val)) {
             result[key] = "<email>";
         } else if (isLikelyName(key, val)) {
+            result[key] = "<name>";
+        } else if (typeof val === "string" && val.length > 2 && /^[A-Z][a-z]+/.test(val)) {
+            // Catch other potential names (capitalized words that look like names)
             result[key] = "<name>";
         } else {
             result[key] = val;
@@ -272,10 +259,6 @@ function estimateTokens(source: any[], target: any[]): number {
     return Math.round(promptSize / 4);
 }
 
-function redactAll(data: any[]): any[] {
-    return data.map(redactSample);
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -284,48 +267,9 @@ serve(async (req) => {
 
   try {
     console.log('🚀 Edge function called');
-    console.log('📥 Request method:', req.method);
-    console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
-    console.log('📥 Request URL:', req.url);
     
-    // Check if request has a body
-    const contentLength = req.headers.get('content-length');
-    console.log('📥 Content-Length:', contentLength);
-    
-    // Clone the request to read the body multiple times if needed
-    const clonedReq = req.clone();
-    
-    // First, let's see the raw body
-    let rawBody;
-    try {
-      rawBody = await clonedReq.text();
-      console.log('📥 Raw body:', rawBody);
-      console.log('📥 Raw body length:', rawBody.length);
-    } catch (rawError) {
-      console.error('❌ Failed to read raw body:', rawError);
-    }
-    
-    // Now try to parse the original request as JSON
-    let requestBody;
-    try {
-      requestBody = await req.json();
-      console.log('✅ Request body parsed successfully');
-      console.log('📥 Parsed body keys:', Object.keys(requestBody));
-      console.log('📥 Source data length:', requestBody.sourceData?.length);
-      console.log('📥 Target data length:', requestBody.targetData?.length);
-    } catch (parseError) {
-      console.error('❌ Failed to parse request body:', parseError);
-      console.log('🔍 Parse error details:', parseError.message);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid JSON in request body', 
-          details: parseError.message,
-          rawBody: rawBody?.substring(0, 500) || 'No raw body available',
-          contentLength: contentLength
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const requestBody = await req.json();
+    console.log('📥 Request received with keys:', Object.keys(requestBody));
 
     const { sourceData, targetData } = requestBody;
     console.log('📥 Received data:', { 
@@ -402,27 +346,15 @@ serve(async (req) => {
       );
     }
 
-    // Process data
+    // Process data - the data should already be redacted from the client
     console.log('🔄 Processing data...');
     const source = sourceData.slice(0, MAX_SAMPLES);
     const target = targetData.slice(0, MAX_SAMPLES);
 
-    let redactedSource, redactedTarget;
-    try {
-      redactedSource = redactAll(source);
-      redactedTarget = redactAll(target);
-      console.log('✅ Data redacted successfully');
-      console.log("📤 Redacted Source sample:", redactedSource[0]);
-      console.log("📤 Redacted Target sample:", redactedTarget[0]);
-    } catch (redactError) {
-      console.error('❌ Error redacting data:', redactError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to process data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log("📤 Source sample:", source[0]);
+    console.log("📤 Target sample:", target[0]);
 
-    const estimatedTokens = estimateTokens(redactedSource, redactedTarget);
+    const estimatedTokens = estimateTokens(source, target);
     console.log(`📊 Estimated tokens: ~${estimatedTokens} (≈ €${(estimatedTokens / 1000 * 0.01).toFixed(3)} EUR)`);
 
     // Check token limit
@@ -434,7 +366,7 @@ serve(async (req) => {
       );
     }
 
-    // Prepare OpenAI prompt
+    // Prepare OpenAI prompt - EXACTLY matching your main.ts
     const prompt = `You are a smart field mapping assistant. Match fields between the source and target data based on naming, patterns, or logic.
 
 For each target field, classify the mapping type:
@@ -459,10 +391,10 @@ Examples:
 Now match these samples:
 
 Source Sample:
-${JSON.stringify(redactedSource, null, 2)}
+${JSON.stringify(source, null, 2)}
 
 Target Sample:
-${JSON.stringify(redactedTarget, null, 2)}
+${JSON.stringify(target, null, 2)}
 
 Return a JSON array:
 [
@@ -473,7 +405,7 @@ Return a JSON array:
   }
 ]`;
 
-    // Call OpenAI API (REVERTED TO ORIGINAL MODEL)
+    // Call OpenAI API - EXACTLY matching your main.ts format
     console.log('🤖 Making OpenAI API call...');
     let aiResponse;
     try {
@@ -484,7 +416,7 @@ Return a JSON array:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o', // REVERTED BACK TO ORIGINAL MODEL
+          model: 'gpt-4o', // Matching your main.ts
           messages: [
             {
               role: 'system',
@@ -492,7 +424,7 @@ Return a JSON array:
             },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.2,
+          temperature: 0.2, // Matching your main.ts
         }),
       });
 
@@ -528,7 +460,7 @@ Return a JSON array:
     const raw = aiResponse.choices[0]?.message?.content || "";
     console.log('📝 Raw AI response length:', raw.length);
     
-    // Parse AI response
+    // Parse AI response - EXACTLY matching your main.ts
     let parsed;
     try {
       const jsonStart = raw.indexOf("[");
@@ -556,7 +488,7 @@ Return a JSON array:
       );
     }
 
-    // Convert to canvas
+    // Convert to canvas - matching your main.ts flow
     let canvas;
     try {
       canvas = convertMappingsToCanvas(parsed);
@@ -569,7 +501,7 @@ Return a JSON array:
       );
     }
 
-    // Apply template
+    // Apply template - matching your main.ts flow
     let reactFlowOutput;
     try {
       reactFlowOutput = applyTemplate(canvas);

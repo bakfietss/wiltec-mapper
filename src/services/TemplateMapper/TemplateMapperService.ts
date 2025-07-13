@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { convertMappingsToCanvas, type MappingSuggestion } from './AiToCanvas';
 import { applyTemplate } from './GenerateCanvas';
 import { loadAndFlatten } from './FileProcessor';
-import { redactSample } from '@/utils/redact';
+import { redactArray } from '@/utils/redact';
 
 const MAX_SAMPLES = 20;
 
@@ -12,10 +12,6 @@ function estimateTokens(source: any[], target: any[]): number {
         JSON.stringify(source, null, 2).length +
         JSON.stringify(target, null, 2).length;
     return Math.round(promptSize / 4); // Rough estimate: 1 token ≈ 4 chars
-}
-
-function redactAll(data: any[]): any[] {
-    return data.map(redactSample);
 }
 
 export class TemplateMapperService {
@@ -31,8 +27,9 @@ export class TemplateMapperService {
             const source = fullSource.slice(0, MAX_SAMPLES);
             const target = fullTarget.slice(0, MAX_SAMPLES);
 
-            const redactedSource = redactAll(source);
-            const redactedTarget = redactAll(target);
+            // ✅ Redacting BOTH source and target (matching your main.ts)
+            const redactedSource = redactArray(source);
+            const redactedTarget = redactArray(target);
 
             console.log("🟡 Sending these samples to AI...");
             console.log("📤 Redacted Source:", redactedSource[0]);
@@ -43,7 +40,7 @@ export class TemplateMapperService {
 
             console.log('🌐 Fetch request to: https://hkuwnqgdpnlfjpfvbjjb.supabase.co/functions/v1/generate-ai-mapping');
 
-            // Prepare the request body
+            // Prepare the request body (now with properly redacted data)
             const requestBody = {
                 sourceData: redactedSource,
                 targetData: redactedTarget
