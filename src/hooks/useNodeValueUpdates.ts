@@ -257,25 +257,53 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
     // Always try to get from actual data first (this should be the primary source)
     if (sourceData.length > 0) {
         const dataObject = sourceData[0];
-        const getValue = (obj: any, path: string) => {
-            try {
-                const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
-                const keys = normalizedPath.split('.');
-                let value = obj;
-                for (const key of keys) {
-                    if (value && typeof value === 'object') {
-                        value = value[key];
+        
+        // Enhanced getValue function that matches the FieldRenderer logic
+        const getValue = (obj: any, fieldId: string): any => {
+            console.log(`🔍 [Transfer] Getting value for field ID: "${fieldId}" from data:`, obj);
+            if (!fieldId || !obj) return undefined;
+            
+            const pathParts = fieldId.split('.');
+            console.log(`📝 [Transfer] Path parts:`, pathParts);
+            let current = obj;
+            
+            for (const part of pathParts) {
+                console.log(`🚶 [Transfer] Processing part: "${part}", current value:`, current);
+                if (current === null || current === undefined) {
+                    return undefined;
+                }
+                
+                // Handle standalone [0] notation first
+                if (part.startsWith('[') && part.endsWith(']')) {
+                    const index = parseInt(part.slice(1, -1));
+                    console.log(`🎯 [Transfer] Processing standalone array index: ${index}, current is array:`, Array.isArray(current), 'array length:', current?.length);
+                    if (Array.isArray(current) && index >= 0 && index < current.length) {
+                        current = current[index];
+                        console.log(`✅ [Transfer] Successfully accessed array[${index}]:`, current);
+                    } else {
+                        console.log(`❌ [Transfer] Failed to access array[${index}]`);
+                        return undefined;
+                    }
+                // Handle array notation like containers[0]
+                } else if (part.includes('[') && part.includes(']')) {
+                    const [arrayKey, indexPart] = part.split('[');
+                    const index = parseInt(indexPart.replace(']', ''));
+                    
+                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
+                        current = current[arrayKey][index];
                     } else {
                         return undefined;
                     }
+                } else {
+                    current = current[part];
                 }
-                return value;
-            } catch (e) {
-                return undefined;
             }
+            
+            return current;
         };
         
         const dataValue = getValue(dataObject, handleId);
+        console.log(`✨ [Transfer] Final extracted value for "${handleId}":`, dataValue);
         
         // Return any value from sampleData, including null, empty strings, etc.
         if (dataValue !== undefined) {
@@ -288,6 +316,7 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
     const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
     // NOTE: No exampleValue fallback - using sampleData as single source of truth
     const fallbackValue = null;
+    console.log(`❌ [Transfer] No data found for "${handleId}", returning null`);
     return fallbackValue;
 };
 
