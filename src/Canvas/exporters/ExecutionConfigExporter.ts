@@ -172,16 +172,27 @@ export const exportExecutionMapping = (
           let mapping: ExecutionMapping;
           
           if (sourceNode.type === 'source') {
-            // Direct mapping from source to target
+            // Check if this is a direct mapping or static value mapping
             const sourceData = sourceNode.data as any;
             const sourceFields = sourceData?.fields;
             const sourceField = findSourceFieldByHandle(sourceFields, edge.sourceHandle || '');
             
-            mapping = {
-              from: sourceField?.name || edge.sourceHandle || '',
-              to: targetField.name,
-              type: 'direct'
-            };
+            // If the source field has a manual value, treat it as a static mapping
+            if (sourceField?.value && sourceField.value.trim() !== '') {
+              mapping = {
+                from: null,
+                to: targetField.name,
+                type: 'static',
+                value: sourceField.value
+              };
+            } else {
+              // Otherwise, it's a direct mapping from source data
+              mapping = {
+                from: sourceField?.name || edge.sourceHandle || '',
+                to: targetField.name,
+                type: 'direct'
+              };
+            }
             
           } else if (sourceNode.type === 'staticValue') {
             // Static value mapping

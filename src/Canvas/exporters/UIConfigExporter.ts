@@ -53,7 +53,7 @@ export const exportUIMappingConfiguration = (
   // Extract source nodes - USING ONLY SAMPLEDATA AS SINGLE SOURCE OF TRUTH
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
-      // Clean fields structure - remove exampleValue since we use sampleData only
+      // Clean fields structure - preserve manual values
       const cleanFields = Array.isArray(node.data?.fields) ? 
         node.data.fields.map((field: any) => ({
           id: field.id,
@@ -61,8 +61,8 @@ export const exportUIMappingConfiguration = (
           type: field.type,
           ...(field.children && { children: field.children }),
           ...(field.parent && { parent: field.parent }),
-          ...(field.groupBy && { groupBy: field.groupBy })
-          // NOTE: No exampleValue - using sampleData only
+          ...(field.groupBy && { groupBy: field.groupBy }),
+          ...(field.value && { value: field.value }) // Preserve manual values
         })) : [];
 
       config.nodes.sources.push({
