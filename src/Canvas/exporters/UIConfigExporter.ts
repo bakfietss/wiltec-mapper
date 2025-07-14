@@ -85,16 +85,29 @@ export const exportUIMappingConfiguration = (
       });
     });
 
-  // Extract target nodes - preserve fieldValues
+  // Extract target nodes - preserve all field properties and values
   nodes.filter(node => node.type === 'target')
     .forEach(node => {
+      // Clean fields structure - ensure proper value/exampleValue structure for target fields
+      const cleanFields = Array.isArray(node.data?.fields) ?
+        node.data.fields.map((field: any) => ({
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          value: field.value !== undefined ? field.value : "",
+          exampleValue: field.exampleValue !== undefined ? field.exampleValue : "",
+          ...(field.children && { children: field.children }),
+          ...(field.parent && { parent: field.parent }),
+          ...(field.groupBy && { groupBy: field.groupBy })
+        })) : [];
+
       const targetConfig: TargetNodeConfig = {
         id: node.id,
         type: 'target',
         label: String(node.data?.label || 'Target Node'),
         position: node.position,
         schema: {
-          fields: Array.isArray(node.data?.fields) ? node.data.fields : []
+          fields: cleanFields
         },
         outputData: Array.isArray(node.data?.data) ? node.data.data : []
       };

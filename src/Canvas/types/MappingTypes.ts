@@ -209,4 +209,6 @@ export interface SchemaField {
   groupBy?: string;
   // Add value property for manual field values
   value?: string;
+  // Add exampleValue property for target field display values
+  exampleValue?: string;
 }
