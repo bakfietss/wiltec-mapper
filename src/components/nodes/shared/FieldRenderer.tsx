@@ -11,6 +11,7 @@ export interface SchemaField {
     groupBy?: string;
     path?: string[]; // Add path for nested field value retrieval
     isAttribute?: boolean; // For XML attributes
+    value?: any; // Add value property for manual field values
     // NOTE: Removed exampleValue - using sampleData as single source of truth
 }
 
@@ -282,8 +283,35 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         <span className="text-gray-400 italic">no value</span>
                     )
                 ) : (
-                    // Source node - get value from sampleData using field ID path
+                    // Source node - show manual value first, then fallback to sampleData
                     (() => {
+                        // Check if field has a manual value set
+                        if (field.value !== undefined && field.value !== null && field.value !== '') {
+                            // Handle array/object display for manual values
+                            if (Array.isArray(field.value)) {
+                                return (
+                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                        [Array with {field.value.length} items]
+                                    </span>
+                                );
+                            } else if (typeof field.value === 'object') {
+                                return (
+                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                        [Object]
+                                    </span>
+                                );
+                            } else {
+                                return (
+                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                        {typeof field.value === 'string' 
+                                            ? (field.value === '' ? '""' : `"${field.value}"`)
+                                            : String(field.value)}
+                                    </span>
+                                );
+                            }
+                        }
+                        
+                        // Fallback to sampleData if no manual value
                         const dataRecord = sampleData?.[0];
                         if (!dataRecord) {
                             return <span className="text-gray-400 italic">no value</span>;

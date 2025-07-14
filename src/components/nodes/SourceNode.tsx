@@ -259,6 +259,46 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 </button>
             </div>
             
+            {/* Value input field for non-container types */}
+            {field.type !== 'object' && field.type !== 'array' && (
+                <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-500 min-w-[40px]">Value:</label>
+                    {field.type === 'boolean' ? (
+                        <select
+                            value={(field as any).value || 'false'}
+                            onChange={(e) => updateField(field.id, { value: e.target.value === 'true' })}
+                            className="flex-1 border rounded px-2 py-1 text-sm"
+                        >
+                            <option value="true">True</option>
+                            <option value="false">False</option>
+                        </select>
+                    ) : field.type === 'number' ? (
+                        <input
+                            type="number"
+                            value={(field as any).value || ''}
+                            onChange={(e) => updateField(field.id, { value: parseFloat(e.target.value) || 0 })}
+                            className="flex-1 border rounded px-2 py-1 text-sm"
+                            placeholder="Enter number value"
+                        />
+                    ) : field.type === 'date' ? (
+                        <input
+                            type="date"
+                            value={(field as any).value || ''}
+                            onChange={(e) => updateField(field.id, { value: e.target.value })}
+                            className="flex-1 border rounded px-2 py-1 text-sm"
+                        />
+                    ) : (
+                        <input
+                            type="text"
+                            value={(field as any).value || ''}
+                            onChange={(e) => updateField(field.id, { value: e.target.value })}
+                            className="flex-1 border rounded px-2 py-1 text-sm"
+                            placeholder="Enter field value"
+                        />
+                    )}
+                </div>
+            )}
+            
             {field.children && field.children.map(childField => 
                 renderFieldEditor(childField, level + 1)
             )}
