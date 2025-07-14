@@ -53,7 +53,9 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         label: data.label, 
         fields: fields,
         data: nodeData
-    });
+    }, [fields, nodeData]); // Add explicit dependencies
+
+    console.log(`SOURCE NODE ${id} - Current fields:`, fields.length, fields.map(f => ({ id: f.id, name: f.name })));
 
     const hasData = nodeData && nodeData.length > 0;
     const hasFields = fields && fields.length > 0;

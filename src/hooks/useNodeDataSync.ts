@@ -15,12 +15,16 @@ export const useNodeDataSync = <T extends Record<string, any>>(
   const { setNodes } = useReactFlow();
 
   useEffect(() => {
+    console.log(`SYNC ${nodeId} - Updating with data:`, data);
     setNodes(nodes =>
-      nodes.map(node =>
-        node.id === nodeId 
-          ? { ...node, data: { ...node.data, ...data } }
-          : node
-      )
+      nodes.map(node => {
+        if (node.id === nodeId) {
+          const updatedNode = { ...node, data: { ...node.data, ...data } };
+          console.log(`SYNC ${nodeId} - Node updated, new data:`, updatedNode.data);
+          return updatedNode;
+        }
+        return node;
+      })
     );
     
     // Notify parent of data change for manual updates
