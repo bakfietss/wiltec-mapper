@@ -250,32 +250,11 @@ const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) 
     };
 };
 
-// Get value from source node - identical handling for manual and imported data
+// Get value from source node
 const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
-    // Check if there's a manual value set in the field
-    const sourceFields = sourceNode.data?.fields || [];
-    const findFieldRecursively = (fields: any[], fieldId: string): any => {
-        for (const field of fields) {
-            if (field.id === fieldId) {
-                return field;
-            }
-            if (field.children) {
-                const childField = findFieldRecursively(field.children, fieldId);
-                if (childField) return childField;
-            }
-        }
-        return null;
-    };
-    
-    const sourceField = findFieldRecursively(sourceFields, handleId);
-    
-    // Return manual value if it exists
-    if (sourceField && sourceField.value !== undefined && sourceField.value !== null && sourceField.value !== '') {
-        return sourceField.value;
-    }
-    
-    // Try to get from imported data
     const sourceData = sourceNode.data?.data || [];
+    
+    // Always try to get from actual data first (this should be the primary source)
     if (sourceData.length > 0) {
         const dataObject = sourceData[0];
         const getValue = (obj: any, path: string) => {
@@ -304,7 +283,12 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         }
     }
     
-    return null;
+    // Only fallback to schema fields if no sampleData exists or field not found in data
+    const sourceFields = sourceNode.data?.fields || [];
+    const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
+    // NOTE: No exampleValue fallback - using sampleData as single source of truth
+    const fallbackValue = null;
+    return fallbackValue;
 };
 
 // Get value from static value node

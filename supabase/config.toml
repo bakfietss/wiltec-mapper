@@ -5,6 +5,3 @@ verify_jwt = false
 
 [functions.parse-edi]
 verify_jwt = false
-
-[functions.generate-ai-mapping]
-verify_jwt = false

@@ -1,3 +1,4 @@
+
 import { flattenJsonData, flattenXmlData, flattenCsvData } from '@/utils/flatten';
 
 export async function loadAndFlatten(file: File): Promise<any[]> {
@@ -9,30 +10,7 @@ export async function loadAndFlatten(file: File): Promise<any[]> {
         try {
             const data = JSON.parse(text);
             console.log('Parsed JSON data:', data);
-            
-            // Handle different JSON structures - check if it's wrapped in an object
-            let jsonArray;
-            if (Array.isArray(data)) {
-                jsonArray = data;
-            } else if (data.rows && Array.isArray(data.rows)) {
-                // Handle structure like { rows: [...], skip: 0, take: 1000 }
-                jsonArray = data.rows;
-                console.log('Extracted rows array from wrapper object, length:', jsonArray.length);
-            } else if (typeof data === 'object') {
-                // Try to find the first array property
-                const arrayProp = Object.values(data).find(val => Array.isArray(val));
-                if (arrayProp) {
-                    jsonArray = arrayProp as any[];
-                    console.log('Found array property in object, length:', jsonArray.length);
-                } else {
-                    // Single object, wrap in array
-                    jsonArray = [data];
-                }
-            } else {
-                jsonArray = [data];
-            }
-            
-            return flattenJsonData(jsonArray);
+            return flattenJsonData(data);
         } catch (error) {
             console.error('JSON parsing error:', error);
             throw new Error(`Invalid JSON file: ${error}`);

@@ -6,7 +6,6 @@ import { Upload, Play, Copy, Check, Shield, Eye, EyeOff } from 'lucide-react';
 import DataUploadZone from '../components/DataUploadZone';
 import { useToast } from '../hooks/use-toast';
 import { TemplateToNodesConverter } from '../services/TemplateToNodesConverter';
-import { TemplateMapperService } from '../services/TemplateMapper/TemplateMapperService';
 import { useNavigate } from 'react-router-dom';
 import { flattenJsonData, flattenXmlData, flattenCsvData } from '../utils/flatten';
 import { redactArray } from '../utils/redact';
@@ -47,49 +46,77 @@ const TemplateMapper = () => {
     toast({ title: "Target data uploaded and flattened successfully!" });
   }, [toast]);
 
-  // Generate AI-powered mapping using your main.ts logic
+  // Simple conversion logic - you can build your own here
   const handleConvertToTemplate = useCallback(async () => {
-    if (!sourceData || !targetData) {
+    if (!sourceData) {
       toast({ 
         title: "Missing Data", 
-        description: "Please upload both source and target data first",
+        description: "Please upload source data first",
         variant: "destructive" 
       });
       return;
     }
 
     setIsConverting(true);
-    console.log('🔄 Generating AI mapping with your main.ts logic...');
+    console.log('🔄 Converting data to template...');
     
     try {
-      // Create file objects from the data
-      const sourceBlob = new Blob([sourceData], { type: 'application/json' });
-      const targetBlob = new Blob([targetData], { type: 'application/json' });
-      const sourceFile = new File([sourceBlob], 'source.json', { type: 'application/json' });
-      const targetFile = new File([targetBlob], 'target.json', { type: 'application/json' });
-
-      // Call the AI service that uses your main.ts logic
-      const result = await TemplateMapperService.generateMappingFromFiles(sourceFile, targetFile);
+      const parsedData = JSON.parse(sourceData);
       
-      // Store the result for visual mapping creation
-      setGeneratedTemplate(JSON.stringify(result, null, 2));
+      // Basic conversion logic - generates a simple template from the source data structure
+      let template;
+      if (Array.isArray(parsedData)) {
+        // Use first item as template structure
+        template = createTemplateFromObject(parsedData[0] || {});
+      } else if (parsedData.rows && Array.isArray(parsedData.rows)) {
+        // Handle {rows: [...]} structure  
+        template = createTemplateFromObject(parsedData.rows[0] || {});
+      } else {
+        template = createTemplateFromObject(parsedData);
+      }
       
+      setGeneratedTemplate(JSON.stringify(template, null, 2));
       toast({ 
-        title: "AI Mapping Generated!", 
-        description: "Template created using AI with your main.ts logic" 
+        title: "Template generated!", 
+        description: "Template created from source data structure" 
       });
     } catch (error) {
-      console.error('❌ AI mapping generation error:', error);
+      console.error('❌ Conversion error:', error);
       toast({ 
-        title: "Generation failed", 
-        description: error instanceof Error ? error.message : "Failed to generate mapping", 
+        title: "Conversion failed", 
+        description: "Invalid JSON data", 
         variant: "destructive" 
       });
     } finally {
       setIsConverting(false);
     }
-  }, [sourceData, targetData, toast]);
+  }, [sourceData, toast]);
 
+  // Basic template creation - replaces values with template variables
+  const createTemplateFromObject = (obj: any): any => {
+    if (obj === null || obj === undefined) {
+      return null;
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.length > 0 ? [createTemplateFromObject(obj[0])] : [];
+    }
+    
+    if (typeof obj === 'object') {
+      const result: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[key] = createTemplateFromObject(value);
+      }
+      return result;
+    }
+    
+    // Convert primitive values to template variables
+    if (typeof obj === 'string') {
+      return `{{ ${obj} }}`; // You can customize this logic
+    }
+    
+    return `{{ value }}`;
+  };
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -108,29 +135,42 @@ const TemplateMapper = () => {
   };
 
   const handleCreateVisualMapping = useCallback(() => {
-    if (!generatedTemplate) {
+    if (!sourceData || !generatedTemplate) {
       toast({ 
-        title: "Missing Template", 
-        description: "Please generate template first",
+        title: "Missing Data", 
+        description: "Please upload data and generate template first",
         variant: "destructive" 
       });
       return;
     }
 
     try {
-      // The generated template is now the AI-generated canvas (nodes and edges)
-      const canvas = JSON.parse(generatedTemplate);
+      const parsedSourceData = JSON.parse(sourceData);
+      let dataForConversion;
       
+      if (Array.isArray(parsedSourceData)) {
+        dataForConversion = parsedSourceData[0] || {};
+      } else if (parsedSourceData.rows && Array.isArray(parsedSourceData.rows)) {
+        dataForConversion = parsedSourceData.rows[0] || {};
+      } else {
+        dataForConversion = parsedSourceData;
+      }
+
+      const { nodes, edges } = TemplateToNodesConverter.convertTemplateToNodes(
+        generatedTemplate,
+        [dataForConversion]
+      );
+
       localStorage.setItem('templateConversionData', JSON.stringify({
-        nodes: canvas.nodes,
-        edges: canvas.edges,
-        sampleData: sourceData ? JSON.parse(sourceData) : {}
+        nodes,
+        edges,
+        sampleData: dataForConversion
       }));
 
       navigate('/canvas');
       toast({ 
         title: "Visual mapping created!", 
-        description: "Opening canvas with your AI-generated mapping" 
+        description: "Opening canvas with your mapping" 
       });
     } catch (error) {
       console.error('Visual mapping creation error:', error);
@@ -140,7 +180,7 @@ const TemplateMapper = () => {
         variant: "destructive" 
       });
     }
-  }, [generatedTemplate, sourceData, navigate, toast]);
+  }, [sourceData, generatedTemplate, navigate, toast]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -166,7 +206,7 @@ const TemplateMapper = () => {
           <CardContent className="space-y-4">
             <DataUploadZone 
               onDataUpload={handleSourceDataUpload}
-              acceptedTypes={['JSON', 'XML', 'CSV', 'Excel']}
+              acceptedTypes={['JSON', 'CSV', 'Excel']}
               title="Upload Source Data"
               description="Drag and drop your data file or click to browse"
             />
@@ -256,7 +296,7 @@ const TemplateMapper = () => {
           <CardContent className="space-y-4">
             <DataUploadZone 
               onDataUpload={handleTargetDataUpload}
-              acceptedTypes={['JSON', 'XML', 'CSV', 'Excel']}
+              acceptedTypes={['JSON', 'CSV', 'Excel']}
               title="Upload Target Data"
               description="Drag and drop your target data file or click to browse"
             />
@@ -321,29 +361,29 @@ const TemplateMapper = () => {
           <CardContent className="space-y-4">
             <Button
               onClick={handleConvertToTemplate}
-              disabled={isConverting || !sourceData || !targetData}
+              disabled={isConverting || !sourceData}
               size="lg"
               className="w-full"
             >
               {isConverting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Generating AI Mapping...
+                  Converting...
                 </>
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-2" />
-                  Generate AI Mapping
+                  Convert to Template
                 </>
               )}
             </Button>
             
             {generatedTemplate && (
               <div className="space-y-2">
-                 <div className="flex justify-between items-center">
-                   <span className="text-sm font-medium text-slate-700">
-                     AI Generated Canvas
-                   </span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-slate-700">
+                    Generated Template
+                  </span>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -352,12 +392,12 @@ const TemplateMapper = () => {
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-                 <Textarea
-                   value={generatedTemplate}
-                   onChange={(e) => setGeneratedTemplate(e.target.value)}
-                   className="min-h-[300px] font-mono text-sm"
-                   placeholder="AI generated canvas (nodes and edges) will appear here..."
-                 />
+                <Textarea
+                  value={generatedTemplate}
+                  onChange={(e) => setGeneratedTemplate(e.target.value)}
+                  className="min-h-[300px] font-mono text-sm"
+                  placeholder="Generated template will appear here..."
+                />
               </div>
             )}
           </CardContent>
@@ -370,13 +410,13 @@ const TemplateMapper = () => {
               <CardTitle>Visual Mapping</CardTitle>
             </CardHeader>
             <CardContent>
-               <Button
-                 onClick={handleCreateVisualMapping}
-                 disabled={!generatedTemplate}
-                 size="lg"
-                 variant="outline"
-                 className="w-full"
-               >
+              <Button
+                onClick={handleCreateVisualMapping}
+                disabled={!sourceData || !generatedTemplate}
+                size="lg"
+                variant="outline"
+                className="w-full"
+              >
                 <Play className="h-4 w-4 mr-2" />
                 Create Visual Mapping
               </Button>

@@ -33,10 +33,6 @@ const DataUploadZone: React.FC<DataUploadZoneProps> = ({
       if (file.name.endsWith('.json')) {
         const parsed = JSON.parse(text);
         data = Array.isArray(parsed) ? parsed : [parsed];
-      } else if (file.name.endsWith('.xml')) {
-        // Import flatten utility for XML processing
-        const { flattenXmlData } = await import('../utils/flatten');
-        data = flattenXmlData(text);
       } else if (file.name.endsWith('.csv')) {
         // Simple CSV parsing - you might want to use a proper CSV library
         const lines = text.split('\n').filter(line => line.trim());
@@ -78,8 +74,6 @@ const DataUploadZone: React.FC<DataUploadZoneProps> = ({
     }, [processFile]),
     accept: {
       'application/json': ['.json'],
-      'application/xml': ['.xml'],
-      'text/xml': ['.xml'],
       'text/csv': ['.csv'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
     },

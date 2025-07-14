@@ -5,7 +5,7 @@ function isEmail(value: any): boolean {
 }
 
 function isLikelyName(key: string, value: any): boolean {
-    const nameKeywords = ["name", "roepnaam", "achternaam", "voorvoegsel", "firstname", "lastname", "middlename", "voornaam", "tussenvoegsel"];
+    const nameKeywords = ["name", "roepnaam", "achternaam", "voorvoegsel", "firstname", "lastname", "middlename"];
     return typeof value === "string" && nameKeywords.some(k => key.toLowerCase().includes(k));
 }
 
@@ -41,9 +41,6 @@ export function redactSample(obj: Record<string, any>): Record<string, any> {
             result[key] = "<address>";
         } else if (isLikelyPersonalId(key, val)) {
             result[key] = "<personal_id>";
-        } else if (typeof val === "string" && val.length > 2 && /^[A-Z][a-z]+/.test(val)) {
-            // Catch other potential names (capitalized words that look like names)
-            result[key] = "<name>";
         } else {
             result[key] = val;
         }
