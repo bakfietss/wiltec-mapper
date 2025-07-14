@@ -250,11 +250,32 @@ const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) 
     };
 };
 
-// Get value from source node
+// Get value from source node - with manual field values support
 const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
-    const sourceData = sourceNode.data?.data || [];
+    // First, check if there's a manual value set in the field
+    const sourceFields = sourceNode.data?.fields || [];
+    const findFieldRecursively = (fields: any[], fieldId: string): any => {
+        for (const field of fields) {
+            if (field.id === fieldId) {
+                return field;
+            }
+            if (field.children) {
+                const childField = findFieldRecursively(field.children, fieldId);
+                if (childField) return childField;
+            }
+        }
+        return null;
+    };
     
-    // Always try to get from actual data first (this should be the primary source)
+    const sourceField = findFieldRecursively(sourceFields, handleId);
+    
+    // Return manual value if it exists (has priority over imported data)
+    if (sourceField && sourceField.value !== undefined && sourceField.value !== null && sourceField.value !== '') {
+        return sourceField.value;
+    }
+    
+    // Then try to get from imported data
+    const sourceData = sourceNode.data?.data || [];
     if (sourceData.length > 0) {
         const dataObject = sourceData[0];
         const getValue = (obj: any, path: string) => {
@@ -283,12 +304,7 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         }
     }
     
-    // Only fallback to schema fields if no sampleData exists or field not found in data
-    const sourceFields = sourceNode.data?.fields || [];
-    const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
-    // NOTE: No exampleValue fallback - using sampleData as single source of truth
-    const fallbackValue = null;
-    return fallbackValue;
+    return null;
 };
 
 // Get value from static value node

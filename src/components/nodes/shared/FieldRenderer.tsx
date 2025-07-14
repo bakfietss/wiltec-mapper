@@ -285,24 +285,24 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                 ) : (
                     // Source node - show manual value first, then fallback to sampleData
                     (() => {
-                        // Check if field has a manual value set
+                        // Check if field has a manual value set (show in blue - manual input)
                         if (field.value !== undefined && field.value !== null && field.value !== '') {
                             // Handle array/object display for manual values
                             if (Array.isArray(field.value)) {
                                 return (
-                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
                                         [Array with {field.value.length} items]
                                     </span>
                                 );
                             } else if (typeof field.value === 'object') {
                                 return (
-                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
                                         [Object]
                                     </span>
                                 );
                             } else {
                                 return (
-                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
                                         {typeof field.value === 'string' 
                                             ? (field.value === '' ? '""' : `"${field.value}"`)
                                             : String(field.value)}
@@ -364,22 +364,22 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         const sourceFieldValue = getNestedValue(dataRecord, field.id);
                         
                         if (sourceFieldValue !== undefined && sourceFieldValue !== null) {
-                            // Handle array/object display
+                            // Handle array/object display (show in green - imported data)
                             if (Array.isArray(sourceFieldValue)) {
                                 return (
-                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
                                         [Array with {sourceFieldValue.length} items]
                                     </span>
                                 );
                             } else if (typeof sourceFieldValue === 'object') {
                                 return (
-                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
                                         [Object]
                                     </span>
                                 );
                             } else {
                                 return (
-                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
                                         {typeof sourceFieldValue === 'string' 
                                             ? (sourceFieldValue === '' ? '""' : `"${sourceFieldValue}"`)
                                             : String(sourceFieldValue)}
