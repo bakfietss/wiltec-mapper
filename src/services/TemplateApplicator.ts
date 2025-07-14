@@ -51,55 +51,6 @@ export class TemplateApplicator {
     return { nodes, edges };
   }
 
-  /**
-   * Apply AI canvas output directly (already in correct format)
-   */
-  static applyCanvasTemplate(canvasOutput: { nodes: any[], edges: any[] }): { nodes: ReactFlowNode[], edges: ReactFlowEdge[] } {
-    // Canvas output is already in the correct format, just apply positioning
-    const layout = this.calculateCanvasLayout(canvasOutput.nodes);
-    
-    const nodes = canvasOutput.nodes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      position: layout[node.id] || { x: 100, y: 100 },
-      data: { ...node }
-    }));
-
-    const edges = canvasOutput.edges.map((edge) => ({
-      id: `${edge.source}-${edge.target}` || `${edge.from}-${edge.to}`,
-      source: edge.source || edge.from,
-      target: edge.target || edge.to
-    }));
-
-    return { nodes, edges };
-  }
-
-  private static calculateCanvasLayout(nodes: any[]): Record<string, { x: number; y: number }> {
-    const layout: Record<string, { x: number; y: number }> = {};
-    
-    // Group nodes by type for better layout
-    const targetNodes = nodes.filter(n => n.type === 'TargetNode');
-    const sourceNodes = nodes.filter(n => n.type === 'SourceNode');
-    const transformNodes = nodes.filter(n => !['TargetNode', 'SourceNode'].includes(n.type));
-
-    // Position targets on the left
-    targetNodes.forEach((node, i) => {
-      layout[node.id] = { x: 100, y: 100 + (i * 120) };
-    });
-
-    // Position sources on the right  
-    sourceNodes.forEach((node, i) => {
-      layout[node.id] = { x: 800, y: 100 + (i * 120) };
-    });
-
-    // Position transforms in the middle
-    transformNodes.forEach((node, i) => {
-      layout[node.id] = { x: 450, y: 100 + (i * 120) };
-    });
-
-    return layout;
-  }
-
   private static convertNodes(aiNodes: AINode[]): ReactFlowNode[] {
     const layout = this.calculateLayout(aiNodes);
     
