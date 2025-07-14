@@ -364,22 +364,22 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         const sourceFieldValue = getNestedValue(dataRecord, field.id);
                         
                         if (sourceFieldValue !== undefined && sourceFieldValue !== null) {
-                            // Handle array/object display (show in green - imported data)
+                            // Handle array/object display (show in blue - imported data)
                             if (Array.isArray(sourceFieldValue)) {
                                 return (
-                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
                                         [Array with {sourceFieldValue.length} items]
                                     </span>
                                 );
                             } else if (typeof sourceFieldValue === 'object') {
                                 return (
-                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
                                         [Object]
                                     </span>
                                 );
                             } else {
                                 return (
-                                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs break-words">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
                                         {typeof sourceFieldValue === 'string' 
                                             ? (sourceFieldValue === '' ? '""' : `"${sourceFieldValue}"`)
                                             : String(sourceFieldValue)}

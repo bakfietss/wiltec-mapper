@@ -250,9 +250,9 @@ const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) 
     };
 };
 
-// Get value from source node - with manual field values support
+// Get value from source node - identical handling for manual and imported data
 const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
-    // First, check if there's a manual value set in the field
+    // Check if there's a manual value set in the field
     const sourceFields = sourceNode.data?.fields || [];
     const findFieldRecursively = (fields: any[], fieldId: string): any => {
         for (const field of fields) {
@@ -269,12 +269,12 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
     
     const sourceField = findFieldRecursively(sourceFields, handleId);
     
-    // Return manual value if it exists (has priority over imported data)
+    // Return manual value if it exists
     if (sourceField && sourceField.value !== undefined && sourceField.value !== null && sourceField.value !== '') {
         return sourceField.value;
     }
     
-    // Then try to get from imported data
+    // Try to get from imported data
     const sourceData = sourceNode.data?.data || [];
     if (sourceData.length > 0) {
         const dataObject = sourceData[0];
