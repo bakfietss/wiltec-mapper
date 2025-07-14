@@ -50,11 +50,16 @@ export const importSourceNode = (config: SourceNodeConfig, connections?: any[]):
     
     Object.entries(obj).forEach(([key, value], index) => {
       const fieldId = parentPath ? `${parentPath}.${key}` : key;
+      
+      // Try to find existing field definition from config to preserve manual values
+      const existingField = config.schema.fields.find(f => f.name === key || f.id === fieldId);
+      
       const field: SchemaField = {
         id: fieldId,
         name: key,
-        type: getFieldType(value)
-        // NOTE: No exampleValue - actual data is in sampleData
+        type: getFieldType(value),
+        // Preserve manual value if it exists from the config
+        ...(existingField?.value && { value: existingField.value })
       };
       
       if (field.type === 'object' && value && typeof value === 'object' && !Array.isArray(value)) {
@@ -63,7 +68,6 @@ export const importSourceNode = (config: SourceNodeConfig, connections?: any[]):
         if (typeof value[0] === 'object' && value[0] !== null) {
           field.children = generateFieldsFromSampleData(value[0], `${fieldId}[0]`);
         }
-        // NOTE: No exampleValue needed - actual array data is in sampleData
       }
       
       fields.push(field);

@@ -207,4 +207,6 @@ export interface SchemaField {
   children?: SchemaField[];
   // Add groupBy support for array fields
   groupBy?: string;
+  // Add value property for manual field values
+  value?: string;
 }
