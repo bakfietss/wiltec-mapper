@@ -36,7 +36,8 @@ export const importTargetNode = (config: TargetNodeConfig, arrayConfigs?: any[])
       label: config.label,
       fields: fieldsWithGroupBy,
       data: config.outputData || [],
-      fieldValues: {} // This will be populated by the centralized system
+      // Preserve existing fieldValues from the config, or initialize empty
+      fieldValues: (config as any).fieldValues || {}
     }
   };
 };
@@ -96,10 +97,12 @@ export const importSourceNode = (config: SourceNodeConfig, connections?: any[]):
   if (sampleData.length > 0) {
     finalFields = generateFieldsFromSampleData(sampleData[0]);
   } else {
-    // Fallback to schema fields if no sample data
+    // Fallback to schema fields if no sample data - preserve manual values
     finalFields = config.schema.fields.map(field => ({
       ...field,
-      id: field.name
+      id: field.name,
+      // Preserve manual value if it exists
+      ...(field.value !== undefined && { value: field.value })
     }));
   }
   

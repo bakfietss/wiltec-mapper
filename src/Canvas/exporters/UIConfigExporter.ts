@@ -50,20 +50,28 @@ export const exportUIMappingConfiguration = (
     }
   };
 
-  // Extract source nodes - USING ONLY SAMPLEDATA AS SINGLE SOURCE OF TRUTH
+  // Extract source nodes - preserve manual field values
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
-      // Clean fields structure - preserve manual values
+      // Clean fields structure - preserve manual values with proper conditional checks
       const cleanFields = Array.isArray(node.data?.fields) ? 
-        node.data.fields.map((field: any) => ({
-          id: field.id,
-          name: field.name,
-          type: field.type,
-          ...(field.children && { children: field.children }),
-          ...(field.parent && { parent: field.parent }),
-          ...(field.groupBy && { groupBy: field.groupBy }),
-          ...(field.value && { value: field.value }) // Preserve manual values
-        })) : [];
+        node.data.fields.map((field: any) => {
+          const cleanField: any = {
+            id: field.id,
+            name: field.name,
+            type: field.type
+          };
+          
+          // Add optional properties only if they exist
+          if (field.children) cleanField.children = field.children;
+          if (field.parent) cleanField.parent = field.parent;
+          if (field.groupBy) cleanField.groupBy = field.groupBy;
+          if (field.value !== undefined && field.value !== '') {
+            cleanField.value = field.value;
+          }
+          
+          return cleanField;
+        }) : [];
 
       config.nodes.sources.push({
         id: node.id,
