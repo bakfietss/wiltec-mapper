@@ -379,6 +379,31 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                 {field.type}
             </span>
             
+            {/* Input field for source nodes - only show if onFieldValueUpdate is provided */}
+            {handleType === 'source' && onFieldValueUpdate && (field.type === 'string' || field.type === 'number' || field.type === 'boolean' || field.type === 'date') && (
+                <div className="ml-2" onClick={(e) => e.stopPropagation()}>
+                    {field.type === 'boolean' ? (
+                        <select
+                            value={field.value || ''}
+                            onChange={(e) => onFieldValueUpdate(field.id, e.target.value)}
+                            className="w-20 px-1 py-0.5 text-xs border rounded"
+                        >
+                            <option value="">-</option>
+                            <option value="true">true</option>
+                            <option value="false">false</option>
+                        </select>
+                    ) : (
+                        <input
+                            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                            value={field.value || ''}
+                            onChange={(e) => onFieldValueUpdate(field.id, e.target.value)}
+                            className="w-20 px-1 py-0.5 text-xs border rounded"
+                            placeholder="value"
+                        />
+                    )}
+                </div>
+            )}
+            
             <Handle
                 type={handleType}
                 position={handlePosition}

@@ -401,18 +401,19 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
             <div className="p-1">
                 {hasFields ? (
                     fields.map((field) => (
-                        <FieldRenderer
-                            key={field.id}
-                            field={field}
-                            expandedFields={expandedFields}
-                            onFieldExpansionToggle={handleFieldExpansionToggle}
-                            selectedFields={selectedFields}
-                            onFieldToggle={handleFieldToggle}
-                            sampleData={nodeData}
-                            handleType="source"
-                            handlePosition={Position.Right}
-                            nodeId={id}
-                        />
+                    <FieldRenderer
+                        key={field.id}
+                        field={field}
+                        expandedFields={expandedFields}
+                        onFieldExpansionToggle={handleFieldExpansionToggle}
+                        selectedFields={selectedFields}
+                        onFieldToggle={handleFieldToggle}
+                        sampleData={nodeData}
+                        handleType="source"
+                        handlePosition={Position.Right}
+                        nodeId={id}
+                        onFieldValueUpdate={updateFieldValue}
+                    />
                     ))
                 ) : (
                     <div className="text-center py-3 text-gray-500 text-xs">
