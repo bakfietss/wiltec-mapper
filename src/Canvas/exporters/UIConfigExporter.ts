@@ -53,6 +53,11 @@ export const exportUIMappingConfiguration = (
   // Extract source nodes - preserve manual field values
   nodes.filter(node => node.type === 'source')
     .forEach(node => {
+      console.log('EXPORT DEBUG - Source node:', node.id);
+      console.log('EXPORT DEBUG - Source node data:', node.data);
+      console.log('EXPORT DEBUG - Source node fields:', node.data?.fields);
+      console.log('EXPORT DEBUG - Is fields array?', Array.isArray(node.data?.fields));
+      
       // Clean fields structure - preserve manual values with proper conditional checks
       const cleanFields = Array.isArray(node.data?.fields) ? 
         node.data.fields.map((field: any) => {
@@ -72,6 +77,8 @@ export const exportUIMappingConfiguration = (
           
           return cleanField;
         }) : [];
+
+      console.log('EXPORT DEBUG - Clean fields result:', cleanFields);
 
       config.nodes.sources.push({
         id: node.id,
