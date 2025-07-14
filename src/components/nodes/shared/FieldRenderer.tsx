@@ -276,8 +276,8 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             <div className="w-3 h-3" />
             <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">{field.name}</span>
             
-            {/* Value display/input - blue for target, blue for source with input capability */}
-            <div className="text-xs max-w-[200px] flex items-center gap-2">
+            {/* Value display - blue for target, blue for source */}
+            <div className="text-xs max-w-[200px] text-center">
                 {handleType === 'target' ? (
                     fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
@@ -287,109 +287,91 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         <span className="text-gray-400 italic">no value</span>
                     )
                 ) : (
-                    // Source node - show manual input field and/or imported data value
-                    <>
-                        {/* Manual value input field */}
-                        {onFieldValueUpdate && (
-                            <input
-                                type={field.type === 'number' ? 'number' : 'text'}
-                                value={field.value || ''}
-                                onChange={(e) => {
-                                    e.stopPropagation();
-                                    onFieldValueUpdate(field.id, e.target.value);
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                placeholder="Enter value..."
-                                className="w-20 px-1 py-0.5 text-xs border rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            />
-                        )}
+                    // Source node - show current effective value (manual or imported data)
+                    (() => {
+                        // Prioritize manual value over imported data
+                        const manualValue = field.value;
+                        if (manualValue !== undefined && manualValue !== '') {
+                            return (
+                                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                    {field.type === 'number' ? manualValue : `"${manualValue}"`}
+                                </span>
+                            );
+                        }
                         
-                        {/* Display current effective value */}
-                        {(() => {
-                            // Prioritize manual value over imported data
-                            const manualValue = field.value;
-                            if (manualValue !== undefined && manualValue !== '') {
+                        // Fall back to imported data value
+                        const dataRecord = sampleData?.[0];
+                        if (!dataRecord) {
+                            return <span className="text-gray-400 italic text-xs">no value</span>;
+                        }
+                        
+                        // Get value using field ID as dot-separated path
+                        const getNestedValue = (obj: any, fieldId: string): any => {
+                            if (!fieldId || !obj) return undefined;
+                            
+                            const pathParts = fieldId.split('.');
+                            let current = obj;
+                            
+                            for (const part of pathParts) {
+                                if (current === null || current === undefined) {
+                                    return undefined;
+                                }
+                                
+                                // Handle standalone [0] notation first
+                                if (part.startsWith('[') && part.endsWith(']')) {
+                                    const index = parseInt(part.slice(1, -1));
+                                    if (Array.isArray(current) && index >= 0 && index < current.length) {
+                                        current = current[index];
+                                    } else {
+                                        return undefined;
+                                    }
+                                // Handle array notation like containers[0]
+                                } else if (part.includes('[') && part.includes(']')) {
+                                    const [arrayKey, indexPart] = part.split('[');
+                                    const index = parseInt(indexPart.replace(']', ''));
+                                    
+                                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
+                                        current = current[arrayKey][index];
+                                    } else {
+                                        return undefined;
+                                    }
+                                } else {
+                                    current = current[part];
+                                }
+                            }
+                            
+                            return current;
+                        };
+                        
+                        const sourceFieldValue = getNestedValue(dataRecord, field.id);
+                        
+                        if (sourceFieldValue !== undefined && sourceFieldValue !== null) {
+                            // Handle array/object display
+                            if (Array.isArray(sourceFieldValue)) {
                                 return (
                                     <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-                                        {field.type === 'number' ? manualValue : `"${manualValue}"`}
+                                        [Array: {sourceFieldValue.length}]
+                                    </span>
+                                );
+                            } else if (typeof sourceFieldValue === 'object') {
+                                return (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                        [Object]
+                                    </span>
+                                );
+                            } else {
+                                return (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                        {typeof sourceFieldValue === 'string' 
+                                            ? `"${sourceFieldValue}"`
+                                            : String(sourceFieldValue)}
                                     </span>
                                 );
                             }
-                            
-                            // Fall back to imported data value
-                            const dataRecord = sampleData?.[0];
-                            if (!dataRecord) {
-                                return <span className="text-gray-400 italic text-xs">no value</span>;
-                            }
-                            
-                            // Get value using field ID as dot-separated path
-                            const getNestedValue = (obj: any, fieldId: string): any => {
-                                if (!fieldId || !obj) return undefined;
-                                
-                                const pathParts = fieldId.split('.');
-                                let current = obj;
-                                
-                                for (const part of pathParts) {
-                                    if (current === null || current === undefined) {
-                                        return undefined;
-                                    }
-                                    
-                                    // Handle standalone [0] notation first
-                                    if (part.startsWith('[') && part.endsWith(']')) {
-                                        const index = parseInt(part.slice(1, -1));
-                                        if (Array.isArray(current) && index >= 0 && index < current.length) {
-                                            current = current[index];
-                                        } else {
-                                            return undefined;
-                                        }
-                                    // Handle array notation like containers[0]
-                                    } else if (part.includes('[') && part.includes(']')) {
-                                        const [arrayKey, indexPart] = part.split('[');
-                                        const index = parseInt(indexPart.replace(']', ''));
-                                        
-                                        if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
-                                            current = current[arrayKey][index];
-                                        } else {
-                                            return undefined;
-                                        }
-                                    } else {
-                                        current = current[part];
-                                    }
-                                }
-                                
-                                return current;
-                            };
-                            
-                            const sourceFieldValue = getNestedValue(dataRecord, field.id);
-                            
-                            if (sourceFieldValue !== undefined && sourceFieldValue !== null) {
-                                // Handle array/object display
-                                if (Array.isArray(sourceFieldValue)) {
-                                    return (
-                                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-                                            [Array: {sourceFieldValue.length}]
-                                        </span>
-                                    );
-                                } else if (typeof sourceFieldValue === 'object') {
-                                    return (
-                                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-                                            [Object]
-                                        </span>
-                                    );
-                                } else {
-                                    return (
-                                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-                                            {typeof sourceFieldValue === 'string' 
-                                                ? `"${sourceFieldValue}"`
-                                                : String(sourceFieldValue)}
-                                        </span>
-                                    );
-                                }
-                            } else {
-                                return <span className="text-gray-400 italic text-xs">no data</span>;
-                            }
-                        })()}
-                    </>
+                        } else {
+                            return <span className="text-gray-400 italic text-xs">no data</span>;
+                        }
+                    })()
                 )}
             </div>
             

@@ -278,6 +278,32 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                 </button>
             </div>
             
+            {/* Manual value input - only for primitive types */}
+            {field.type !== 'object' && field.type !== 'array' && (
+                <div>
+                    <label className="block text-xs font-medium mb-1">Value:</label>
+                    {field.type === 'boolean' ? (
+                        <select
+                            value={field.value || ''}
+                            onChange={(e) => updateField(field.id, { value: e.target.value })}
+                            className="w-full border rounded px-2 py-1 text-sm"
+                        >
+                            <option value="">Select...</option>
+                            <option value="true">true</option>
+                            <option value="false">false</option>
+                        </select>
+                    ) : (
+                        <input
+                            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                            value={field.value || ''}
+                            onChange={(e) => updateField(field.id, { value: e.target.value })}
+                            className="w-full border rounded px-2 py-1 text-sm"
+                            placeholder={`Enter ${field.type} value`}
+                        />
+                    )}
+                </div>
+            )}
+            
             {field.children && field.children.map(childField => 
                 renderFieldEditor(childField, level + 1)
             )}
@@ -386,7 +412,6 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                             handleType="source"
                             handlePosition={Position.Right}
                             nodeId={id}
-                            onFieldValueUpdate={updateFieldValue}
                         />
                     ))
                 ) : (
