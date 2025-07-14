@@ -204,6 +204,25 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
         setFields(updateFieldRecursive(fields));
     };
 
+    const updateFieldValue = (fieldId: string, value: string) => {
+        const updateFieldRecursive = (fieldsArray: SchemaField[]): SchemaField[] => {
+            return fieldsArray.map(field => {
+                if (field.id === fieldId) {
+                    return { ...field, value };
+                }
+                if (field.children) {
+                    return {
+                        ...field,
+                        children: updateFieldRecursive(field.children)
+                    };
+                }
+                return field;
+            });
+        };
+        
+        setFields(updateFieldRecursive(fields));
+    };
+
     const deleteField = (fieldId: string) => {
         const deleteFieldRecursive = (fieldsArray: SchemaField[]): SchemaField[] => {
             return fieldsArray.filter(field => {
@@ -367,6 +386,7 @@ const SourceNode: React.FC<{ id: string; data: SourceNodeData; selected?: boolea
                             handleType="source"
                             handlePosition={Position.Right}
                             nodeId={id}
+                            onFieldValueUpdate={updateFieldValue}
                         />
                     ))
                 ) : (

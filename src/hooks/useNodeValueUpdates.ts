@@ -252,15 +252,24 @@ const calculateIfThenNodeValues = (ifThenNode: any, nodes: any[], edges: any[]) 
 
 // Get value from source node
 const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
-    const sourceData = sourceNode.data?.data || [];
+    // First check for manual field values
+    const sourceFields = sourceNode.data?.fields || [];
+    const sourceField = findFieldById(sourceFields, handleId);
     
-    // Always try to get from actual data first (this should be the primary source)
+    // Prioritize manual values
+    if (sourceField?.value !== undefined && sourceField.value !== '') {
+        console.log(`✅ [Transfer] Using manual value for "${handleId}":`, sourceField.value);
+        return sourceField.value;
+    }
+    
+    // Fall back to imported data
+    const sourceData = sourceNode.data?.data || [];
     if (sourceData.length > 0) {
         const dataObject = sourceData[0];
         
         // Enhanced getValue function that matches the FieldRenderer logic
         const getValue = (obj: any, fieldId: string): any => {
-            console.log(`🔍 [Transfer] Getting value for field ID: "${fieldId}" from data:`, obj);
+            console.log(`🔍 [Transfer] Getting value for field ID: "${fieldId}" from imported data:`, obj);
             if (!fieldId || !obj) return undefined;
             
             const pathParts = fieldId.split('.');
@@ -305,19 +314,14 @@ const getSourceNodeValue = (sourceNode: any, handleId: string): any => {
         const dataValue = getValue(dataObject, handleId);
         console.log(`✨ [Transfer] Final extracted value for "${handleId}":`, dataValue);
         
-        // Return any value from sampleData, including null, empty strings, etc.
+        // Return any value from imported data, including null, empty strings, etc.
         if (dataValue !== undefined) {
             return dataValue;
         }
     }
     
-    // Only fallback to schema fields if no sampleData exists or field not found in data
-    const sourceFields = sourceNode.data?.fields || [];
-    const sourceField = sourceFields.find((f: any) => f.id === handleId || f.name === handleId);
-    // NOTE: No exampleValue fallback - using sampleData as single source of truth
-    const fallbackValue = null;
     console.log(`❌ [Transfer] No data found for "${handleId}", returning null`);
-    return fallbackValue;
+    return null;
 };
 
 // Get value from static value node

@@ -11,6 +11,7 @@ export interface SchemaField {
     groupBy?: string;
     path?: string[]; // Add path for nested field value retrieval
     isAttribute?: boolean; // For XML attributes
+    value?: string; // Manual value input for source nodes
     // NOTE: Removed exampleValue - using sampleData as single source of truth
 }
 
@@ -40,6 +41,7 @@ interface FieldRendererProps {
     selectedFields?: Set<string>;
     onFieldToggle?: (fieldId: string) => void;
     sampleData?: any[]; // Add sampleData for source nodes
+    onFieldValueUpdate?: (fieldId: string, value: string) => void; // For manual value input
     
     // Handle configuration
     handleType: 'source' | 'target';
@@ -59,7 +61,8 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
     sampleData,
     handleType,
     handlePosition,
-    nodeId
+    nodeId,
+    onFieldValueUpdate
 }) => {
     const isExpanded = expandedFields.has(field.id);
     const hasChildren = field.children && field.children.length > 0;
@@ -177,6 +180,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         handleType={handleType}
                         handlePosition={handlePosition}
                         nodeId={nodeId}
+                        onFieldValueUpdate={onFieldValueUpdate}
                     />
                 ))}
             </div>
@@ -250,6 +254,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         handleType={handleType}
                         handlePosition={handlePosition}
                         nodeId={nodeId}
+                        onFieldValueUpdate={onFieldValueUpdate}
                     />
                 ))}
             </div>
@@ -271,8 +276,8 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             <div className="w-3 h-3" />
             <span className="font-medium text-gray-900 flex-1 min-w-0 truncate text-left">{field.name}</span>
             
-            {/* Value display - blue for target, blue for source (matching target) */}
-            <div className="text-xs max-w-[200px] text-center">
+            {/* Value display/input - blue for target, blue for source with input capability */}
+            <div className="text-xs max-w-[200px] flex items-center gap-2">
                 {handleType === 'target' ? (
                     fieldValue !== undefined && fieldValue !== null && fieldValue !== '' ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
@@ -282,86 +287,109 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
                         <span className="text-gray-400 italic">no value</span>
                     )
                 ) : (
-                    // Source node - get value from sampleData using field ID path
-                    (() => {
-                        const dataRecord = sampleData?.[0];
-                        if (!dataRecord) {
-                            return <span className="text-gray-400 italic">no value</span>;
-                        }
+                    // Source node - show manual input field and/or imported data value
+                    <>
+                        {/* Manual value input field */}
+                        {onFieldValueUpdate && (
+                            <input
+                                type={field.type === 'number' ? 'number' : 'text'}
+                                value={field.value || ''}
+                                onChange={(e) => {
+                                    e.stopPropagation();
+                                    onFieldValueUpdate(field.id, e.target.value);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="Enter value..."
+                                className="w-20 px-1 py-0.5 text-xs border rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                        )}
                         
-                        // Get value using field ID as dot-separated path
-                        const getNestedValue = (obj: any, fieldId: string): any => {
-                            console.log(`🔍 Getting value for field ID: "${fieldId}" from data:`, obj);
-                            if (!fieldId || !obj) return undefined;
+                        {/* Display current effective value */}
+                        {(() => {
+                            // Prioritize manual value over imported data
+                            const manualValue = field.value;
+                            if (manualValue !== undefined && manualValue !== '') {
+                                return (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                        {field.type === 'number' ? manualValue : `"${manualValue}"`}
+                                    </span>
+                                );
+                            }
                             
-                            const pathParts = fieldId.split('.');
-                            console.log(`📝 Path parts:`, pathParts);
-                            let current = obj;
+                            // Fall back to imported data value
+                            const dataRecord = sampleData?.[0];
+                            if (!dataRecord) {
+                                return <span className="text-gray-400 italic text-xs">no value</span>;
+                            }
                             
-                            for (const part of pathParts) {
-                                console.log(`🚶 Processing part: "${part}", current value:`, current);
-                                if (current === null || current === undefined) {
-                                    return undefined;
+                            // Get value using field ID as dot-separated path
+                            const getNestedValue = (obj: any, fieldId: string): any => {
+                                if (!fieldId || !obj) return undefined;
+                                
+                                const pathParts = fieldId.split('.');
+                                let current = obj;
+                                
+                                for (const part of pathParts) {
+                                    if (current === null || current === undefined) {
+                                        return undefined;
+                                    }
+                                    
+                                    // Handle standalone [0] notation first
+                                    if (part.startsWith('[') && part.endsWith(']')) {
+                                        const index = parseInt(part.slice(1, -1));
+                                        if (Array.isArray(current) && index >= 0 && index < current.length) {
+                                            current = current[index];
+                                        } else {
+                                            return undefined;
+                                        }
+                                    // Handle array notation like containers[0]
+                                    } else if (part.includes('[') && part.includes(']')) {
+                                        const [arrayKey, indexPart] = part.split('[');
+                                        const index = parseInt(indexPart.replace(']', ''));
+                                        
+                                        if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
+                                            current = current[arrayKey][index];
+                                        } else {
+                                            return undefined;
+                                        }
+                                    } else {
+                                        current = current[part];
+                                    }
                                 }
                                 
-                                // Handle standalone [0] notation first
-                                if (part.startsWith('[') && part.endsWith(']')) {
-                                    const index = parseInt(part.slice(1, -1));
-                                    console.log(`🎯 Processing standalone array index: ${index}, current is array:`, Array.isArray(current), 'array length:', current?.length, 'target item:', current?.[index]);
-                                    if (Array.isArray(current) && index >= 0 && index < current.length) {
-                                        current = current[index];
-                                        console.log(`✅ Successfully accessed array[${index}]:`, current);
-                                    } else {
-                                        console.log(`❌ Failed to access array[${index}]`);
-                                        return undefined;
-                                    }
-                                // Handle array notation like containers[0]
-                                } else if (part.includes('[') && part.includes(']')) {
-                                    const [arrayKey, indexPart] = part.split('[');
-                                    const index = parseInt(indexPart.replace(']', ''));
-                                    
-                                    if (Array.isArray(current[arrayKey]) && current[arrayKey][index] !== undefined) {
-                                        current = current[arrayKey][index];
-                                    } else {
-                                        return undefined;
-                                    }
-                                } else {
-                                    current = current[part];
-                                }
-                            }
+                                return current;
+                            };
                             
-                            return current;
-                        };
-                        
-                        const sourceFieldValue = getNestedValue(dataRecord, field.id);
-                        
-                        if (sourceFieldValue !== undefined && sourceFieldValue !== null) {
-                            // Handle array/object display
-                            if (Array.isArray(sourceFieldValue)) {
-                                return (
-                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
-                                        [Array with {sourceFieldValue.length} items]
-                                    </span>
-                                );
-                            } else if (typeof sourceFieldValue === 'object') {
-                                return (
-                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
-                                        [Object]
-                                    </span>
-                                );
+                            const sourceFieldValue = getNestedValue(dataRecord, field.id);
+                            
+                            if (sourceFieldValue !== undefined && sourceFieldValue !== null) {
+                                // Handle array/object display
+                                if (Array.isArray(sourceFieldValue)) {
+                                    return (
+                                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                            [Array: {sourceFieldValue.length}]
+                                        </span>
+                                    );
+                                } else if (typeof sourceFieldValue === 'object') {
+                                    return (
+                                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                            [Object]
+                                        </span>
+                                    );
+                                } else {
+                                    return (
+                                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                            {typeof sourceFieldValue === 'string' 
+                                                ? `"${sourceFieldValue}"`
+                                                : String(sourceFieldValue)}
+                                        </span>
+                                    );
+                                }
                             } else {
-                                return (
-                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs break-words">
-                                        {typeof sourceFieldValue === 'string' 
-                                            ? (sourceFieldValue === '' ? '""' : `"${sourceFieldValue}"`)
-                                            : String(sourceFieldValue)}
-                                    </span>
-                                );
+                                return <span className="text-gray-400 italic text-xs">no data</span>;
                             }
-                        } else {
-                            return <span className="text-gray-400 italic">no value</span>;
-                        }
-                    })()
+                        })()}
+                    </>
                 )}
             </div>
             
