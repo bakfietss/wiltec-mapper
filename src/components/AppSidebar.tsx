@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Wand2, Brain, Settings, LogOut, User, ChevronDown, FolderOpen, Activity, Key } from 'lucide-react';
+import { Home, Wand2, Brain, Settings, LogOut, User, ChevronDown, FolderOpen, Activity, Key, Truck } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -34,10 +34,15 @@ const mappingItems = [
   { title: 'My Transformations', url: '/my-transformations', icon: Activity },
 ];
 
+const shipmentItems = [
+  { title: 'My Shipments', url: '/my-shipments', icon: Truck },
+];
+
 const navigationItems = [
   { title: 'Control Panel', url: '/', icon: Home },
   { title: 'Builder', items: builderItems, icon: FolderOpen },
   { title: 'Mappings', items: mappingItems, icon: FolderOpen },
+  { title: 'Shipments', items: shipmentItems, icon: FolderOpen },
 ];
 
 export function AppSidebar() {
@@ -237,6 +242,32 @@ export function AppSidebar() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="ml-4">
                     {mappingItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            className={({ isActive: navIsActive }) => 
+                              getNavClassName(navIsActive)
+                            }
+                          >
+                            <item.icon className="w-4 h-4" />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarMenuItem>
+
+              {/* Shipments Section */}
+              <SidebarMenuItem>
+                <Collapsible 
+                  open={true || isCollapsed} 
+                  className="w-full"
+                >
+                  <CollapsibleContent className="ml-4">
+                    {shipmentItems.map((item) => (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
                           <NavLink

@@ -3,65 +3,176 @@ import { Node, Edge } from '@xyflow/react';
 import { SavedMapping, ExecutionMappingConfig } from './MappingService';
 
 export class FirebirdService implements DatabaseService {
-  private static config = {
-    host: 'localhost',      // Your Firebird server host
-    port: 3050,            // Default Firebird port
-    database: 'C:\\path\\to\\your\\database.fdb',  // Your database file path
-    user: 'SYSDBA',        // Your database username
-    password: 'masterkey',  // Your database password
-    // Add these if you're exposing via URL/port
-    server_url: 'http://your-server:port',  // If you're exposing via HTTP
-    api_key: 'your-api-key'                 // If you're using authentication
-  };
+  private apiUrl = 'http://localhost:3000/api';
 
-  static async from(table: string) {
+  from(table: string) {
+    console.log('FirebirdService.from called with table:', table);
+    if (!table) {
+      console.error('Table name is required');
+      throw new Error('Table name is required');
+    }
+
     return {
       select: async (columns: string = '*') => {
-        // Here you'll implement the actual Firebird SELECT query
-        // Example using your exposed API:
-        const response = await fetch(`${this.config.server_url}/query`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.config.api_key}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            query: `SELECT ${columns} FROM ${table}`
-          })
-        });
-        const result = await response.json();
-        return { data: result, error: null };
+        console.log('FirebirdService.select called with columns:', columns);
+        try {
+          const response = await fetch(`${this.apiUrl}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              operation: 'select',
+              columns
+            })
+          });
+          return await response.json();
+        } catch (error) {
+          console.error('Error in Firebird query:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Database query failed' };
+        }
       },
+
       insert: async (data: any) => {
-        // Implement actual insert logic
-        return { data: null, error: null };
+        try {
+          const response = await fetch(`${this.apiUrl}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              operation: 'insert',
+              data
+            })
+          });
+          return await response.json();
+        } catch (error) {
+          console.error('Error in Firebird insert:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Database insert failed' };
+        }
       },
-      update: async (data: any) => {
-        // Implement actual update logic
-        return { data: null, error: null };
+
+      update: async (data: any, where: any) => {
+        try {
+          const response = await fetch(`${this.apiUrl}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              operation: 'update',
+              data,
+              where
+            })
+          });
+          return await response.json();
+        } catch (error) {
+          console.error('Error in Firebird update:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Database update failed' };
+        }
       },
-      delete: async () => {
-        // Implement actual delete logic
-        return { data: null, error: null };
+
+      delete: async (where: any) => {
+        try {
+          const response = await fetch(`${this.apiUrl}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              operation: 'delete',
+              where
+            })
+          });
+          return await response.json();
+        } catch (error) {
+          console.error('Error in Firebird delete:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Database delete failed' };
+        }
       },
-      eq: async (column: string, value: any) => this,
-      order: async (column: string, options: any) => this,
-      single: async () => ({ data: null, error: null }),
-      maybeSingle: async () => ({ data: null, error: null })
+
+      eq: async (column: string, value: any) => {
+        try {
+          const response = await fetch(`${this.apiUrl}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              operation: 'select',
+              where: { [column]: value }
+            })
+          });
+          return await response.json();
+        } catch (error) {
+          console.error('Error in Firebird eq:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Database query failed' };
+        }
+      },
+
+      order: async (column: string, { ascending = true } = {}) => {
+        try {
+          const response = await fetch(`${this.apiUrl}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              operation: 'select',
+              orderBy: { column, ascending }
+            })
+          });
+          return await response.json();
+        } catch (error) {
+          console.error('Error in Firebird order:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Database query failed' };
+        }
+      },
+
+      single: async () => {
+        try {
+          const response = await fetch(`${this.apiUrl}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              operation: 'select',
+              limit: 1
+            })
+          });
+          const result = await response.json();
+          return {
+            data: result.data?.[0] || null,
+            error: result.error
+          };
+        } catch (error) {
+          console.error('Error in Firebird single:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Database query failed' };
+        }
+      }
     };
   }
 
-  static async rpc(procedure: string, params: any): Promise<any> {
-    // Implement stored procedure calls
-    return { data: null, error: null };
+  async rpc(procedure: string, params: any): Promise<any> {
+    try {
+      const response = await fetch(`${this.apiUrl}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ procedure, params })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Error in Firebird RPC:', error);
+      return { data: null, error: error instanceof Error ? error.message : 'RPC call failed' };
+    }
   }
 
-  static async getMappings(userId: string): Promise<SavedMapping[]> {
-    // Implement actual Firebird query to get mappings
-    return [];
+  async getMappings(userId: string): Promise<SavedMapping[]> {
+    try {
+      const response = await fetch(`${this.apiUrl}/mappings?userId=${userId}`);
+      const result = await response.json();
+      return result.data || [];
+    } catch (error) {
+      console.error('Error getting mappings:', error);
+      return [];
+    }
   }
 
-  static async saveMapping(mapping: {
+  async saveMapping(mapping: {
     name: string;
     nodes: Node[];
     edges: Edge[];
@@ -73,28 +184,17 @@ export class FirebirdService implements DatabaseService {
     providedVersion?: string;
     transformType?: string;
   }): Promise<SavedMapping> {
-    // Implement actual Firebird logic to save mapping
-    return {
-      id: 'temp-id',
-      name: mapping.name,
-      version: mapping.providedVersion || 'v1.0',
-      category: mapping.category || 'General',
-      description: mapping.description,
-      tags: mapping.tags,
-      transform_type: mapping.transformType,
-      ui_config: {
-        name: mapping.name,
-        version: mapping.providedVersion || 'v1.0',
-        category: mapping.category || 'General',
-        description: mapping.description,
-        tags: mapping.tags,
-        nodes: mapping.nodes,
-        edges: mapping.edges
-      },
-      execution_config: mapping.executionConfig,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    try {
+      const response = await fetch(`${this.apiUrl}/mappings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mapping)
+      });
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error saving mapping:', error);
+      throw error;
+    }
   }
 }

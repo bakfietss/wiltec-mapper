@@ -17,8 +17,11 @@ import './App.css';
 import MyMappings from './pages/MyMappings';
 import MyTransformations from './pages/MyTransformations';
 import AiMapper from './pages/AiMapper';
+import MyShipments from './pages/MyShipments';
 import { DatabaseProvider } from '@/contexts/DatabaseContext';
 import { useDatabase } from './contexts/DatabaseContext';
+import NavigationBar from './components/NavigationBar';
+
 
 function App() {
   const queryClient = new QueryClient({
@@ -72,6 +75,7 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">My Mappings</h1>
                       </header>
+                      <NavigationBar />
                       <main className="flex-1">
                         <MyMappings />
                       </main>
@@ -90,6 +94,7 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">Manual Mapper</h1>
                       </header>
+                      <NavigationBar />
                       <main className="flex-1">
                         <Index />
                       </main>
@@ -106,6 +111,7 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">Template Mapper</h1>
                       </header>
+                      <NavigationBar />
                       <main className="flex-1">
                         <TemplateMapper />
                       </main>
@@ -123,6 +129,7 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">My Transformations</h1>
                       </header>
+                      <NavigationBar />
                       <main className="flex-1">
                         <MyTransformations />
                       </main>
@@ -139,8 +146,26 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">AI Mapper</h1>
                       </header>
+                      <NavigationBar />
                       <main className="flex-1">
                         <AiMapper />
+                      </main>
+                    </div>
+                  </div>
+                </SidebarProvider>
+              </ProtectedRoute>} />
+              <Route path="/my-shipments" element={<ProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <div className="flex-1 flex flex-col">
+                      <header className="h-12 flex items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                        <SidebarTrigger className="ml-4" />
+                        <h1 className="ml-4 font-semibold">My Shipments</h1>
+                      </header>
+                      <NavigationBar />
+                      <main className="flex-1">
+                        <MyShipments />
                       </main>
                     </div>
                   </div>

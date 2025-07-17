@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from './ui/button';
-import { Brain, Settings, Home, Wand2, FileText } from 'lucide-react';
+import { Brain, Settings, Home, Wand2, FileText, Truck } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const NavigationBar = () => {
@@ -56,6 +56,16 @@ const NavigationBar = () => {
         >
           <Settings className="w-4 h-4" />
           Manual
+        </Button>
+
+        <Button
+          variant={isActive('/my-shipments') ? "default" : "ghost"}
+          size="sm"
+          onClick={() => navigate('/my-shipments')}
+          className="flex items-center gap-2"
+        >
+          <Truck className="w-4 h-4" />
+          Shipments
         </Button>
       </div>
     </div>
