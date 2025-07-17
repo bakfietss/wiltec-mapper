@@ -145,7 +145,7 @@ export const exportUIMappingConfiguration = (
   allTransformNodes.forEach(node => {
     console.log('Processing transform node:', node.id, 'type:', node.type);
     
-    let transformConfig: any = {
+    const transformConfig: any = {
       id: node.id,
       type: node.type, // Use the actual node type directly
       label: String(node.data?.label || 'Transform Node'),

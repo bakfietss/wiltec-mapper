@@ -1,16 +1,16 @@
 
 import { useCallback } from 'react';
 import { Node } from '@xyflow/react';
-import SourceNode from '../components/nodes/SourceNode';
-import TargetNode from '../components/nodes/TargetNode';
-import XmlTargetNode from '../components/nodes/XmlTargetNode';
-import TransformNode from '../components/nodes/TransformNode';
-import SplitterTransformNode from '../components/nodes/SplitterTransformNode';
-import IfThenNode from '../components/nodes/IfThenNode';
-import StaticValueNode from '../components/nodes/StaticValueNode';
-import ConversionMappingNode from '../components/nodes/ConversionMappingNode';
-import CoalesceTransformNode from '../components/nodes/CoalesceTransformNode';
-import ConcatTransformNode from '../components/nodes/ConcatTransformNode';
+import SourceNode from '../manualmapper/nodes/SourceNode';
+import TargetNode from '../manualmapper/nodes/TargetNode';
+import XmlTargetNode from '../manualmapper/nodes/XmlTargetNode';
+import TransformNode from '../manualmapper/nodes/TransformNode';
+import SplitterTransformNode from '../manualmapper/nodes/SplitterTransformNode';
+import IfThenNode from '../manualmapper/nodes/IfThenNode';
+import StaticValueNode from '../manualmapper/nodes/StaticValueNode';
+import ConversionMappingNode from '../manualmapper/nodes/ConversionMappingNode';
+import CoalesceTransformNode from '../manualmapper/nodes/CoalesceTransformNode';
+import ConcatTransformNode from '../manualmapper/nodes/ConcatTransformNode';
 
 export const nodeTypes = {
   source: SourceNode,
@@ -30,8 +30,8 @@ export const useNodeFactories = (
     setNodes: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void
 ) => {
     const addSchemaNode = useCallback((type: 'source' | 'target' | 'xmlTarget') => {
-        let nodeType = type;
-        let nodeData: any = {
+        const nodeType = type;
+        const nodeData: any = {
             label: type === 'source' ? 'Source Schema' : 
                    type === 'xmlTarget' ? 'XML Target Schema' : 'Target Schema',
             fields: [],

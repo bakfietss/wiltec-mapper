@@ -34,7 +34,7 @@ export class MappingComparisonService {
       
       // Parse and normalize input data
       const parsedInput = JSON.parse(inputData);
-      let inputArray = Array.isArray(parsedInput) ? parsedInput : 
+      const inputArray = Array.isArray(parsedInput) ? parsedInput : 
                       parsedInput.rows ? parsedInput.rows : [parsedInput];
       
       console.log('📊 Parsed input structure:', parsedInput);
@@ -438,7 +438,7 @@ export class MappingComparisonService {
   static generateMappingTemplate(result: ComparisonResult, outputFormat: 'xml' | 'json' = 'json'): string {
     console.log('📝 Generating mapping template...');
     
-    let template: any = {};
+    const template: any = {};
     
     // Build the template structure based on mappings
     result.mappings.forEach(mapping => {

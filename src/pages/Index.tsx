@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import Canvas from '../Canvas/Canvas';
-import DataSidebar from '../components/nodes/DataSidebar';
+import DataSidebar from '../manualmapper/ui/DataSidebar';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Wand2, X } from 'lucide-react';

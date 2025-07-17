@@ -17,23 +17,35 @@ import './App.css';
 import MyMappings from './pages/MyMappings';
 import MyTransformations from './pages/MyTransformations';
 import AiMapper from './pages/AiMapper';
-
-const queryClient = new QueryClient();
+import { DatabaseProvider } from '@/contexts/DatabaseContext';
+import { useDatabase } from './contexts/DatabaseContext';
 
 function App() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Add database type to query key for proper cache isolation
+        queryKeyHashFn: (queryKey: unknown[]) => {
+          const { activeDatabase } = useDatabase();
+          return JSON.stringify([activeDatabase, ...queryKey]);
+        }
+      }
+    }
+  });
+
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Public routes without sidebar */}
-            <Route path="/landing" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="*" element={<NotFound />} />
-            
-            {/* Protected routes with sidebar */}
-            <Route path="/" element={
-              <ProtectedRoute>
+      <DatabaseProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Public routes without sidebar */}
+              <Route path="/landing" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="*" element={<NotFound />} />
+
+              {/* Protected routes with sidebar */}
+              <Route path="/" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -48,12 +60,10 @@ function App() {
                     </div>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
-            } />
-            
-            {/* Protected routes with sidebar */}
-            <Route path="/my-mappings" element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+
+              {/* Protected routes with sidebar */}
+              <Route path="/my-mappings" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -68,12 +78,10 @@ function App() {
                     </div>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
-            } />
-            
-            {/* Protected routes with sidebar */}
-            <Route path="/manual" element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+
+              {/* Protected routes with sidebar */}
+              <Route path="/manual" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -88,10 +96,8 @@ function App() {
                     </div>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
-            } />
-            <Route path="/template-mapper" element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+              <Route path="/template-mapper" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -106,11 +112,9 @@ function App() {
                     </div>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/my-transformations" element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+
+              <Route path="/my-transformations" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -125,10 +129,8 @@ function App() {
                     </div>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
-            } />
-            <Route path="/ai-mapper" element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+              <Route path="/ai-mapper" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -143,12 +145,12 @@ function App() {
                     </div>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </Router>
-        <Toaster position="top-right" />
-      </AuthProvider>
+              </ProtectedRoute>} />
+            </Routes>
+          </Router>
+          <Toaster position="top-right" />
+        </AuthProvider>
+      </DatabaseProvider>
     </QueryClientProvider>
   );
 }

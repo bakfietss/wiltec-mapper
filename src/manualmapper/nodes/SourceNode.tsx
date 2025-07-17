@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useStore, NodeResizer } from '@xyflow/react';
 import { Database, Plus, Trash2 } from 'lucide-react';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNodeDataSync } from '../../hooks/useNodeDataSync';
-import NodeEditSheet from './NodeEditSheet';
-import JsonImportDialog from './JsonImportDialog';
-import { FormatSelector } from './FormatSelector';
-import { FieldRenderer, SchemaField } from './shared/FieldRenderer';
+import NodeEditSheet from '../ui/NodeEditSheet';
+import JsonImportDialog from '../components/JsonImportDialog';
+import { FormatSelector } from '../components/FormatSelector';
+import { FieldRenderer, SchemaField } from '../components/FieldRenderer';
 
 interface SourceNodeData {
     label: string;

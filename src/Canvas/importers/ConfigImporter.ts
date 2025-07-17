@@ -34,7 +34,7 @@ export const importConfiguration = (config: MappingConfiguration | ExecutionMapp
           
           // Build parent paths for expansion
           for (let i = 0; i < pathParts.length - 1; i++) {
-            let parentPath = pathParts.slice(0, i + 1).join('.');
+            const parentPath = pathParts.slice(0, i + 1).join('.');
             // Remove array indices to get clean field names
             const cleanPath = parentPath.replace(/\[.*?\]/g, '');
             if (cleanPath) {

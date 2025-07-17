@@ -79,7 +79,7 @@ function parseEdiToSemanticJson(ediData: string): any {
     segments: {}
   };
 
-  let currentLineItems: any[] = [];
+  const currentLineItems: any[] = [];
   let currentLineItem: any = null;
 
   for (const segment of segments) {

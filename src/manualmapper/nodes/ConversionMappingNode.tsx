@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Plus, Upload, Edit3 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
+// Update import path
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 
 interface MappingRule {

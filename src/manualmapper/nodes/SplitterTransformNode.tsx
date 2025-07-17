@@ -1,7 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Scissors } from 'lucide-react';
-import NodeEditSheet from './NodeEditSheet';
+import NodeEditSheet from '../ui/NodeEditSheet';
+// Update import path
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SplitterConfig {
   delimiter?: string;

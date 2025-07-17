@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Play, Eye, Trash2, Tag, Edit, History, Settings, Copy, ArrowRightLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { useDatabase } from '@/contexts/DatabaseContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface TransformType {
@@ -26,6 +27,7 @@ interface TransformType {
 
 const MyMappings = () => {
   const { user } = useAuth();
+  const { activeDatabase } = useDatabase();  // Add this line to properly get activeDatabase
   const navigate = useNavigate();
   const [mappings, setMappings] = useState<SavedMapping[]>([]);
   const [transformTypes, setTransformTypes] = useState<TransformType[]>([]);
@@ -58,7 +60,7 @@ const MyMappings = () => {
   const fetchMappings = async () => {
     try {
       setLoading(true);
-      const data = await MappingService.getLatestMappings(user!.id);
+      const data = await MappingService.getLatestMappings(user!.id, activeDatabase);
       setMappings(data);
     } catch (error) {
       console.error('Failed to fetch mappings:', error);
@@ -87,7 +89,7 @@ const MyMappings = () => {
 
   const handleToggleStatus = async (id: string, isActive: boolean) => {
     try {
-      await MappingService.toggleMappingStatus(id, user!.id, isActive);
+      await MappingService.toggleMappingStatus(id, user!.id, isActive, activeDatabase);
       setMappings(prev => 
         prev.map(mapping => 
           mapping.id === id ? { ...mapping, is_active: isActive } : mapping

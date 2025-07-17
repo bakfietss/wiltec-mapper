@@ -18,9 +18,9 @@ import { useLocation } from 'react-router-dom';
 
 import { nodeTypes, useNodeFactories } from './NodeFactories';
 import { useFieldStore } from '../store/fieldStore';
-import DataSidebar from '../components/nodes/DataSidebar';
-import MappingToolbar from '../components/nodes/MappingToolbar';
-import MappingManager from '../components/nodes/MappingManager';
+import DataSidebar from '../manualmapper/ui/DataSidebar';
+import MappingToolbar from '../manualmapper/ui/MappingToolbar';
+import MappingManager from '../manualmapper/ui/MappingManager';
 import { useNodeValueUpdates } from '../hooks/useNodeValueUpdates';
 import { useManualUpdateTrigger } from '../hooks/useManualUpdateTrigger';
 import AiChatAssistant from '../components/AiChatAssistant';

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitBranch } from 'lucide-react';
-import NodeEditSheet from './NodeEditSheet';
+// Update import path
+import NodeEditSheet from '../ui/NodeEditSheet';
 import { useNodeDataSync } from '../../hooks/useNodeDataSync';
 
 interface IfThenNodeData {

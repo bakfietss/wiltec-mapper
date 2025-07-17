@@ -7,11 +7,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import { Activity, FileText, Key, BarChart3, Settings, Brain } from 'lucide-react';
 import { ApiKeyManager } from '@/components/ApiKeyManager';
+import { useDatabase } from '@/contexts/DatabaseContext';
 
 const ControlPanel = () => {
   const { user } = useAuth();
+  const { activeDatabase, setActiveDatabase } = useDatabase();  // Use DatabaseContext instead of local state
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const handleDatabaseChange = (database: 'supabase' | 'firebird') => {
+    setActiveDatabase(database);  // This will now persist the selection
+    toast.success(`Switched to ${database} database`);
+  };
   
   useEffect(() => {
     if (user?.id) {
@@ -205,11 +212,31 @@ const ControlPanel = () => {
               <CardDescription>Additional system configuration options</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <Settings className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Additional settings will be available here.
-                </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-medium">Database Connection</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Toggle between Supabase and local Firebird database
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={activeDatabase === 'supabase' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleDatabaseChange('supabase')}
+                    >
+                      Supabase
+                    </Button>
+                    <Button
+                      variant={activeDatabase === 'firebird' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleDatabaseChange('firebird')}
+                    >
+                      Firebird
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

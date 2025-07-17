@@ -116,7 +116,7 @@ export const importSourceNode = (config: SourceNodeConfig, connections?: any[]):
           console.log(`Found connected handle for import: ${edge.sourceHandle}`);
           
           // Handle array notation like containers[0].container_number
-          let pathToParse = edge.sourceHandle;
+          const pathToParse = edge.sourceHandle;
           
           // Split by dots, but also handle array notation
           const segments = [];

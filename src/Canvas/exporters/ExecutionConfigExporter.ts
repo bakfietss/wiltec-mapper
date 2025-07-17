@@ -497,8 +497,8 @@ export const exportExecutionMapping = (
             rootMappings.push(mapping);
           } else {
             // Nested in arrays - build the nested structure with groupBy support
-            let currentStructures = arrayStructures;
-            let currentArrays: ArrayMappingStructure[] = [];
+            const currentStructures = arrayStructures;
+            const currentArrays: ArrayMappingStructure[] = [];
             
             arrayAncestors.forEach((ancestor, index) => {
               const ancestorPath = fieldPath.slice(0, index + 1).join('.');

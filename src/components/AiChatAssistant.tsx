@@ -85,7 +85,7 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
     // Determine transform type
     let transformType = 'string';
     let operation = '';
-    let config: any = {};
+    const config: any = {};
 
     if (lowercaseRequest.includes('split') || lowercaseRequest.includes('substring')) {
       operation = 'substring';
@@ -140,7 +140,7 @@ const AiChatAssistant: React.FC<AiChatAssistantProps> = ({ onCreateNodes }) => {
     const xPosition = 400;
 
     let newNode;
-    let newEdges = [];
+    const newEdges = [];
 
     if (parsedRequest.transformType === 'concat') {
       // Create concat node

@@ -188,7 +188,7 @@ const calculateTargetNodeValues = (targetNode: any, nodes: any[], edges: any[]) 
 // Calculate coalesce node input values
 const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any[]) => {
     const inputEdges = edges.filter(e => e.target === coalesceNode.id);
-    let inputValues: Record<string, any> = {};
+    const inputValues: Record<string, any> = {};
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
@@ -210,7 +210,7 @@ const calculateCoalesceNodeValues = (coalesceNode: any, nodes: any[], edges: any
 // Calculate concat node input values
 const calculateConcatNodeValues = (concatNode: any, nodes: any[], edges: any[]) => {
     const inputEdges = edges.filter(e => e.target === concatNode.id);
-    let inputValues: Record<string, any> = {};
+    const inputValues: Record<string, any> = {};
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
@@ -358,7 +358,7 @@ const getConcatTransformValue = (concatNode: any, nodes: any[], edges: any[]): a
     const delimiter = concatNode.data?.delimiter || ',';
     
     const inputEdges = edges.filter(e => e.target === concatNode.id);
-    let inputValues: Record<string, any> = {};
+    const inputValues: Record<string, any> = {};
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);
@@ -437,7 +437,7 @@ const applyCoalesceTransform = (coalesceNode: any, nodes: any[], edges: any[]): 
     const defaultValue = coalesceNode.data?.defaultValue || coalesceNode.data?.config?.defaultValue || '';
     
     const inputEdges = edges.filter(e => e.target === coalesceNode.id);
-    let inputValues: Record<string, any> = {};
+    const inputValues: Record<string, any> = {};
     
     inputEdges.forEach(inputEdge => {
         const inputSourceNode = nodes.find(n => n.id === inputEdge.source);

@@ -1,5 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 import { Node, Edge } from '@xyflow/react';
+import { FirebirdService } from './FirebirdService';
+import { DatabaseService } from './DatabaseService';
 
 export interface SavedMappingConfig {
   name: string;
@@ -44,6 +46,13 @@ export interface SavedMapping {
 }
 
 export class MappingService {
+  private static getService(database: 'supabase' | 'firebird'): DatabaseService {
+    if (!database) {
+      throw new Error('Database type must be specified');
+    }
+    return database === 'supabase' ? supabase : FirebirdService;
+  }
+
   static async saveMapping(
     name: string,
     nodes: Node[],
@@ -54,187 +63,79 @@ export class MappingService {
     tags?: string[],
     executionConfig?: ExecutionMappingConfig,
     providedVersion?: string,
-    transformType: string = 'JsonToJson'
+    transformType: string = 'JsonToJson',
+    database: 'supabase' | 'firebird' = 'supabase'
   ): Promise<SavedMapping> {
     if (!userId) {
       throw new Error('User authentication is required to save mappings');
     }
 
-    // First, check if there's an existing active mapping to inherit from
-    const { data: existingMapping } = await supabase
-      .from('mappings')
-      .select('mapping_group_id, category, description, tags, transform_type')
-      .eq('user_id', userId)
-      .eq('name', name)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    // If this is a new mapping (no existing mapping group), check for name conflicts
-    if (!existingMapping) {
-      const { data: nameConflict } = await supabase
-        .from('mappings')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('name', name.trim())
-        .limit(1);
-
-      if (nameConflict && nameConflict.length > 0) {
-        throw new Error(`A mapping with the name "${name.trim()}" already exists. Please choose a different name.`);
-      }
+    if (!name || name.trim().length === 0) {
+      throw new Error('Mapping name is required');
     }
 
-    // Inherit metadata from existing mapping or use provided values
-    const finalCategory = category !== 'General' ? category : (existingMapping?.category || 'General');
-    const finalDescription = description || existingMapping?.description;
-    const finalTags = tags || existingMapping?.tags || [];
-    const finalTransformType = transformType !== 'JsonToJson' ? transformType : (existingMapping?.transform_type || 'JsonToJson');
-    const mappingGroupId = existingMapping?.mapping_group_id || crypto.randomUUID();
-
-    // Use provided version or get next version
-    let version = providedVersion;
-    if (!version) {
-      const { data: nextVersion, error: versionError } = await supabase
-        .rpc('get_next_version', {
-          p_user_id: userId,
-          p_name: name,
-          p_category: finalCategory
-        });
-
-      if (versionError) {
-        throw new Error(`Failed to get next version: ${versionError.message}`);
-      }
-      version = nextVersion;
-    }
-
-    // Create UI configuration that matches the SavedMappingConfig interface
-    const uiConfig: SavedMappingConfig = {
-      name,
-      version,
-      category: finalCategory,
-      description: finalDescription,
-      tags: finalTags,
+    const service = this.getService(database);
+    const mappingData = {
+      name: name.trim(),
       nodes,
       edges,
-      metadata: {
-        author: userId,
-        created_at: new Date().toISOString(),
-        created_by: userId
-      }
+      userId,
+      category: category.trim(),
+      description,
+      tags,
+      executionConfig,
+      providedVersion,
+      transformType: transformType.trim()
     };
 
-    // Deactivate all previous versions of this mapping group
-    if (existingMapping) {
-      const { error: deactivateError } = await supabase
-        .from('mappings')
-        .update({ is_active: false })
-        .eq('user_id', userId)
-        .eq('mapping_group_id', mappingGroupId);
-      
-      if (deactivateError) {
-        console.error('Failed to deactivate previous versions:', deactivateError);
-        throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
-      }
-    }
-
-    // Save new mapping with inherited metadata and group ID
-    const { data, error } = await supabase
-      .from('mappings')
-      .insert({
-        user_id: userId,
-        name,
-        version,
-        category: finalCategory,
-        description: finalDescription,
-        tags: finalTags,
-        transform_type: finalTransformType,
-        mapping_group_id: mappingGroupId,
-        ui_config: uiConfig as any,
-        execution_config: executionConfig as any,
-        is_active: true
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to save mapping: ${error.message}`);
-    }
-
-    return {
-      ...data,
-      ui_config: data.ui_config as unknown as SavedMappingConfig,
-      execution_config: data.execution_config as unknown as ExecutionMappingConfig
-    };
+    return await service.saveMapping(mappingData);
   }
 
-  static async getMappings(userId: string): Promise<SavedMapping[]> {
+  static async getMappings(userId: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<SavedMapping[]> {
     if (!userId) {
       throw new Error('User authentication is required to fetch mappings');
     }
 
-    const { data, error } = await supabase
-      .from('mappings')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch mappings: ${error.message}`);
-    }
-
-    return (data || []).map(item => ({
-      ...item,
-      ui_config: item.ui_config as unknown as SavedMappingConfig,
-      execution_config: item.execution_config as unknown as ExecutionMappingConfig
-    }));
+    const service = this.getService(database);
+    return await service.getMappings(userId);
   }
 
-  static async getActiveMapping(name: string, userId: string, category?: string): Promise<SavedMapping | null> {
+  static async getActiveMapping(name: string, userId: string, category?: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<SavedMapping | null> {
     if (!userId) {
       throw new Error('User authentication is required to fetch mappings');
     }
 
-    const { data, error } = await supabase
-      .rpc('get_active_mapping', {
-        p_user_id: userId,
-        p_name: name,
-        p_category: category
-      });
+    const service = this.getService(database);
+    const result = await service.rpc('get_active_mapping', {
+      p_user_id: userId,
+      p_name: name,
+      p_category: category
+    });
 
-    if (error) {
-      throw new Error(`Failed to fetch active mapping: ${error.message}`);
-    }
-
-    return data ? {
-      ...data,
-      ui_config: data.ui_config as unknown as SavedMappingConfig,
-      execution_config: data.execution_config as unknown as ExecutionMappingConfig
-    } : null;
+    return result.data || null;
   }
 
-  static async toggleMappingStatus(id: string, userId: string, isActive: boolean): Promise<void> {
+  static async toggleMappingStatus(id: string, userId: string, isActive: boolean, database: 'supabase' | 'firebird' = 'supabase'): Promise<void> {
     if (!userId) {
       throw new Error('User authentication is required to update mappings');
     }
 
-    const { error } = await supabase
-      .from('mappings')
+    const service = this.getService(database);
+    await service.from('mappings')
       .update({ is_active: isActive })
       .eq('id', id)
       .eq('user_id', userId);
-
-    if (error) {
-      throw new Error(`Failed to update mapping status: ${error.message}`);
-    }
   }
 
-  static async activateVersion(id: string, userId: string, name: string, category: string): Promise<void> {
+  static async activateVersion(id: string, userId: string, name: string, category: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<void> {
     if (!userId) {
       throw new Error('User authentication is required to update mappings');
     }
 
-    // First deactivate all versions of this mapping (handle null category properly)
-    let deactivateQuery = supabase
-      .from('mappings')
+    const service = this.getService(database);
+    
+    // First deactivate all versions of this mapping
+    let deactivateQuery = service.from('mappings')
       .update({ is_active: false })
       .eq('user_id', userId)
       .eq('name', name);
@@ -245,46 +146,34 @@ export class MappingService {
       deactivateQuery = deactivateQuery.is('category', null);
     }
     
-    const { error: deactivateError } = await deactivateQuery;
-    if (deactivateError) {
-      throw new Error(`Failed to deactivate previous versions: ${deactivateError.message}`);
-    }
+    await deactivateQuery;
 
     // Then activate the specific version
-    const { error } = await supabase
-      .from('mappings')
+    await service.from('mappings')
       .update({ is_active: true })
       .eq('id', id)
       .eq('user_id', userId);
-
-    if (error) {
-      throw new Error(`Failed to activate mapping version: ${error.message}`);
-    }
   }
 
-  static async deleteMapping(id: string, userId: string): Promise<void> {
+  static async deleteMapping(id: string, userId: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<void> {
     if (!userId) {
       throw new Error('User authentication is required to delete mappings');
     }
 
-    const { error } = await supabase
-      .from('mappings')
+    const service = this.getService(database);
+    await service.from('mappings')
       .delete()
       .eq('id', id)
       .eq('user_id', userId);
-
-    if (error) {
-      throw new Error(`Failed to delete mapping: ${error.message}`);
-    }
   }
 
-  static async getMappingsByCategory(userId: string, category?: string): Promise<SavedMapping[]> {
+  static async getMappingsByCategory(userId: string, category?: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<SavedMapping[]> {
     if (!userId) {
       throw new Error('User authentication is required to fetch mappings');
     }
 
-    let query = supabase
-      .from('mappings')
+    const service = this.getService(database);
+    let query = service.from('mappings')
       .select('*')
       .eq('user_id', userId);
 
@@ -292,39 +181,35 @@ export class MappingService {
       query = query.eq('category', category);
     }
 
-    const { data, error } = await query.order('updated_at', { ascending: false });
+    const result = await query.order('updated_at', { ascending: false });
 
-    if (error) {
-      throw new Error(`Failed to fetch mappings: ${error.message}`);
-    }
-
-    return (data || []).map(item => ({
+    return (result.data || []).map(item => ({
       ...item,
       ui_config: item.ui_config as unknown as SavedMappingConfig,
       execution_config: item.execution_config as unknown as ExecutionMappingConfig
     }));
   }
 
-  static async getLatestMappings(userId: string): Promise<SavedMapping[]> {
+  static async getLatestMappings(userId: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<SavedMapping[]> {
     if (!userId) {
       throw new Error('User authentication is required to fetch mappings');
     }
 
-    const { data, error } = await supabase
-      .from('mappings')
+    const service = this.getService(database);
+    const result = await service.from('mappings')
       .select('*')
       .eq('user_id', userId)
       .order('name', { ascending: true })
       .order('version', { ascending: false });
 
-    if (error) {
-      throw new Error(`Failed to fetch mappings: ${error.message}`);
+    if (!result.data) {
+      return [];
     }
 
     // Group by mapping_group_id and get the active version or latest if no active
     const groupMap = new Map<string, any>();
     
-    (data || []).forEach(item => {
+    result.data.forEach(item => {
       const groupId = item.mapping_group_id;
       const existing = groupMap.get(groupId);
       
@@ -346,73 +231,68 @@ export class MappingService {
     }));
   }
 
-  static async getMappingVersions(userId: string, name: string, category: string): Promise<SavedMapping[]> {
+  static async getMappingVersions(userId: string, name: string, category: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<SavedMapping[]> {
     if (!userId) {
       throw new Error('User authentication is required to fetch mappings');
     }
 
-    const { data, error } = await supabase
-      .from('mappings')
+    const service = this.getService(database);
+    const result = await service.from('mappings')
       .select('*')
       .eq('user_id', userId)
       .eq('name', name)
       .eq('category', category)
       .order('version', { ascending: false });
 
-    if (error) {
-      throw new Error(`Failed to fetch mapping versions: ${error.message}`);
-    }
-
-    return (data || []).map(item => ({
+    return (result.data || []).map(item => ({
       ...item,
       ui_config: item.ui_config as unknown as SavedMappingConfig,
       execution_config: item.execution_config as unknown as ExecutionMappingConfig
     }));
   }
 
-  static async updateMapping(id: string, userId: string, name: string, category: string, transformType?: string): Promise<void> {
+  static async updateMapping(id: string, userId: string, name: string, category: string, transformType?: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<void> {
     if (!userId) {
       throw new Error('User authentication is required to update mappings');
     }
 
-    // Check if the new name already exists for this user (excluding current mapping group)
-    const { data: existingMapping, error: existingError } = await supabase
-      .from('mappings')
+    const service = this.getService(database);
+    
+    // Get the original mapping
+    const existingMapping = await service.from('mappings')
       .select('mapping_group_id')
       .eq('id', id)
       .eq('user_id', userId)
       .single();
 
-    if (existingError || !existingMapping) {
-      throw new Error(`Failed to find mapping: ${existingError?.message || 'Mapping not found'}`);
+    if (!existingMapping.data) {
+      throw new Error('Mapping not found');
     }
 
     // Check for name conflicts with other mapping groups
-    const { data: nameConflict } = await supabase
-      .from('mappings')
+    const nameConflict = await service.from('mappings')
       .select('id')
       .eq('user_id', userId)
       .eq('name', name.trim())
-      .neq('mapping_group_id', existingMapping.mapping_group_id)
+      .neq('mapping_group_id', existingMapping.data.mapping_group_id)
       .limit(1);
 
-    if (nameConflict && nameConflict.length > 0) {
+    if (nameConflict.data && nameConflict.data.length > 0) {
       throw new Error(`A mapping with the name "${name.trim()}" already exists. Please choose a different name.`);
     }
 
-    // Get all mappings in the group to update their ui_config and execution_config
-    const { data: allMappings, error: fetchError } = await supabase
-      .from('mappings')
+    // Get all mappings in the group
+    const allMappings = await service.from('mappings')
       .select('*')
-      .eq('mapping_group_id', existingMapping.mapping_group_id)
+      .eq('mapping_group_id', existingMapping.data.mapping_group_id)
       .eq('user_id', userId);
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch mapping group: ${fetchError.message}`);
+    if (!allMappings.data) {
+      throw new Error('Failed to fetch mapping group');
     }
 
     // Update each mapping in the group
-    for (const mapping of allMappings || []) {
+    for (const mapping of allMappings.data) {
       const updateData: any = { 
         name: name.trim(),
         category: category.trim()
@@ -443,45 +323,40 @@ export class MappingService {
       }
 
       // Update this specific mapping
-      const { error: updateError } = await supabase
-        .from('mappings')
+      await service.from('mappings')
         .update(updateData)
         .eq('id', mapping.id)
         .eq('user_id', userId);
-
-      if (updateError) {
-        throw new Error(`Failed to update mapping: ${updateError.message}`);
-      }
     }
   }
 
-  static async copyMapping(mappingId: string, userId: string, newName: string, transformType?: string): Promise<SavedMapping> {
+  static async copyMapping(mappingId: string, userId: string, newName: string, transformType?: string, database: 'supabase' | 'firebird' = 'supabase'): Promise<SavedMapping> {
     if (!userId) {
       throw new Error('User authentication is required to copy mappings');
     }
 
+    const service = this.getService(database);
+
     // Check if the new name already exists
-    const { data: existingMapping } = await supabase
-      .from('mappings')
+    const existingMapping = await service.from('mappings')
       .select('id')
       .eq('user_id', userId)
       .eq('name', newName.trim())
       .limit(1);
 
-    if (existingMapping && existingMapping.length > 0) {
+    if (existingMapping.data && existingMapping.data.length > 0) {
       throw new Error(`A mapping with the name "${newName.trim()}" already exists. Please choose a different name.`);
     }
 
     // Get the original mapping
-    const { data: originalMapping, error: fetchError } = await supabase
-      .from('mappings')
+    const originalMapping = await service.from('mappings')
       .select('*')
       .eq('id', mappingId)
       .eq('user_id', userId)
       .single();
 
-    if (fetchError || !originalMapping) {
-      throw new Error(`Failed to find original mapping: ${fetchError?.message || 'Mapping not found'}`);
+    if (!originalMapping.data) {
+      throw new Error('Original mapping not found');
     }
 
     // Generate new mapping group ID and version
@@ -489,8 +364,8 @@ export class MappingService {
     const newVersion = 'v1.01';
 
     // Create the copy with new group ID and metadata
-    const originalUiConfig = originalMapping.ui_config as any;
-    const originalExecutionConfig = originalMapping.execution_config as any;
+    const originalUiConfig = originalMapping.data.ui_config as any;
+    const originalExecutionConfig = originalMapping.data.execution_config as any;
     
     const copyConfig = {
       ...originalUiConfig,
@@ -510,16 +385,15 @@ export class MappingService {
     } : undefined;
 
     // Insert the copy
-    const { data: newMapping, error: insertError } = await supabase
-      .from('mappings')
+    const newMapping = await service.from('mappings')
       .insert({
         user_id: userId,
         name: newName.trim(),
         version: newVersion,
-        category: originalMapping.category,
-        description: originalMapping.description,
-        tags: originalMapping.tags,
-        transform_type: transformType || originalMapping.transform_type || 'JsonToJson',
+        category: originalMapping.data.category,
+        description: originalMapping.data.description,
+        tags: originalMapping.data.tags,
+        transform_type: transformType || originalMapping.data.transform_type || 'JsonToJson',
         mapping_group_id: newMappingGroupId,
         ui_config: copyConfig,
         execution_config: copyExecutionConfig,
@@ -528,14 +402,14 @@ export class MappingService {
       .select()
       .single();
 
-    if (insertError) {
-      throw new Error(`Failed to copy mapping: ${insertError.message}`);
+    if (!newMapping.data) {
+      throw new Error('Failed to copy mapping');
     }
 
     return {
-      ...newMapping,
-      ui_config: newMapping.ui_config as unknown as SavedMappingConfig,
-      execution_config: newMapping.execution_config as unknown as ExecutionMappingConfig
+      ...newMapping.data,
+      ui_config: newMapping.data.ui_config as unknown as SavedMappingConfig,
+      execution_config: newMapping.data.execution_config as unknown as ExecutionMappingConfig
     };
   }
 }
