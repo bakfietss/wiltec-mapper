@@ -1,11 +1,10 @@
-
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, File, AlertCircle } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { parseStringPromise } from 'xml2js';
+import { XMLParser } from 'fast-xml-parser';
 
 interface DataUploadZoneProps {
   onDataUpload: (data: any[]) => void;
@@ -35,10 +34,14 @@ const DataUploadZone: React.FC<DataUploadZoneProps> = ({
         const parsed = JSON.parse(text);
         data = Array.isArray(parsed) ? parsed : [parsed];
       } else if (file.name.endsWith('.xml')) {
-        const result = await parseStringPromise(text);
-        const rootKey = Object.keys(result)[0];
-        const rootData = result[rootKey];
-        data = Array.isArray(rootData) ? rootData : [rootData];
+        const parser = new XMLParser({
+          ignoreAttributes: false,
+          attributeNamePrefix: "@_",
+          allowBooleanAttributes: true,
+          trimValues: true
+        });
+        const result = parser.parse(text);
+        data = [result];
       } else if (file.name.endsWith('.csv')) {
         // Simple CSV parsing - you might want to use a proper CSV library
         const lines = text.split('\n').filter(line => line.trim());

@@ -20,7 +20,6 @@ import AiMapper from './pages/AiMapper';
 import MyShipments from './pages/MyShipments';
 import { DatabaseProvider } from '@/contexts/DatabaseContext';
 import { useDatabase } from './contexts/DatabaseContext';
-import NavigationBar from './components/NavigationBar';
 
 
 function App() {
@@ -65,7 +64,7 @@ function App() {
                 </SidebarProvider>
               </ProtectedRoute>} />
 
-              {/* Protected routes with sidebar */}
+              {/* Protected routes with sidebar - NavigationBar removed from all routes */}
               <Route path="/my-mappings" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
@@ -75,7 +74,6 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">My Mappings</h1>
                       </header>
-                      <NavigationBar />
                       <main className="flex-1">
                         <MyMappings />
                       </main>
@@ -84,7 +82,6 @@ function App() {
                 </SidebarProvider>
               </ProtectedRoute>} />
 
-              {/* Protected routes with sidebar */}
               <Route path="/manual" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
@@ -94,7 +91,6 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">Manual Mapper</h1>
                       </header>
-                      <NavigationBar />
                       <main className="flex-1">
                         <Index />
                       </main>
@@ -102,6 +98,7 @@ function App() {
                   </div>
                 </SidebarProvider>
               </ProtectedRoute>} />
+
               <Route path="/template-mapper" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
@@ -111,7 +108,6 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">Template Mapper</h1>
                       </header>
-                      <NavigationBar />
                       <main className="flex-1">
                         <TemplateMapper />
                       </main>
@@ -129,7 +125,6 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">My Transformations</h1>
                       </header>
-                      <NavigationBar />
                       <main className="flex-1">
                         <MyTransformations />
                       </main>
@@ -137,6 +132,7 @@ function App() {
                   </div>
                 </SidebarProvider>
               </ProtectedRoute>} />
+
               <Route path="/ai-mapper" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
@@ -146,7 +142,6 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">AI Mapper</h1>
                       </header>
-                      <NavigationBar />
                       <main className="flex-1">
                         <AiMapper />
                       </main>
@@ -154,6 +149,7 @@ function App() {
                   </div>
                 </SidebarProvider>
               </ProtectedRoute>} />
+
               <Route path="/my-shipments" element={<ProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
@@ -163,7 +159,6 @@ function App() {
                         <SidebarTrigger className="ml-4" />
                         <h1 className="ml-4 font-semibold">My Shipments</h1>
                       </header>
-                      <NavigationBar />
                       <main className="flex-1">
                         <MyShipments />
                       </main>

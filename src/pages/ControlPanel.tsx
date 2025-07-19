@@ -15,7 +15,7 @@ const ControlPanel = () => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleDatabaseChange = (database: 'supabase' | 'firebird') => {
+  const handleDatabaseChange = (database: 'supabase' | 'postgres') => {
     setActiveDatabase(database);  // This will now persist the selection
     toast.success(`Switched to ${database} database`);
   };
@@ -217,7 +217,7 @@ const ControlPanel = () => {
                   <div className="space-y-0.5">
                     <h4 className="text-sm font-medium">Database Connection</h4>
                     <p className="text-sm text-muted-foreground">
-                      Toggle between Supabase and local Firebird database
+                      Toggle between test and production databases
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -226,14 +226,14 @@ const ControlPanel = () => {
                       size="sm"
                       onClick={() => handleDatabaseChange('supabase')}
                     >
-                      Supabase
+                      Supabase (test / online)
                     </Button>
                     <Button
-                      variant={activeDatabase === 'firebird' ? 'default' : 'outline'}
+                      variant={activeDatabase === 'postgres' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => handleDatabaseChange('firebird')}
+                      onClick={() => handleDatabaseChange('postgres')}
                     >
-                      Firebird
+                      Postgre (prod / local)
                     </Button>
                   </div>
                 </div>

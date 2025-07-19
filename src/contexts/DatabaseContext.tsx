@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-type DatabaseType = 'supabase' | 'firebird';
+type DatabaseType = 'supabase' | 'postgres';
 
 interface DatabaseContextType {
   activeDatabase: DatabaseType;
@@ -14,7 +14,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [activeDatabase, setActiveDatabaseState] = useState<DatabaseType>(() => {
     const saved = localStorage.getItem('activeDatabase');
-    return (saved as DatabaseType) || 'supabase';
+    return (saved as DatabaseType) || 'postgres';
   });
 
   const setActiveDatabase = (database: DatabaseType) => {
@@ -27,7 +27,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   // Ensure database selection persists across page reloads
   useEffect(() => {
     const saved = localStorage.getItem('activeDatabase');
-    if (saved && (saved === 'supabase' || saved === 'firebird')) {
+    if (saved && (saved === 'supabase' || saved === 'postgres')) {
       setActiveDatabaseState(saved as DatabaseType);
     }
   }, []);

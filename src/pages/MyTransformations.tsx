@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDatabase } from '@/contexts/DatabaseContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,7 @@ interface MappingLog {
 
 const MyTransformations = () => {
   const { user } = useAuth();
+  const { activeDatabase } = useDatabase();
   const [transformations, setTransformations] = useState<MappingLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTransformation, setSelectedTransformation] = useState<MappingLog | null>(null);
@@ -50,22 +52,63 @@ const MyTransformations = () => {
 
   useEffect(() => {
     if (user?.id) {
+      setTransformations([]); // Clear existing data when database changes
       fetchTransformations();
     }
-  }, [user?.id]);
+  }, [user?.id, activeDatabase]); // Re-fetch when database changes
 
   const fetchTransformations = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('mapping_logs')
-        .select(`
-          *,
-          mappings!inner(user_id)
-        `)
-        .eq('mappings.user_id', user!.id)
-        .order('start_date', { ascending: false })
-        .order('start_time_formatted', { ascending: false });
+      let data;
+      let error;
+
+      if (activeDatabase === 'postgres') {
+        const response = await fetch('http://localhost:3000/api/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            table: 'mapping_logs',
+            operation: 'select',
+            columns: '*',
+            joins: [{
+              table: 'mappings',
+              on: 'mapping_logs.mapping_id = mappings.id',
+              where: { user_id: user!.id }
+            }],
+            orderBy: [{ column: 'start_date', order: 'desc' }, { column: 'start_time_formatted', order: 'desc' }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.error) {
+          throw result.error;
+        }
+        data = result.data;
+      } else if (activeDatabase === 'supabase') {
+        const result = await supabase
+          .from('mapping_logs')
+          .select(`
+            *,
+            mappings!inner(user_id)
+          `)
+          .eq('mappings.user_id', user!.id)
+          .order('start_date', { ascending: false })
+          .order('start_time_formatted', { ascending: false });
+
+        error = result.error;
+        data = result.data;
+      } else {
+        // If neither database is active, clear the data
+        setTransformations([]);
+        return;
+      }
 
       if (error) throw error;
       
@@ -75,6 +118,7 @@ const MyTransformations = () => {
     } catch (error) {
       console.error('Failed to fetch transformations:', error);
       toast.error('Failed to load transformations');
+      setTransformations([]);
     } finally {
       setLoading(false);
     }
