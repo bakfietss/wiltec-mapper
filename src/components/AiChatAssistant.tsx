@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { useReactFlow } from '@xyflow/react';
 import { toast } from 'sonner';
-import { AIMappingService } from '../services/AIMappingService';
+import { AIService } from '../services/AIService';
 import SmartConnectionDialog from './SmartConnectionDialog';
 
 interface ChatMessage {

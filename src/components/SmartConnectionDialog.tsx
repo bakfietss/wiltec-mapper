@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { CheckCircle2, HelpCircle, ArrowRight } from 'lucide-react';
-import { AIMappingService, FieldMatch } from '../services/AIMappingService';
+import { AIMappingService, FieldMatch } from '../services/AIService';
 
 interface SmartConnectionDialogProps {
   isOpen: boolean;

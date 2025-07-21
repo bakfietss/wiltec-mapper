@@ -5,7 +5,46 @@ import { Upload, File, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { parseStringPromise } from 'xml2js';
+
+// Remove the xml2js import and use browser's DOMParser instead
+const parseXML = (xmlString: string) => {
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+  
+  // Convert XML to JSON object
+  const toJSON = (node: Element): any => {
+    const obj: any = {};
+    
+    // Handle attributes
+    Array.from(node.attributes).forEach(attr => {
+      obj[`@${attr.name}`] = attr.value;
+    });
+    
+    // Handle child nodes
+    Array.from(node.children).forEach(child => {
+      let childData = toJSON(child);
+      
+      if (child.children.length === 0 && !child.hasAttributes()) {
+        // Text node
+        childData = child.textContent;
+      }
+      
+      if (obj[child.nodeName]) {
+        if (!Array.isArray(obj[child.nodeName])) {
+          obj[child.nodeName] = [obj[child.nodeName]];
+        }
+        obj[child.nodeName].push(childData);
+      } else {
+        obj[child.nodeName] = childData;
+      }
+    });
+    
+    return obj;
+  };
+  
+  const rootElement = xmlDoc.documentElement;
+  return toJSON(rootElement);
+};
 
 interface DataUploadZoneProps {
   onDataUpload: (data: any[]) => void;
@@ -35,10 +74,13 @@ const DataUploadZone: React.FC<DataUploadZoneProps> = ({
         const parsed = JSON.parse(text);
         data = Array.isArray(parsed) ? parsed : [parsed];
       } else if (file.name.endsWith('.xml')) {
-        const result = await parseStringPromise(text);
-        const rootKey = Object.keys(result)[0];
-        const rootData = result[rootKey];
-        data = Array.isArray(rootData) ? rootData : [rootData];
+        try {
+          const result = parseXML(text);
+          data = Array.isArray(result) ? result : [result];
+        } catch (xmlError) {
+          console.error('XML parsing error:', xmlError);
+          throw new Error('Failed to parse XML file');
+        }
       } else if (file.name.endsWith('.csv')) {
         // Simple CSV parsing - you might want to use a proper CSV library
         const lines = text.split('\n').filter(line => line.trim());
@@ -92,37 +134,31 @@ const DataUploadZone: React.FC<DataUploadZoneProps> = ({
     <div
       {...getRootProps()}
       className={`
-        border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+        border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
         ${isDragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
         ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
       `}
     >
       <input {...getInputProps()} />
       
-      <div className="space-y-4">
-        <div className="mx-auto w-12 h-12 text-gray-400">
+      <div className="flex items-center justify-center gap-3">
+        <div className="text-gray-400">
           {isLoading ? (
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
           ) : (
-            <Upload className="w-full h-full" />
+            <Upload className="h-6 w-6" />
           )}
         </div>
         
-        <div>
-          <div className="text-lg font-medium text-gray-900">
-            {title}
-            {optional && <span className="text-sm text-gray-500 ml-2">(Optional)</span>}
-          </div>
-          <div className="text-sm text-gray-500 mt-1">
-            {description}
-          </div>
-          <div className="text-xs text-gray-400 mt-2">
+        <div className="text-sm">
+          <span className="font-medium">{title}</span>
+          {optional && <span className="text-xs text-gray-500 ml-2">(Optional)</span>}
+          <div className="text-xs text-gray-400">
             Supported: {acceptedTypes.join(', ')}
           </div>
         </div>
 
         <Button variant="outline" size="sm" disabled={isLoading}>
-          <File className="h-4 w-4 mr-2" />
           {isLoading ? 'Processing...' : 'Choose File'}
         </Button>
       </div>

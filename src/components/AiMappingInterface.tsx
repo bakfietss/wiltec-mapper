@@ -8,7 +8,7 @@ import { Progress } from './ui/progress';
 import { Alert, AlertDescription } from './ui/alert';
 import DataUploadZone from './DataUploadZone';
 import MappingSuggestions from './MappingSuggestions';
-import { AIMappingService } from '../services/AIMappingService';
+import { AIMappingService } from '../services/AIService';
 import { SmartAlertService } from '../services/SmartAlertService';
 import { TemplateService } from '../services/TemplateService';
 
@@ -75,7 +75,7 @@ const AiMappingInterface: React.FC<AiMappingInterfaceProps> = ({
       await new Promise(resolve => setTimeout(resolve, 500));
       setProgress(80);
 
-      const aiService = new AIMappingService();
+      const aiService = new AIService();
       const suggestions = await aiService.generateMappingSuggestions(sourceData, targetSchema);
       
       setProgress(100);
